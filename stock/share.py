@@ -68,12 +68,45 @@ KEY_NAME = {
 'CQCXR': '除权除息日',
 'ProjectProgress': '方案进度',
 'NoticeDate': '最新公告日期',
-'MGWFPLY': '',
 'SZZBL': '送转总比例',
 'SGBL': '送股比例',
 'ZGBL': '转股比例',
 'AllocationPlan': '分配方案',
 
+}
+
+
+NEED_TO_NUMBER = {
+
+'Code': False,
+'Name': False,
+'XJFH': True,
+'GXL': True,
+'EarningsPerShare': True,
+'NetAssetsPerShare': True,
+'MGGJJ': True,
+'MGWFPLY': True,
+'JLYTBZZ': True,
+'TotalEquity': True,
+'YAGGR': False,
+'GQDJR': False,
+'CQCXR': False,
+'ProjectProgress': False,
+'NoticeDate': False,
+'SZZBL': True,
+'SGBL': True,
+'ZGBL': True,
+'AllocationPlan': False,
+
+}
+
+DATA_SUB = {
+'YAGGR': 1,
+'GQDJR': 1,
+'CQCXR': 1,
+'ReportingPeriod': 1,
+'ResultsbyDate': 1,
+'NoticeDate': 1,
 }
 
 
@@ -92,11 +125,19 @@ def get_page(page):
         'page': page,
         'rt': int(time.time()),
     }
+    from requests.models import RequestEncodingMixin
+    encode_params = RequestEncodingMixin._encode_params
+    tmp = encode_params(params)
     url = base_url + urlencode(params)
+    s = requests.Session()
+    s.mount('http://', requests.adapters.HTTPAdapter(max_retries=5))
+    s.mount('https://', requests.adapters.HTTPAdapter(max_retries=5))
     try:
-        response = requests.get(url, headers=headers)
+        response = s.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
             return response.content, page
+        else:print('net Error', response.status_code)
+
     except requests.ConnectionError as e:
         print('Error', e.args)
 
@@ -111,18 +152,26 @@ def parse_page(json, page: int):
             one_stock = {}
             one_stock['_id'] = item.get('Code')
             for k, v in KEY_NAME.items():
-                one_stock[v] = item.get(k)
+                if NEED_TO_NUMBER[k] == False:
+                    one_stock[v] = item.get(k)
+                else:
+                    try:
+                        one_stock[v] = float(item.get(k))
+                    except ValueError as e:
+                        one_stock[v] = item.get(k)
             yield one_stock
 
 
 
 def save_to_mongo(result):
-
-    try:
-        if collection.insert(result):
-            print('Saved to Mongo')
-    except errors.DuplicateKeyError as e:
-        pass
+    update_result = collection.update_one({'_id': result['_id']},
+                                          {'$set': result})
+    if update_result.matched_count == 0:
+        try:
+            if collection.insert_one(result):
+                print('Saved to Mongo')
+        except errors.DuplicateKeyError as e:
+            pass
 
 
 
@@ -130,7 +179,6 @@ def save_to_mongo(result):
 
 
 if __name__ == '__main__':
-    aa = u'全部股票'.encode('gb2312')
     for page in range(1, max_page + 1):
         raw_content = get_page(page)
         #data = str(raw_content[0])
