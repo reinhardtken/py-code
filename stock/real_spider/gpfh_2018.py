@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-# Created on 2018-07-28 04:28:42
-# Project: gpfh
-
-from pyspider.libs.base_handler import *
+# Created on 2018-07-28 08:49:54
+# Project: gpfh4
 
 import time
 import json
@@ -16,7 +14,8 @@ from urllib.parse import urlencode
 from pyquery import PyQuery as pq
 from pymongo import MongoClient
 from pymongo import errors
-import fake_spider
+
+from pyspider.libs.base_handler import *
 
 KEY = 'var XbnsgnRv'
 base_url = 'http://data.eastmoney.com/DataCenter_V3/yjfp/getlist.ashx?'
@@ -33,8 +32,6 @@ max_page = 2
 from requests.models import RequestEncodingMixin
 
 encode_params = RequestEncodingMixin._encode_params
-
-
 
 KEY_NAME = {
 
@@ -85,46 +82,50 @@ NEED_TO_NUMBER = {
 }
 
 DATA_SUB = {
-'YAGGR': 1,
-'GQDJR': 1,
-'CQCXR': 1,
-'ReportingPeriod': 1,
-'ResultsbyDate': 1,
-'NoticeDate': 1,
+    'YAGGR': 1,
+    'GQDJR': 1,
+    'CQCXR': 1,
+    'ReportingPeriod': 1,
+    'ResultsbyDate': 1,
+    'NoticeDate': 1,
 }
+
+GLOBAL_DIC = {}
+
+
 #####################################################
 
 
-
-
-
-class GpfhSpider(fake_spider.FakeSpider):
+class Handler(BaseHandler):
     crawl_config = {
     }
 
+    @every(minutes=24 * 60)
+    def on_start(self):
+        self.crawl(self.url(), headers=self.header(), callback=self.processFirstPage)
 
-    def __init__(self):
-        fake_spider.FakeSpider.__init__(self)
-        self._topTaskList = collections.deque()
-        self._currentTopTask = None
-
-        self._secondTaskCounter = 0
-        self._secondTaskTotal = 0
-        self._genSecondUrl = None
-
-    # def on_start(self):
-    #     self.crawl(self.genURL(), callback=self.processFirstPage)
+    # @config(age=10 * 24 * 60 * 60)
+    # def index_page(self, response):
+    #    for each in response.doc('a[href^="http"]').items():
+    #        self.crawl(each.attr.href, callback=self.detail_page)
 
     class InnerTask():
-        def __init__(self, date):
+        def __init__(self, date, getTotalNumber=False):
             self._date = date
             self.collection = db['gpfh-' + date]
+            self.getTotalNumber = getTotalNumber
+
+        def dump(self):
+            return {'data': self._date, 'getTotalNumber': self.getTotalNumber}
+
+        def load(dict):
+            return Handler.InnerTask(dict['data'], dict['getTotalNumber'])
 
         def genParams(self, page, date):
             params = {
                 'js': KEY,
                 'pagesize': '50',
-                'sr': '1',
+                'sr': '-1',
                 'sortType': 'GQDJR',
                 'mtk': u'全部股票'.encode('gb2312'),  # %C8%AB%B2%BF%B9%C9%C6%B1',
                 'filter': '(ReportingPeriod=^' + date + '^)',  # '2017-12-31^)',
@@ -137,11 +138,12 @@ class GpfhSpider(fake_spider.FakeSpider):
             url = encode_params(self.genParams(page, self._date))
             return base_url + url
 
-        def saveDB(self, data):
+        def saveDB(self, data, handler, url):
             for result in data:
-                print(result)
+                # print(result)
+                handler.send_message(handler.project_name, result, self._date + '_' + result['_id'])
                 update_result = self.collection.update_one({'_id': result['_id']},
-                                                      {'$set': result})
+                                                           {'$set': result})
                 if update_result.matched_count == 0:
                     try:
                         if self.collection.insert_one(result):
@@ -149,10 +151,8 @@ class GpfhSpider(fake_spider.FakeSpider):
                     except errors.DuplicateKeyError as e:
                         pass
 
-
     def url(self):
         return 'http://data.eastmoney.com/yjfp/201712.html'
-
 
     def header(self):
         headers = {
@@ -162,69 +162,54 @@ class GpfhSpider(fake_spider.FakeSpider):
         }
         return headers
 
-
     def processFirstPage(self, response):
         if response.ok == False:
             return
 
         data_list = response.doc('#sel_bgq')
-        #doc = pyquery.PyQuery(response)
-        #data_list = doc('#sel_bgq')
+        # doc = pyquery.PyQuery(response)
+        # data_list = doc('#sel_bgq')
         out = data_list.find('option')
 
-
-
         for one in out:
-            print(one.text)
-            innerTask = GpfhSpider.InnerTask(one.text)
-            self._topTaskList.append((innerTask.genUrl(1), innerTask))
+            if one.text.startswith('2018'):
+                print(one.text)
+                innerTask = Handler.InnerTask(one.text)
+                save = innerTask.dump()
+                self.crawl(innerTask.genUrl(1), headers=self.header(), callback=self.processSecondPage, save=save)
 
-        self._currentTopTask = self._topTaskList.popleft()
-        self.crawl(self._currentTopTask[0], headers=self.header(), callback=self.processSecondPage)
+    def processThirdPage(self, response):
+        return self.processSecondPage(response)
 
     def processSecondPage(self, response):
         if response.ok == False:
             return
 
         content = response.content[13:]
-        self._secondTaskCounter += 1
+        innerTask = Handler.InnerTask.load(response.save)
         try:
             data = content.decode('gb2312')
             json_data = json.loads(data)  # , encoding='GB2312')
-            results = self.parse_page(json_data)
-            #for result in results:
-            #    print(result)
-                # self.save_to_mongo(result)
-            self._currentTopTask[1].saveDB(results)
+            results = self.parse_page(json_data, innerTask)
+            innerTask.saveDB(results, self, response.url)
         except UnicodeDecodeError as e:
             print(e)
 
-
-        if self._secondTaskCounter >= self._secondTaskTotal:
-            self._secondTaskCounter = 0
-            self._secondTaskTotal = 0
-            self._currentTopTask = self._topTaskList.popleft()
-            self.crawl(self._currentTopTask[0], headers=self.header(), callback=self.processSecondPage)
-
-        # return result
-
-
-    def processThirdPage(self, response):
-        return self.processSecondPage(response)
-
-    def parse_page(self, json):
+    def parse_page(self, json, innerTask):
         if json:
             if json.get('success') != True:
                 print('failed !!!!')
                 return
 
             total = json.get('pages')
-            if self._secondTaskTotal == 0:
-                self._secondTaskTotal = total
-                if self._secondTaskTotal >= 2:
-                    for i in range(2, self._secondTaskTotal + 1):
-                        self.crawl(self._currentTopTask[1].genUrl(i), headers=self.header(), callback=self.processThirdPage)
-
+            if innerTask.getTotalNumber == False:
+                innerTask.getTotalNumber = True
+                if total >= 2:
+                    save = innerTask.dump()
+                    for i in range(2, total + 1):
+                        print(innerTask.genUrl(i))
+                        self.crawl(innerTask.genUrl(i), headers=self.header(), callback=self.processThirdPage,
+                                   save=save)
 
             items = json.get('data')
             for index, item in enumerate(items):
@@ -243,22 +228,9 @@ class GpfhSpider(fake_spider.FakeSpider):
                             one_stock[v] = item.get(k)
                 yield one_stock
 
-    def save_to_mongo(self, result):
-        update_result = collection.update_one({'_id': result['_id']},
-                                              {'$set': result})
-        if update_result.matched_count == 0:
-            try:
-                if collection.insert_one(result):
-                    print('Saved to Mongo')
-            except errors.DuplicateKeyError as e:
-                pass
+    def on_message(self, project, msg):
+        return msg
 
 
 
 
-
-
-if __name__ == '__main__':
-    gpfh = GpfhSpider()
-    gpfh.on_start()
-    gpfh.Run()

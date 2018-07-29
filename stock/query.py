@@ -14,7 +14,7 @@ from pymongo import errors
 
 client = MongoClient()
 db = client['stock']
-collection = db['gpfh']
+collection = db['gpfh-2017-12-31']
 max_page = 56
 
 
@@ -75,7 +75,7 @@ def SaveData(data):
             col += 1
 
 
-    workbook.save('/home/ken/workspace/tmp/out.xls')
+    workbook.save('/home/ken/workspace/tmp/out-2017-12-31.xls')
 
 
 if __name__ == '__main__':

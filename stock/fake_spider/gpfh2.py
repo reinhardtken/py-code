@@ -92,33 +92,33 @@ DATA_SUB = {
 'ResultsbyDate': 1,
 'NoticeDate': 1,
 }
+
+
 #####################################################
 
 
 
 
 
-class GpfhSpider(fake_spider.FakeSpider):
+class Handler(fake_spider.FakeSpider):
     crawl_config = {
     }
-
-
-    def __init__(self):
-        fake_spider.FakeSpider.__init__(self)
-        self._topTaskList = collections.deque()
-        self._currentTopTask = None
-
-        self._secondTaskCounter = 0
-        self._secondTaskTotal = 0
-        self._genSecondUrl = None
 
     # def on_start(self):
     #     self.crawl(self.genURL(), callback=self.processFirstPage)
 
     class InnerTask():
-        def __init__(self, date):
+        def __init__(self, date, getTotalNumber=False):
             self._date = date
             self.collection = db['gpfh-' + date]
+            self.getTotalNumber = getTotalNumber
+
+
+        def dump(self):
+            return {'data': self._date, 'getTotalNumber': self.getTotalNumber}
+
+        def load(dict):
+            return Handler.InnerTask(dict['data'], dict['getTotalNumber'])
 
         def genParams(self, page, date):
             params = {
@@ -137,9 +137,10 @@ class GpfhSpider(fake_spider.FakeSpider):
             url = encode_params(self.genParams(page, self._date))
             return base_url + url
 
-        def saveDB(self, data):
+        def saveDB(self, data, handler):
             for result in data:
                 print(result)
+                handler.send_message(handler.project_name, result)
                 update_result = self.collection.update_one({'_id': result['_id']},
                                                       {'$set': result})
                 if update_result.matched_count == 0:
@@ -176,54 +177,41 @@ class GpfhSpider(fake_spider.FakeSpider):
 
         for one in out:
             print(one.text)
-            innerTask = GpfhSpider.InnerTask(one.text)
-            self._topTaskList.append((innerTask.genUrl(1), innerTask))
+            innerTask = Handler.InnerTask(one.text)
+            
+            save = innerTask.dump()
+            self.crawl(innerTask.genUrl(1), headers=self.header(), callback=self.processSecondPage, save=save)
 
-        self._currentTopTask = self._topTaskList.popleft()
-        self.crawl(self._currentTopTask[0], headers=self.header(), callback=self.processSecondPage)
 
     def processSecondPage(self, response):
         if response.ok == False:
             return
 
         content = response.content[13:]
-        self._secondTaskCounter += 1
+        innerTask = Handler.InnerTask.load(response.save)
         try:
             data = content.decode('gb2312')
             json_data = json.loads(data)  # , encoding='GB2312')
-            results = self.parse_page(json_data)
-            #for result in results:
-            #    print(result)
-                # self.save_to_mongo(result)
-            self._currentTopTask[1].saveDB(results)
+            results = self.parse_page(json_data, innerTask)
+            innerTask.saveDB(results, self)
         except UnicodeDecodeError as e:
             print(e)
 
 
-        if self._secondTaskCounter >= self._secondTaskTotal:
-            self._secondTaskCounter = 0
-            self._secondTaskTotal = 0
-            self._currentTopTask = self._topTaskList.popleft()
-            self.crawl(self._currentTopTask[0], headers=self.header(), callback=self.processSecondPage)
 
-        # return result
-
-
-    def processThirdPage(self, response):
-        return self.processSecondPage(response)
-
-    def parse_page(self, json):
+    def parse_page(self, json, innerTask):
         if json:
             if json.get('success') != True:
                 print('failed !!!!')
                 return
 
             total = json.get('pages')
-            if self._secondTaskTotal == 0:
-                self._secondTaskTotal = total
-                if self._secondTaskTotal >= 2:
-                    for i in range(2, self._secondTaskTotal + 1):
-                        self.crawl(self._currentTopTask[1].genUrl(i), headers=self.header(), callback=self.processThirdPage)
+            if innerTask.getTotalNumber == False:
+                innerTask.getTotalNumber = True
+                if total >= 2:
+                    save = innerTask.dump()
+                    for i in range(2, total + 1):
+                        self.crawl(innerTask.genUrl(i), headers=self.header(), callback=self.processSecondPage, save=save)
 
 
             items = json.get('data')
@@ -243,15 +231,9 @@ class GpfhSpider(fake_spider.FakeSpider):
                             one_stock[v] = item.get(k)
                 yield one_stock
 
-    def save_to_mongo(self, result):
-        update_result = collection.update_one({'_id': result['_id']},
-                                              {'$set': result})
-        if update_result.matched_count == 0:
-            try:
-                if collection.insert_one(result):
-                    print('Saved to Mongo')
-            except errors.DuplicateKeyError as e:
-                pass
+
+    def on_message(self, project, msg):
+        return msg
 
 
 
@@ -259,6 +241,6 @@ class GpfhSpider(fake_spider.FakeSpider):
 
 
 if __name__ == '__main__':
-    gpfh = GpfhSpider()
+    gpfh = Handler()
     gpfh.on_start()
-    gpfh.Run()
+    gpfh.run()
