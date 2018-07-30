@@ -18,6 +18,7 @@ from pymongo import MongoClient
 from pymongo import errors
 import fake_spider
 
+HOSTS = 'http://data.eastmoney.com'
 KEY = 'var XbnsgnRv'
 base_url = 'http://data.eastmoney.com/DataCenter_V3/yjfp/getlist.ashx?'
 headers = {
@@ -28,13 +29,10 @@ headers = {
 }
 client = MongoClient()
 db = client['stock']
-collection = db['gpfh3']
-max_page = 2
+
+
 from requests.models import RequestEncodingMixin
-
 encode_params = RequestEncodingMixin._encode_params
-
-
 
 KEY_NAME = {
 
@@ -85,19 +83,16 @@ NEED_TO_NUMBER = {
 }
 
 DATA_SUB = {
-'YAGGR': 1,
-'GQDJR': 1,
-'CQCXR': 1,
-'ReportingPeriod': 1,
-'ResultsbyDate': 1,
-'NoticeDate': 1,
+    'YAGGR': 1,
+    'GQDJR': 1,
+    'CQCXR': 1,
+    'ReportingPeriod': 1,
+    'ResultsbyDate': 1,
+    'NoticeDate': 1,
 }
 
 
 #####################################################
-
-
-
 
 
 class Handler(fake_spider.FakeSpider):
@@ -112,7 +107,6 @@ class Handler(fake_spider.FakeSpider):
             self._date = date
             self.collection = db['gpfh-' + date]
             self.getTotalNumber = getTotalNumber
-
 
         def dump(self):
             return {'data': self._date, 'getTotalNumber': self.getTotalNumber}
@@ -140,9 +134,9 @@ class Handler(fake_spider.FakeSpider):
         def saveDB(self, data, handler):
             for result in data:
                 print(result)
-                handler.send_message(handler.project_name, result, self._date + '_' + result['_id'])
+                handler.send_message(handler.project_name, result)
                 update_result = self.collection.update_one({'_id': result['_id']},
-                                                      {'$set': result})
+                                                           {'$set': result})
                 if update_result.matched_count == 0:
                     try:
                         if self.collection.insert_one(result):
@@ -150,43 +144,44 @@ class Handler(fake_spider.FakeSpider):
                     except errors.DuplicateKeyError as e:
                         pass
 
-
     def url(self):
-        return 'http://data.eastmoney.com/yjfp/201712.html'
-
+        return 'http://data.eastmoney.com/bbsj/'
 
     def header(self):
         headers = {
             'Host': 'data.eastmoney.com',
-            'Referer': 'http://data.eastmoney.com/yjfp/201712.html',
+            'Referer': 'http://data.eastmoney.com/bbsj/',
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
         }
         return headers
-
 
     def processFirstPage(self, response):
         if response.ok == False:
             return
 
-        data_list = response.doc('#sel_bgq')
-        #doc = pyquery.PyQuery(response)
-        #data_list = doc('#sel_bgq')
-        out = data_list.find('option')
+        data_list = response.doc('.list_summary span a')
 
-
-
-        for one in out:
+        for one in data_list:
             print(one.text)
-            innerTask = Handler.InnerTask(one.text)
+            href = one.attrib['href']
+            print(href)
+            if href.find('yjyg') != -1:
+                self.crawl(HOSTS + href, headers=self.header(), fetch_type='js', callback=self.processSecondPage, save={})
+                break
 
-            save = innerTask.dump()
-            self.crawl(innerTask.genUrl(1), headers=self.header(), callback=self.processSecondPage, save=save)
 
 
     def processSecondPage(self, response):
         if response.ok == False:
             return
 
+
+        print(response.content)
+        table = response.doc('.tab1.floating')
+        head = table.find('thead')
+        th = head.find('th')
+        for one in th:
+            print(one.text)
         content = response.content[13:]
         innerTask = Handler.InnerTask.load(response.save)
         try:
@@ -196,8 +191,6 @@ class Handler(fake_spider.FakeSpider):
             innerTask.saveDB(results, self)
         except UnicodeDecodeError as e:
             print(e)
-
-
 
     def parse_page(self, json, innerTask):
         if json:
@@ -211,8 +204,8 @@ class Handler(fake_spider.FakeSpider):
                 if total >= 2:
                     save = innerTask.dump()
                     for i in range(2, total + 1):
-                        self.crawl(innerTask.genUrl(i), headers=self.header(), callback=self.processSecondPage, save=save)
-
+                        self.crawl(innerTask.genUrl(i), headers=self.header(), callback=self.processSecondPage,
+                                   save=save)
 
             items = json.get('data')
             for index, item in enumerate(items):
@@ -231,13 +224,8 @@ class Handler(fake_spider.FakeSpider):
                             one_stock[v] = item.get(k)
                 yield one_stock
 
-
     def on_message(self, project, msg):
         return msg
-
-
-
-
 
 
 if __name__ == '__main__':

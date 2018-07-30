@@ -4,6 +4,12 @@
 import requests
 import pyquery
 
+from selenium import webdriver
+
+
+CHROME_DRIVER_PATH = r'/home/ken/prog/chromedriver_linux64/chromedriver'
+PHANTOMJS_PATH = r'/home/ken/prog/phantomjs-2.1.1-linux-x86_64/bin/phantomjs'
+
 
 class Response:
     def __init__(self):
@@ -55,36 +61,60 @@ class FakeSpider():
                 s = requests.Session()
                 s.mount('http://', requests.adapters.HTTPAdapter(max_retries=5))
                 s.mount('https://', requests.adapters.HTTPAdapter(max_retries=5))
-                try:
-                    callback = None
-                    save = {}
-                    header = None
-                    url = task[0]
-                    if task[1].get('callback'):
-                        callback = task[1]['callback']
-                    if task[1].get('headers'):
-                        header = task[1]['headers']
-                    if task[1].get('save'):
-                        save = task[1].get('save')
 
-                    r = s.get(url, headers=header, timeout=10)
+                callback = None
+                save = {}
+                header = None
+                url = task[0]
+                fetch_js = False
+                if task[1].get('callback'):
+                    callback = task[1]['callback']
+                if task[1].get('headers'):
+                    header = task[1]['headers']
+                if task[1].get('save'):
+                    save = task[1].get('save')
+                if task[1].get('fetch_type'):
+                    fetch_js = True
 
-                    response = Response()
-                    response.url = url
+                response = Response()
+                response.url = url
 
-                    if r.status_code == 200:
-                        try:
-                            response.ok = True
-                            response.content = r.content
-                            response.save = save
-                            callback(response)
-                        except Exception as e:
-                            print(e)
-                    else:
-                        print('net Error', response.status_code)
+                r = None
+                if fetch_js == False:
+                    try:
+                        r = s.get(url, headers=header, timeout=10)
+                        if r.status_code == 200:
+                            try:
+                                response.ok = True
+                                response.content = r.content
+                                response.save = save
+                                callback(response)
+                            except Exception as e:
+                                print(e)
+                        else:
+                            print('net Error', response.status_code)
+                    except requests.ConnectionError as e:
+                        print('Error', e.args)
 
-                except requests.ConnectionError as e:
-                    print('Error', e.args)
+                else:
+                    # headless
+                    options = webdriver.ChromeOptions()
+                    options.add_argument('headless')
+                    client = webdriver.Chrome(CHROME_DRIVER_PATH, chrome_options=options)
+                    client.get(url)
+                    print(client.current_url)
+                    r = client.page_source
+
+                    try:
+                        response.ok = True
+                        response.content = r
+                        response.save = save
+                        callback(response)
+                    except Exception as e:
+                        print(e)
+
+
+
 
             if notEmpty and len(self.__task_list):
                 continue
