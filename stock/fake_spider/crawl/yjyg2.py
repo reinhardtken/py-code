@@ -170,8 +170,8 @@ class Handler(fake_spider.FakeSpider):
 
         for one in out:
             print(one.text)
-            #collection = db['yjyg-' + one.text]
-            #collection.drop()
+            collection = db['yjyg-' + one.text]
+            collection.drop()
             innerTask = Handler.InnerTask(one.text)
 
             save = innerTask.dump()

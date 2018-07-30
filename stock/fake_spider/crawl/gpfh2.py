@@ -28,10 +28,8 @@ headers = {
 }
 client = MongoClient()
 db = client['stock']
-collection = db['gpfh3']
-max_page = 2
-from requests.models import RequestEncodingMixin
 
+from requests.models import RequestEncodingMixin
 encode_params = RequestEncodingMixin._encode_params
 
 

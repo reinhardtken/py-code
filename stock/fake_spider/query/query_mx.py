@@ -14,26 +14,14 @@ from pymongo import errors
 
 client = MongoClient()
 db = client['stock']
-collection = db['yjyg-2018-09-30']
+collection = db['macro-M2']
 
 
 
 KEY_NAME = {
 
-    'scode': '代码',
-    'sname': '名称',
-    'hymc': '板块',
-    'enddate': '截止日期',
-    'forecastl': '预计净利润下限',
-    'forecastt': '预计净利润上限',
-    'increasel': '业绩变动幅度下限',
-    'increaset': '业绩变动幅度上限',
-    'forecastcontent': '业绩变动',
-    'changereasondscrpt': '业绩变动原因',
-    'forecasttype': '预告类型',
-    'yearearlier': '上年同期净利润',
-    'ndate': '公告日期',
-    'sclx': '市场',
+    '_id': '月份',
+    'data': '同比增幅',
 }
 
 def QueryTop(top):
@@ -69,7 +57,7 @@ def SaveData(data):
             col += 1
 
 
-    workbook.save('/home/ken/workspace/tmp/out-yjyg-2018-09-30.xls')
+    workbook.save('/home/ken/workspace/tmp/out-M2.xls')
 
 
 if __name__ == '__main__':
