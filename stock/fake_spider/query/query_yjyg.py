@@ -14,7 +14,7 @@ from pymongo import errors
 
 client = MongoClient()
 db = client['stock']
-collection = db['yjyg-2018-06-30']
+collection = db['yjyg-2018-09-30']
 
 
 
@@ -38,7 +38,7 @@ KEY_NAME = {
 
 def QueryTop(top):
     out = []
-    cursor = collection.find()
+    cursor = collection.find({'业绩变动幅度下限': {'$gt': 0}})
     index = 0
     for c in cursor:
         out.append(c)
@@ -69,7 +69,7 @@ def SaveData(data):
             col += 1
 
 
-    workbook.save('/home/ken/workspace/tmp/out-yjyg-2018-06-30.xls')
+    workbook.save('/home/ken/workspace/tmp/out-yjyg-2018-09-30.xls')
 
 
 if __name__ == '__main__':

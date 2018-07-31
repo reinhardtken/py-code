@@ -92,7 +92,7 @@ class FakeSpider():
                             except Exception as e:
                                 print(e)
                         else:
-                            print('net Error', response.status_code)
+                            print('net Error', r.status_code)
                     except requests.ConnectionError as e:
                         print('Error', e.args)
 
