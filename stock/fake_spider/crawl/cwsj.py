@@ -104,7 +104,34 @@ NEED_TO_NUMBER = {
 }
 
 STOCK_LIST = {
-    '000725'
+    '000725',
+"000651",
+"002508",
+"600566",
+"600487",
+"300298",
+"300642",
+"603595",
+"603156",
+"603868",
+"002517",
+"603387",
+"600690",
+"300628",
+"002626",
+"002294",
+"002372",
+"002415",
+"603516",
+"002901",
+"000848",
+"002032",
+"603833",
+"603160",
+"002304",
+"600519",
+"300741",
+"603288",
 }
 #####################################################
 
@@ -122,32 +149,13 @@ class Handler(fake_spider.FakeSpider):
             save = {'key': one[1]}
             self.crawl(one[0], headers=self.header(), callback=self.processFirstPage, save=save)
 
-    class InnerTask():
-        def __init__(self, date, getTotalNumber=False):
-            self._date = date
-            self.collection = db['gpfh-' + date]
-            self.getTotalNumber = getTotalNumber
-
-
-        def dump(self):
-            return {'data': self._date, 'getTotalNumber': self.getTotalNumber}
-
-        def load(dict):
-            return Handler.InnerTask(dict['data'], dict['getTotalNumber'])
-
-
-
-        def genUrl(self, page):
-            url = encode_params(self.genParams(page, self._date))
-            return base_url + url
-
 
 
     def genParams(self, code):
         def addHead(code):
             if code.startswith('6'):
                 return 'SH' + code
-            elif code.startswith('0'):
+            elif code.startswith('0') or code.startswith('3'):
                 return 'SZ' + code
 
         code = addHead(code)
@@ -238,9 +246,30 @@ class Handler(fake_spider.FakeSpider):
 
 
 
+def readList():
+    import xlrd
+
+    workbook = xlrd.open_workbook('/home/ken/workspace/tmp/in.xlsx')
+
+    sheet = workbook.sheet_by_name('股票池')
+    '''
+    sheet.nrows　　　　sheet的行数
+    sheet.row_values(index)　　　　返回某一行的值列表
+　　sheet.row(index)　　　　返回一个row对象，可以通过row[index]来获取这行里的单元格cell对象'''
+    nrows = sheet.nrows
+    out = []
+    for index in range(1, nrows):
+        print(nrows)
+        row = sheet.row(index)
+        out.append(row[0].value)
+
+    for one in out:
+        print('"' + str(one) + '",')
+
 
 
 if __name__ == '__main__':
+    readList()
     gpfh = Handler()
     gpfh.on_start()
     gpfh.run()
