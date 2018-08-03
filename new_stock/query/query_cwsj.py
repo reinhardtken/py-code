@@ -15,7 +15,7 @@ import datetime
 
 client = MongoClient()
 db = client['stock']
-collection = db['cwsj-000725']
+
 
 STOCK_LIST = {
 '000725',
@@ -86,8 +86,9 @@ KEY_NAME = {
 "ldbl": "流动比率",
 "sdbl": "速动比率"}
 
-def QueryTop(top):
+def QueryTop(top, code):
     out = []
+    collection = db['cwsj-' + code]
     cursor = collection.find()
     index = 0
     for c in cursor:
@@ -98,7 +99,9 @@ def QueryTop(top):
         if top != -1 and index > top:
             break
 
-    return out
+    df = pd.DataFrame(out)
+    df.set_index(KEY_NAME['date'], inplace=True)
+    return df
 
 
 
@@ -110,9 +113,7 @@ def dropAll():
 
 if __name__ == '__main__':
     # dropAll()
-    re = QueryTop(-1)
-    df = pd.DataFrame(re)
-    df.set_index(KEY_NAME['date'], inplace=True)
+    df = QueryTop(-1, '000725')
     print(df)
     df.to_excel('/home/ken/workspace/tmp/out-000725.xls')
     # SaveData(re)

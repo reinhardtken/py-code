@@ -206,17 +206,6 @@ class Handler(spider.FakeSpider):
                 except errors.DuplicateKeyError as e:
                     pass
 
-        for result in data:
-            print(result)
-            self.send_message(self.project_name, result, key + '_' + result['_id'])
-            update_result = collection.update_one({'_id': result['_id']},
-                                                       {'$set': result})
-            if update_result.matched_count == 0:
-                try:
-                    if collection.insert_one(result):
-                        print('Saved to Mongo')
-                except errors.DuplicateKeyError as e:
-                    pass
 
 
     def processFirstPage(self, response):

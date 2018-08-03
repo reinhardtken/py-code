@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 
-from fake_spider import cwsj
+
 
 
 
 if __name__ == '__main__':
-    gpfh = cwsj.Handler()
-    gpfh.on_start()
-    gpfh.run()
+    # from fake_spider import cwsj
+    # gpfh = cwsj.Handler()
+    # gpfh.on_start()
+    # gpfh.run()
+
+    ###########################################
+    from adjust import cwsj
+    print(dir(cwsj))
+    cwsj.test()
