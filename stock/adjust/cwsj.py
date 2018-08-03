@@ -64,7 +64,7 @@ KEY_NAME = {
 
 
 STOCK_LIST = {
-    '000725',
+'000725',
 "000651",
 "002508",
 "600566",
@@ -219,13 +219,16 @@ def list2Dict(key, list):
 def genQuarterProfit(data, out):
     try:
         for i in range(0, len(data)):
-            key = data[i][KEY_NAME['date']]
-            profit = data[i][KEY_NAME['jbmgsy']]
-            if getQuarter(key) == FirstQuarter:
-                out[key].update({KEY_NAME['date']: key, KN['QuarterProfit']: profit})
-            else:
-                if i+1 < len(data):
-                    out[key].update({KEY_NAME['date']: key, KN['QuarterProfit']: profit - data[i+1][KEY_NAME['jbmgsy']]})
+            try:
+                key = data[i][KEY_NAME['date']]
+                profit = data[i][KEY_NAME['jbmgsy']]
+                if getQuarter(key) == FirstQuarter:
+                    out[key].update({KEY_NAME['date']: key, KN['QuarterProfit']: profit})
+                else:
+                    if i+1 < len(data):
+                        out[key].update({KEY_NAME['date']: key, KN['QuarterProfit']: profit - data[i+1][KEY_NAME['jbmgsy']]})
+            except TypeError as e:
+                print(e)
     except KeyError as e:
         print(e)
 
@@ -235,26 +238,28 @@ def genQuarterProfit(data, out):
 def genQuarterProfitRatio(data, out):
     try:
         for i in range(0, len(data)):
-            key = data[i][KEY_NAME['date']]
-            profit = data[i][KEY_NAME['jbmgsy']]
-            if getQuarter(key) == FirstQuarter:
-                out[key].update({KN['QuarterProfitRatio']: 1})
-            else:
-                if getFirstQuarter(key) in out:
-                    out[key].update({KN['QuarterProfitRatio']: \
-                                                        out[key][KN['QuarterProfit']] \
-                                                        / out[getFirstQuarter(key)][KN['QuarterProfit']]})
-                if getQuarter(key) == FourthQuarter:
-                    if i+1 < len(data):
-                        yearProfit = profit
-                        threeQuarterProfit = data[i+1][KEY_NAME['jbmgsy']]
-                        out[key].update({KN['ThreeQuarterProfitRatio']: (yearProfit-threeQuarterProfit)/threeQuarterProfit})
-                        if i+2 < len(data):
+            try:
+                key = data[i][KEY_NAME['date']]
+                profit = data[i][KEY_NAME['jbmgsy']]
+                if getQuarter(key) == FirstQuarter:
+                    out[key].update({KN['QuarterProfitRatio']: 1})
+                else:
+                    if getFirstQuarter(key) in out:
+                        out[key].update({KN['QuarterProfitRatio']: \
+                                                            out[key][KN['QuarterProfit']] \
+                                                            / out[getFirstQuarter(key)][KN['QuarterProfit']]})
+                    if getQuarter(key) == FourthQuarter:
+                        if i+1 < len(data):
                             yearProfit = profit
-                            halfYearQuarterProfit = data[i+2][KEY_NAME['jbmgsy']]
-                            out[key].update(
-                                {KN['HalfYearProfitRatio']: (yearProfit - halfYearQuarterProfit) / halfYearQuarterProfit})
-
+                            threeQuarterProfit = data[i+1][KEY_NAME['jbmgsy']]
+                            out[key].update({KN['ThreeQuarterProfitRatio']: (yearProfit-threeQuarterProfit)/threeQuarterProfit})
+                            if i+2 < len(data):
+                                yearProfit = profit
+                                halfYearQuarterProfit = data[i+2][KEY_NAME['jbmgsy']]
+                                out[key].update(
+                                    {KN['HalfYearProfitRatio']: (yearProfit - halfYearQuarterProfit) / halfYearQuarterProfit})
+            except TypeError as e:
+                print(e)
     except KeyError as e:
         print(e)
 
@@ -264,38 +269,40 @@ def genQuarterProfitRatio(data, out):
 def genQuarterForecastGrowthRate(data, out):
     try:
         for i in range(0, len(data)):
-            key = data[i][KEY_NAME['date']]
-            profit = data[i][KEY_NAME['jbmgsy']]
-            if getQuarter(key) == FirstQuarter:
-                if priorXYear(key, 1) in out:
-                    last4thQuarter = out[priorXQuarter(key, 1)]
-                    last3thQuarter = out[priorXQuarter(key, 2)]
-                    last2thQuarter = out[priorXQuarter(key, 3)]
-                    forecast = ((profit + profit*last4thQuarter[KN['QuarterProfitRatio']] + \
-                                 profit * last3thQuarter[KN['QuarterProfitRatio']] + \
-                                 profit * last2thQuarter[KN['QuarterProfitRatio']]) / data[i+1][KEY_NAME['jbmgsy']]) - 1
+            try:
+                key = data[i][KEY_NAME['date']]
+                profit = data[i][KEY_NAME['jbmgsy']]
+                if getQuarter(key) == FirstQuarter:
+                    if priorXYear(key, 1) in out:
+                        last4thQuarter = out[priorXQuarter(key, 1)]
+                        last3thQuarter = out[priorXQuarter(key, 2)]
+                        last2thQuarter = out[priorXQuarter(key, 3)]
+                        forecast = ((profit + profit*last4thQuarter[KN['QuarterProfitRatio']] + \
+                                     profit * last3thQuarter[KN['QuarterProfitRatio']] + \
+                                     profit * last2thQuarter[KN['QuarterProfitRatio']]) / data[i+1][KEY_NAME['jbmgsy']]) - 1
 
-                    out[key].update({KN['ForecastGrowthRate']: forecast})
-            elif getQuarter(key) == SecondQuarter:
-                if priorXQuarter(key, 2) in out:
-                    last4thQuarter = out[priorXQuarter(key, 2)]
-                    forecast = ((profit + profit*last4thQuarter[KN['HalfYearProfitRatio']]) / data[i+1][KEY_NAME['jbmgsy']]) - 1
-                    out[key].update({KN['ForecastGrowthRate']: forecast})
-            elif getQuarter(key) == ThirdQuarter:
-                if priorXQuarter(key, 3) in out:
-                    last4thQuarter = out[priorXQuarter(key, 3)]
-                    forecast = ((profit + profit * last4thQuarter[KN['ThreeQuarterProfitRatio']]) / data[i + 1][
-                        KEY_NAME['jbmgsy']]) - 1
-
-                    out[key].update({KN['ForecastGrowthRate']: forecast})
-            else:
-                if priorXQuarter(key, 4) in out:
-                    try:
-                        forecast = (profit / data[i + 4][KEY_NAME['jbmgsy']]) - 1
                         out[key].update({KN['ForecastGrowthRate']: forecast})
-                    except IndexError as e:
-                        print(e)
+                elif getQuarter(key) == SecondQuarter:
+                    if priorXQuarter(key, 2) in out and i+2 < len(data):
+                        last4thQuarter = out[priorXQuarter(key, 2)]
+                        forecast = ((profit + profit*last4thQuarter[KN['HalfYearProfitRatio']]) / data[i+2][KEY_NAME['jbmgsy']]) - 1
+                        out[key].update({KN['ForecastGrowthRate']: forecast})
+                elif getQuarter(key) == ThirdQuarter:
+                    if priorXQuarter(key, 3) in out and i+3 < len(data):
+                        last4thQuarter = out[priorXQuarter(key, 3)]
+                        forecast = ((profit + profit * last4thQuarter[KN['ThreeQuarterProfitRatio']]) / data[i + 3][
+                            KEY_NAME['jbmgsy']]) - 1
 
+                        out[key].update({KN['ForecastGrowthRate']: forecast})
+                else:
+                    if priorXQuarter(key, 4) in out:
+                        try:
+                            forecast = (profit / data[i + 4][KEY_NAME['jbmgsy']]) - 1
+                            out[key].update({KN['ForecastGrowthRate']: forecast})
+                        except IndexError as e:
+                            print(e)
+            except TypeError as e:
+                print(e)
     except KeyError as e:
         print(e)
 

@@ -10,23 +10,12 @@ from pyquery import PyQuery as pq
 import pymongo
 from pymongo import MongoClient
 from pymongo import errors
-
+import pandas as pd
+import datetime
 
 client = MongoClient()
 db = client['stock-adjust']
 collection = db['cwsj-000725']
-
-
-
-KN = {
-"date": "季度",
-'QuarterProfit': '当季每股收益',
-'QuarterProfitRatio': '较一季度比例',
-'HalfYearProfitRatio': '较上半年比例',
-'ThreeQuarterProfitRatio': '较前三季度比例',
-'ForecastGrowthRate': '预测增长率',
-}
-
 
 STOCK_LIST = {
 '000725',
@@ -59,11 +48,23 @@ STOCK_LIST = {
 "603288",
 }
 
+
+
+KEY_NAME = {
+"date": "季度",
+'QuarterProfit': '当季每股收益',
+'QuarterProfitRatio': '较一季度比例',
+'HalfYearProfitRatio': '较上半年比例',
+'ThreeQuarterProfitRatio': '较前三季度比例',
+'ForecastGrowthRate': '预测增长率',
+}
+
 def QueryTop(top):
     out = []
     cursor = collection.find()
     index = 0
     for c in cursor:
+        c[KEY_NAME['date']] = datetime.datetime.strptime(c[KEY_NAME['date']], '%Y-%m-%d')
         out.append(c)
         print(c)
         index += 1
@@ -73,27 +74,6 @@ def QueryTop(top):
     return out
 
 
-def SaveData(data):
-    workbook = xlwt.Workbook()
-    sheet = workbook.add_sheet('sheet', cell_overwrite_ok=True)
-
-    index = 0
-    for k, v in KN.items():
-        sheet.write(0, index, v)
-        index += 1
-
-    # 获取并写入数据段信息
-    row = 0
-    for d in data:
-        row += 1
-        col = 0
-        for k, v in KN.items():
-            sheet.write(row, col, d.get(v))
-            col += 1
-
-
-    workbook.save('/home/ken/workspace/tmp/out-adjust-000725.xls')
-
 
 def dropAll():
     for one in STOCK_LIST:
@@ -102,7 +82,11 @@ def dropAll():
 
 
 if __name__ == '__main__':
-    dropAll()
-    # re = QueryTop(-1)
+    # dropAll()
+    re = QueryTop(-1)
+    df = pd.DataFrame(re)
+    df.set_index(KEY_NAME['date'], inplace=True)
+    print(df)
+    df.to_excel('/home/ken/workspace/tmp/out-adjust-000725.xls')
     # SaveData(re)
     pass

@@ -10,7 +10,8 @@ from pyquery import PyQuery as pq
 import pymongo
 from pymongo import MongoClient
 from pymongo import errors
-
+import pandas as pd
+import datetime
 
 client = MongoClient()
 db = client['stock']
@@ -90,6 +91,7 @@ def QueryTop(top):
     cursor = collection.find()
     index = 0
     for c in cursor:
+        c[KEY_NAME['date']] = datetime.datetime.strptime(c[KEY_NAME['date']], '%Y-%m-%d')
         out.append(c)
         print(c)
         index += 1
@@ -99,27 +101,6 @@ def QueryTop(top):
     return out
 
 
-def SaveData(data):
-    workbook = xlwt.Workbook()
-    sheet = workbook.add_sheet('sheet', cell_overwrite_ok=True)
-
-    index = 0
-    for k, v in KEY_NAME.items():
-        sheet.write(0, index, v)
-        index += 1
-
-    # 获取并写入数据段信息
-    row = 0
-    for d in data:
-        row += 1
-        col = 0
-        for k, v in KEY_NAME.items():
-            sheet.write(row, col, d.get(v))
-            col += 1
-
-
-    workbook.save('/home/ken/workspace/tmp/out-000725.xls')
-
 
 def dropAll():
     for one in STOCK_LIST:
@@ -128,7 +109,11 @@ def dropAll():
 
 
 if __name__ == '__main__':
-    dropAll()
-    # re = QueryTop(-1)
+    # dropAll()
+    re = QueryTop(-1)
+    df = pd.DataFrame(re)
+    df.set_index(KEY_NAME['date'], inplace=True)
+    print(df)
+    df.to_excel('/home/ken/workspace/tmp/out-000725.xls')
     # SaveData(re)
     pass
