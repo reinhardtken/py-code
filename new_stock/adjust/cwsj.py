@@ -26,6 +26,7 @@ KN = {
 'HalfYearProfitRatio': '较上半年比例',
 'ThreeQuarterProfitRatio': '较前三季度比例',
 'ForecastGrowthRate': '预测增长率',
+'PerShareProfitForecast': '每股收益预测',
 }
 
 KEY_NAME = {
@@ -187,6 +188,31 @@ def genQuarterForecastGrowthRate(baseData, adjustData):
 
     return adjustData
 
+
+def genPerShareProfitForecast(baseData, adjustData):
+    for date, row in adjustData.iterrows():
+        try:
+            if util.isSameQuarter(date, util.FirstQuarter):
+                ratio1 = adjustData.loc[util.priorQuarter(date), KN['QuarterProfitRatio']]
+                ratio2 = adjustData.loc[util.priorXQuarter(date, 2), KN['QuarterProfitRatio']]
+                ratio3 = adjustData.loc[util.priorXQuarter(date, 3), KN['QuarterProfitRatio']]
+                adjustData.loc[date, KN['PerShareProfitForecast']] = row.loc[KN['QuarterProfit']] * \
+                                                        (1+ratio1+ratio2+ratio3)
+                # adjustData.loc[date, KN['QuarterProfitRatio']] = 1
+            elif util.isSameQuarter(date, util.SecondQuarter):
+                ratio = adjustData.loc[util.priorXQuarter(date, 2), KN['HalfYearProfitRatio']]
+                adjustData.loc[date, KN['PerShareProfitForecast']] = baseData.loc[date, KEY_NAME['jbmgsy']] * (1 + ratio)
+            elif util.isSameQuarter(date, util.ThirdQuarter):
+                ratio = adjustData.loc[util.priorXQuarter(date, 3), KN['ThreeQuarterProfitRatio']]
+                adjustData.loc[date, KN['PerShareProfitForecast']] = baseData.loc[date, KEY_NAME['jbmgsy']] * (1 + ratio)
+            else:
+                adjustData.loc[date, KN['PerShareProfitForecast']] = baseData.loc[date, KEY_NAME['jbmgsy']]
+
+        except KeyError as e:
+            print(e)
+
+    return adjustData
+
 def prepareResult(data):
     df = pd.DataFrame(columns=KN.values())
     df['_id'] = data['_id']
@@ -219,6 +245,7 @@ def test():
     adjustData = genQuarterProfit(baseData, adjustData)
     adjustData = genQuarterProfitRatio(baseData, adjustData)
     adjustData = genQuarterForecastGrowthRate(baseData, adjustData)
+    adjustData = genPerShareProfitForecast(baseData, adjustData)
     util.saveMongoDB(adjustData, KN['date'], 'stock-adjust', 'cwsj-' + CODE)
 
 
