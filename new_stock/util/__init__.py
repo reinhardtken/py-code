@@ -62,15 +62,17 @@ def priorXQuarter(date, x):
     return date
 
 
-def saveMongoDB(data: pd.DataFrame, keyName, dbName, collectionName):
+def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=None):
     client = MongoClient()
     db = client[dbName]
     collection = db[collectionName]
 
     for k, v in data.iterrows():
         result = v.to_dict()
-        print(dir(k))
-        result.update({keyName: k.strftime('%Y-%m-%d')})
+        # print(dir(k))
+        result.update(keyFunc(k))
+        if callback:
+            callback(result)
         update_result = collection.update_one({'_id': result['_id']},
                                               {'$set': result})
         if update_result.matched_count == 0:
@@ -79,3 +81,26 @@ def saveMongoDB(data: pd.DataFrame, keyName, dbName, collectionName):
                     print('Saved to Mongo')
             except errors.DuplicateKeyError as e:
                 pass
+
+
+def genKeyDateFunc(k):
+    def keyDateFunc(v):
+        return {k: v.strftime('%Y-%m-%d')}
+    return keyDateFunc
+
+def genEmptyFunc():
+    def emptyFunc(v):
+        return {}
+    return emptyFunc
+
+###########################
+def addSysPath(path):
+    import sys
+    for one in sys.path:
+        if one == path:
+            return
+    sys.path.append(path)
+
+
+if __name__ == '__main__':
+    pass
