@@ -1,38 +1,35 @@
 # -*- coding: utf-8 -*-
 
-import time
-import json
-
-import xlwt
-import requests
-from urllib.parse import urlencode
-from pyquery import PyQuery as pq
-import pymongo
-from pymongo import MongoClient
-from pymongo import errors
-import pandas as pd
+#sys
 import datetime
 
-client = MongoClient()
-db = client['stock-adjust']
+#thirdpart
+import pandas as pd
+from pymongo import MongoClient
+#this project
+if __name__ == '__main__':
+    import sys
+    sys.path.append('/home/ken/workspace/code/self/github/py-code/new_stock')
+##########################
+import util
+import util.utils
+import const
+
+
+STOCK_LIST = const.STOCK_LIST
+KEY_NAME = const.CWSJ_KEYWORD.KEY_NAME
 
 
 
 
-
-
-KEY_NAME = {
-"date": "季度",
-'QuarterProfit': '当季每股收益',
-'QuarterProfitRatio': '较一季度比例',
-'HalfYearProfitRatio': '较上半年比例',
-'ThreeQuarterProfitRatio': '较前三季度比例',
-'ForecastGrowthRate': '预测增长率',
-}
 
 def QueryTop(top, code):
-    out = []
+    client = MongoClient()
+    db = client['stock-adjust']
     collection = db['cwsj-' + code]
+
+    out = []
+
     cursor = collection.find()
     index = 0
     for c in cursor:

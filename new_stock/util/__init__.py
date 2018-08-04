@@ -22,6 +22,9 @@ def isSameQuarter(d1: datetime.datetime, d2: datetime.datetime):
 def priorYear(date):
     return date.replace(year=date.year-1)
 
+def nextYear(date):
+    return date.replace(year=date.year+1)
+
 def priorQuarter(date):
     if isSameQuarter(date, FourthQuarter):
         return getThirdQuarter(date)
@@ -32,6 +35,20 @@ def priorQuarter(date):
     elif isSameQuarter(date, FirstQuarter):
         newOne = priorYear(date)
         return getFourthQuarter(newOne)
+
+    return None
+
+
+def nextQuarter(date):
+    if isSameQuarter(date, FirstQuarter):
+        return getSecondQuarter(date)
+    elif isSameQuarter(date, SecondQuarter):
+        return getThirdQuarter(date)
+    elif isSameQuarter(date, ThirdQuarter):
+        return getFourthQuarter(date)
+    elif isSameQuarter(date, FourthQuarter):
+        newOne = nextYear(date)
+        return getFirstQuarter(newOne)
 
     return None
 
@@ -58,6 +75,15 @@ def priorXQuarter(date, x):
     for n in range(1, x):
         if date != None:
             date = priorQuarter(date)
+
+    return date
+
+
+def nextXQuarter(date, x):
+    date = nextQuarter(date)
+    for n in range(1, x):
+        if date != None:
+            date = nextQuarter(date)
 
     return date
 

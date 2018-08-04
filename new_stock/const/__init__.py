@@ -112,6 +112,48 @@ class CWSJ_KEYWORD:
         'ThreeQuarterProfitRatio': '较前三季度比例',
         'ForecastGrowthRate': '预测增长率',
         'PerShareProfitForecast': '每股收益预测',
+        'PEMin': 'PE下限',
+        'PEMax': 'PE上限',
+        'ValueMin': '估值下限',
+        'ValueMax': '估值上限',
+
+    }
+
+
+
+class YJYG_KEYWORD:
+    KEY_NAME = {
+        "date": "季度",
+        'scode': '代码',
+        'sname': '名称',
+        'hymc': '板块',
+        'enddate': '截止日期',
+        'forecastl': '预计净利润下限',
+        'forecastt': '预计净利润上限',
+        'increasel': '业绩变动幅度下限',
+        'increaset': '业绩变动幅度上限',
+        'forecastcontent': '业绩变动',
+        'changereasondscrpt': '业绩变动原因',
+        'forecasttype': '预告类型',
+        'yearearlier': '上年同期净利润',
+        'ndate': '公告日期',
+        'sclx': '市场',
+    }
+
+    NEED_TO_NUMBER = {
+
+        'forecastl': '预计净利润下限',
+        'forecastt': '预计净利润上限',
+        'increasel': '业绩变动幅度下限',
+        'increaset': '业绩变动幅度上限',
+        'yearearlier': '上年同期净利润',
+
+    }
+
+    DATA_SUB = {
+
+        'enddate': '截止日期',
+        'ndate': '公告日期',
     }
 
 
