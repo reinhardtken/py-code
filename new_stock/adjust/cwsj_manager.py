@@ -5,7 +5,6 @@ import json
 
 # thirdpart
 import pandas as pd
-
 # this project
 if __name__ == '__main__':
   import sys
@@ -13,11 +12,15 @@ if __name__ == '__main__':
   sys.path.append('/home/ken/workspace/code/self/github/py-code/new_stock')
 ##########################
 import util
-import util.utils
+import util.utils as utils
 import const
 from query import query_adjust_cwsj
 from query import query_cwsj
-
+import mock.cwsj as mock
+import adjust.loop as loop
+import adjust.cwsj.forecastProfit as forecastProfit
+import adjust.cwsj.quarterProfit as quarterProfit
+import adjust.cwsj.quarterProfitRatio as quarterProfitRatio
 
 
 priorXQ = util.priorXQuarter
@@ -29,106 +32,10 @@ ID_NAME = const.CWSJ_KEYWORD.ID_NAME
 KEY_NAME = const.CWSJ_KEYWORD.KEY_NAME
 MONGODB_ID = const.MONGODB_ID
 
-class AdjustOP:
-  def columns(self):
-    return []
-
-  def op(self, data):
-    pass
 
 
-class AdjustLoop:
-  def __init__(self):
-    self._newColumns = []
-    self._opList = []
 
-  def addOP(self, op):
-    if isinstance(op, AdjustOP):
-      self._newColumns.extend(op.columns())
-      self._opList.append(op)
-
-  def loop(self, data: pd.DataFrame):
-    df = pd.DataFrame(columns=self._newColumns, index=data.index)
-    print(data)
-    print(df)
-    data.join(df)
-    # newDF = pd.DataFrame.merge(data, df)
-    for one in self._opList:
-      one.op(data)
-
-    return data
-
-  def genResult(self, data):
-    tmp = self._newColumns
-    tmp.append(MONGODB_ID)
-    df = pd.DataFrame(data=data.loc[:, tmp], index=data.index)
-    print(df)
-    return df
-
-
-class GenQuarterProfit(AdjustOP):
-  def columns(self):
-    return [const.CWSJ_KEYWORD.ADJUST_NAME['QuarterProfit']]
-
-  def op(self, data):
-    for date, row in data.iterrows():
-      profit = row[const.CWSJ_KEYWORD.KEY_NAME['jbmgsy']]
-      if util.isSameQuarter(date, util.FirstQuarter):
-        data.loc[date, const.CWSJ_KEYWORD.ADJUST_NAME['QuarterProfit']] = profit
-      else:
-        priorDate = priorQ(date)
-        try:
-          priorData = data.loc[priorDate]
-          try:
-            data.loc[date, const.CWSJ_KEYWORD.ADJUST_NAME['QuarterProfit']] = profit - priorData.loc[
-              const.CWSJ_KEYWORD.KEY_NAME['jbmgsy']]
-          except TypeError as e:
-            print(e)
-        except KeyError as e:
-          print(e)
-
-
-class GenQuarterProfitRatio(AdjustOP):
-  def columns(self):
-    return [const.CWSJ_KEYWORD.ADJUST_NAME['QuarterProfitRatio'],
-            const.CWSJ_KEYWORD.ADJUST_NAME['HalfYearProfitRatio'],
-            const.CWSJ_KEYWORD.ADJUST_NAME['ThreeQuarterProfitRatio']]
-
-  def op(self, data):
-    for date, row in data.iterrows():
-      if util.isSameQuarter(date, util.FirstQuarter):
-        data.loc[date, KN['QuarterProfitRatio']] = 1
-      else:
-        firstQuarter = util.getFirstQuarter(date)
-        try:
-          firstData = data.loc[firstQuarter]
-          try:
-            data.loc[date, KN['QuarterProfitRatio']] = data.loc[date, KN['QuarterProfit']] / \
-                                                       firstData.loc[KN['QuarterProfit']]
-            if util.isSameQuarter(date, util.FourthQuarter):
-              priorDate = priorQ(date)
-              priorData = data.loc[priorDate]
-              yearProfit = row[KEY_NAME['jbmgsy']]
-              threeQuarterProfit = priorData.loc[KEY_NAME['jbmgsy']]
-              data.loc[date, KN['ThreeQuarterProfitRatio']] = (
-                                                                  yearProfit - threeQuarterProfit) / threeQuarterProfit
-
-              prior2Date = priorXQ(date, 2)
-              prior2Data = data.loc[prior2Date]
-              halfYearQuarterProfit = prior2Data.loc[KEY_NAME['jbmgsy']]
-              if halfYearQuarterProfit > 0:
-                data.loc[date, KN['HalfYearProfitRatio']] = (
-                                                                yearProfit - halfYearQuarterProfit) / halfYearQuarterProfit
-              else:
-                data.loc[date, KN['HalfYearProfitRatio']] = 1
-
-          except TypeError as e:
-            print(e)
-        except KeyError as e:
-          print(e)
-
-
-class GenQuarterForecastGrowthRate(AdjustOP):
+class GenQuarterForecastGrowthRate(loop.AdjustOP):
   def columns(self):
     return [const.CWSJ_KEYWORD.ADJUST_NAME['ForecastGrowthRate']]
 
@@ -170,7 +77,7 @@ class GenQuarterForecastGrowthRate(AdjustOP):
         print(e)
 
 
-class GenPerShareProfitForecast(AdjustOP):
+class GenPerShareProfitForecast(loop.AdjustOP):
   def columns(self):
     return [const.CWSJ_KEYWORD.ADJUST_NAME['PerShareProfitForecast']]
 
@@ -199,7 +106,7 @@ class GenPerShareProfitForecast(AdjustOP):
         print(e)
 
 
-class GenPerShareProfitForecast(AdjustOP):
+class GenPerShareProfitForecast(loop.AdjustOP):
   def columns(self):
     return [const.CWSJ_KEYWORD.ADJUST_NAME['PerShareProfitForecast']]
 
@@ -229,7 +136,7 @@ class GenPerShareProfitForecast(AdjustOP):
         print(e)
 
 
-class GenPerShareProfitForecast2(AdjustOP):
+class GenPerShareProfitForecast2(loop.AdjustOP):
   def __init__(self):
     import mock.yjyg
     self.yjyg = mock.yjyg.mock000725()
@@ -330,19 +237,29 @@ def test(code):
   # except Exception as e:
   #     print(e)
 
-  loop = AdjustLoop()
-  loop.addOP(GenQuarterProfit())
-  loop.addOP(GenQuarterProfitRatio())
-  loop.addOP(GenQuarterForecastGrowthRate())
-  loop.addOP(GenPerShareProfitForecast2())
-  df = loop.loop(baseData)
-  df = loop.genResult(df)
+  oneLoop = loop.AdjustLoop()
+  oneLoop.addOP(GenQuarterProfit())
+  oneLoop.addOP(GenQuarterProfitRatio())
+  oneLoop.addOP(GenQuarterForecastGrowthRate())
+  oneLoop.addOP(GenPerShareProfitForecast2())
+  df = oneLoop.loop(baseData)
+  df = oneLoop.genResult(df)
   print(df)
 
   util.saveMongoDB(df, util.genKeyDateFunc(KN['date']), 'stock-adjust', 'cwsj-' + code)
 
 
+
+def test2(code):
+  df = mock.mock000725()
+  oneLoop = loop.AdjustLoop()
+  oneLoop.addOP(forecastProfit.GenForecastProfit())
+  oneLoop.addOP(quarterProfit.GenQuarterProfit())
+  oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio())
+  oneLoop.verify(df)
+
+
 if __name__ == '__main__':
-  test('000725')
+  test2('000725')
 
   pass

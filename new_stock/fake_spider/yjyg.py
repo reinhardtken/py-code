@@ -89,7 +89,7 @@ class Handler(spider.FakeSpider):
 
     def saveDB(self, data: pd.DataFrame, handler):
       def callback(result):
-        handler.send_message(handler.project_name, result, self._date + '_' + result[ID_NAME])
+        handler.send_message(handler.project_name, result, self._date + '_' + result[KEY_NAME[ID_NAME]])
 
       util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, COLLECTION_HEAD + self._date, callback)
 

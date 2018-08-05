@@ -53,4 +53,6 @@ def allYJYG():
 if __name__ == '__main__':
   allYJYG()
   allGPFH()
+  allMacroMX()
+  allCWSJ()
   pass

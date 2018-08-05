@@ -22,14 +22,15 @@ def genCutDateFunc(key):
 
 def genString2NumberFunc(key):
   def toNumber(k, v):
-    try:
-      v = float(v)
-    except ValueError as e:
+    if k in key:
       try:
-        if v[-1] == '亿':  # 938亿
-          v = float(v[:-1]) * 100000000
+        v = float(v)
       except ValueError as e:
-        print(e)
+        try:
+          if v[-1] == '亿':  # 938亿
+            v = float(v[:-1]) * 100000000
+        except ValueError as e:
+          print(e)
     return k, v
 
   return toNumber

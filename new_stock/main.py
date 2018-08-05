@@ -17,6 +17,11 @@ def test():
   ]
   df1 = pd.DataFrame(d1)
   df2 = pd.DataFrame(d2)
+
+  dfDiff = df1.diff
+  print(dfDiff)
+
+
   df3 = pd.DataFrame.merge(df1, df2, on='key', how='left')
   df4 = df3.loc[:, ['key', 'a', 'c', 'dd']]
   print(df3)

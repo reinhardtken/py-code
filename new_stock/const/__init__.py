@@ -96,6 +96,17 @@ class CWSJ_KEYWORD:
     'PEMax': 'PE上限',
     'ValueMin': '估值下限',
     'ValueMax': '估值上限',
+    'ForecastProfit': '预告基本每股收益',
+    'ForecastQuarterProfit': '预告季度每股收益',
+
+
+    #for test,may not be right place
+    'zgb': '总股本',
+    'forecastl': '预计净利润下限',
+    'djmgsy_jy': '当季每股收益-检验',
+    'jyjdbl_jy': '较一季度比例-检验',
+    'jsbnbl_jy': '较上半年比例-检验',
+    'jqsjdbl_jy': '较前三季度比例-检验',
 
   }
 

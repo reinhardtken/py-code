@@ -105,15 +105,25 @@ def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=No
     result = v.to_dict()
     # print(dir(k))
     result.update(keyFunc(k))
-    if callback:
-      callback(result)
+
+    try:
+      if callback:
+        callback(result)
+    except Exception as e:
+      print(e)
+
     update_result = collection.update_one({'_id': result['_id']},
                                           {'$set': result})
+
+    if update_result.matched_count > 0:
+      print('upate to Mongo: %s : %s'%(dbName, collectionName))
+
     if update_result.matched_count == 0:
       try:
         if collection.insert_one(result):
-          print('Saved to Mongo')
+          print('insert to Mongo: %s : %s' % (dbName, collectionName))
       except errors.DuplicateKeyError as e:
+        print('faild to Mongo!!!!: %s : %s' % (dbName, collectionName))
         pass
 
 
