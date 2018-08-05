@@ -47,3 +47,25 @@ def dealwithData(data, itemList):
     out[k] = v
 
   return out
+
+
+
+def readList():
+  import xlrd
+
+  workbook = xlrd.open_workbook('/home/ken/workspace/tmp/in.xlsx')
+
+  sheet = workbook.sheet_by_name('股票池')
+  '''
+  sheet.nrows　　　　sheet的行数
+  sheet.row_values(index)　　　　返回某一行的值列表
+　　sheet.row(index)　　　　返回一个row对象，可以通过row[index]来获取这行里的单元格cell对象'''
+  nrows = sheet.nrows
+  out = []
+  for index in range(1, nrows):
+    print(nrows)
+    row = sheet.row(index)
+    out.append(row[0].value)
+
+  for one in out:
+    print('"' + str(one) + '",')

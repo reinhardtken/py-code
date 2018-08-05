@@ -15,17 +15,19 @@ if __name__ == '__main__':
 import util
 import util.utils
 import const
+from query import query_adjust_cwsj
+from query import query_cwsj
+
+
 
 priorXQ = util.priorXQuarter
 priorQ = util.priorQuarter
 nextXQ = util.nextXQuarter
 
-from query import query_adjust_cwsj
-from query import query_cwsj
-
 KN = const.CWSJ_KEYWORD.ADJUST_NAME
+ID_NAME = const.CWSJ_KEYWORD.ID_NAME
 KEY_NAME = const.CWSJ_KEYWORD.KEY_NAME
-
+MONGODB_ID = const.MONGODB_ID
 
 class AdjustOP:
   def columns(self):
@@ -58,7 +60,7 @@ class AdjustLoop:
 
   def genResult(self, data):
     tmp = self._newColumns
-    tmp.append('_id')
+    tmp.append(MONGODB_ID)
     df = pd.DataFrame(data=data.loc[:, tmp], index=data.index)
     print(df)
     return df
@@ -302,8 +304,8 @@ class GenPerShareProfitForecast2(AdjustOP):
 
 def prepareResult(data):
   df = pd.DataFrame(columns=KN.values())
-  df['_id'] = data['_id']
-  df[KN['date']] = data.index
+  df[MONGODB_ID] = data[MONGODB_ID]
+  df[KN[ID_NAME]] = data.index
   df.set_index(KN['date'], inplace=True)
   return df
 

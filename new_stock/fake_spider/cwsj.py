@@ -9,7 +9,6 @@ import json
 # thirdpart
 import pandas as pd
 from requests.models import RequestEncodingMixin
-
 encode_params = RequestEncodingMixin._encode_params
 
 # this project
@@ -22,6 +21,16 @@ import util
 import util.utils
 import const
 from fake_spider import spider
+
+MONGODB_ID = const.MONGODB_ID
+ID_NAME = const.CWSJ_KEYWORD.ID_NAME
+DB_NAME = const.CWSJ_KEYWORD.DB_NAME
+COLLECTION_HEAD = const.CWSJ_KEYWORD.COLLECTION_HEAD
+KEY_NAME = const.CWSJ_KEYWORD.KEY_NAME
+NEED_TO_NUMBER = const.CWSJ_KEYWORD.NEED_TO_NUMBER
+DATA_SUB = const.CWSJ_KEYWORD.DATA_SUB
+
+
 
 base_url = 'http://emweb.securities.eastmoney.com/NewFinanceAnalysis/MainTargetAjax?'
 
@@ -73,9 +82,9 @@ class Handler(spider.FakeSpider):
 
   def saveDB(self, data: pd.DataFrame, key):
     def callback(result):
-      self.send_message(self.project_name, result, key + '_' + result['_id'])
+      self.send_message(self.project_name, result, key + '_' + result[MONGODB_ID])
 
-    util.saveMongoDB(data, util.genEmptyFunc(), 'stock', 'cwsj-' + key, callback)
+    util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, COLLECTION_HEAD + key, callback)
 
   def processFirstPage(self, response):
     if response.ok == False:
@@ -91,9 +100,9 @@ class Handler(spider.FakeSpider):
     try:
       tmp = []
       for item in json:
-        one_stock = util.utils.dealwithData(item, util.utils.threeOP(const.CWSJ_KEYWORD.KEY_NAME, {},
-                                                                     const.CWSJ_KEYWORD.NEED_TO_NUMBER))
-        one_stock['_id'] = item.get('date')
+        one_stock = util.utils.dealwithData(item, util.utils.threeOP(KEY_NAME, DATA_SUB,
+                                                                     NEED_TO_NUMBER))
+        one_stock[MONGODB_ID] = item.get(ID_NAME)
         series = pd.Series(one_stock)
         tmp.append(series)
 
@@ -107,29 +116,8 @@ class Handler(spider.FakeSpider):
     return msg
 
 
-def readList():
-  import xlrd
-
-  workbook = xlrd.open_workbook('/home/ken/workspace/tmp/in.xlsx')
-
-  sheet = workbook.sheet_by_name('股票池')
-  '''
-  sheet.nrows　　　　sheet的行数
-  sheet.row_values(index)　　　　返回某一行的值列表
-　　sheet.row(index)　　　　返回一个row对象，可以通过row[index]来获取这行里的单元格cell对象'''
-  nrows = sheet.nrows
-  out = []
-  for index in range(1, nrows):
-    print(nrows)
-    row = sheet.row(index)
-    out.append(row[0].value)
-
-  for one in out:
-    print('"' + str(one) + '",')
-
 
 if __name__ == '__main__':
-  # readList()
   gpfh = Handler()
   gpfh.on_start()
   gpfh.run()

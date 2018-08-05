@@ -1,36 +1,13 @@
-STOCK_LIST = {
-  '000725',
-  "000651",
-  "002508",
-  "600566",
-  "600487",
-  "300298",
-  "300642",
-  "603595",
-  "603156",
-  "603868",
-  "002517",
-  "603387",
-  "600690",
-  "300628",
-  "002626",
-  "002294",
-  "002372",
-  "002415",
-  "603516",
-  "002901",
-  "000848",
-  "002032",
-  "603833",
-  "603160",
-  "002304",
-  "600519",
-  "300741",
-  "603288",
-}
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+
+MONGODB_ID = '_id'
 
 
 class CWSJ_KEYWORD:
+  ID_NAME = 'date'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'cwsj-'
   KEY_NAME = {
     "date": "季度",
     "jbmgsy": "基本每股收益(元)",
@@ -66,6 +43,8 @@ class CWSJ_KEYWORD:
     "ldzczfz": "流动负债/总负债(%)",
     "ldbl": "流动比率",
     "sdbl": "速动比率"}
+
+  DATA_SUB = {}
 
   NEED_TO_NUMBER = {
 
@@ -122,6 +101,9 @@ class CWSJ_KEYWORD:
 
 
 class YJYG_KEYWORD:
+  ID_NAME = 'scode'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'yjyg-'
   KEY_NAME = {
     "date": "季度",
     'scode': '代码',
@@ -155,6 +137,111 @@ class YJYG_KEYWORD:
     'enddate': '截止日期',
     'ndate': '公告日期',
   }
+
+
+class GPFH_KEYWORD:
+  ID_NAME = 'Code'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'gpfh-'
+  KEY_NAME = {
+    'Code': '代码',
+    'Name': '名称',
+    'XJFH': '现金分红',
+    'GXL': '股息率',
+    'EarningsPerShare': '每股收益(元)',
+    'NetAssetsPerShare': '每股净资产(元)',
+    'MGGJJ': '每股公积金(元)',
+    'MGWFPLY': '每股未分配利润(元)',
+    'JLYTBZZ': '净利润同比增长(%)',
+    'TotalEquity': '总股本(亿）',
+    'YAGGR': '预案公告日',
+    'GQDJR': '股权登记日',
+    'CQCXR': '除权除息日',
+    'ProjectProgress': '方案进度',
+    'NoticeDate': '最新公告日期',
+    'SZZBL': '送转总比例',
+    'SGBL': '送股比例',
+    'ZGBL': '转股比例',
+    'AllocationPlan': '分配方案',
+
+  }
+
+  NEED_TO_NUMBER = {
+
+    'XJFH': True,
+    'GXL': True,
+    'EarningsPerShare': True,
+    'NetAssetsPerShare': True,
+    'MGGJJ': True,
+    'MGWFPLY': True,
+    'JLYTBZZ': True,
+    'TotalEquity': True,
+    'SZZBL': True,
+    'SGBL': True,
+    'ZGBL': True,
+  }
+
+  DATA_SUB = {
+    'YAGGR': 1,
+    'GQDJR': 1,
+    'CQCXR': 1,
+    'ReportingPeriod': 1,
+    'ResultsbyDate': 1,
+    'NoticeDate': 1,
+  }
+
+
+class M012_KEYWORD:
+  ID_NAME = '_id'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'macro-'
+
+  KEY = 'abc'
+  MX_TYPE = {
+
+    'M0': 11,
+    'M1': 10,
+    'M2': 9,
+  }
+
+  KEY_NAME = {
+    '_id': '月份',
+    'data': '同比增幅',
+  }
+
+
+
+STOCK_LIST = {
+  '000725',
+  "000651",
+  "002508",
+  "600566",
+  "600487",
+  "300298",
+  "300642",
+  "603595",
+  "603156",
+  "603868",
+  "002517",
+  "603387",
+  "600690",
+  "300628",
+  "002626",
+  "002294",
+  "002372",
+  "002415",
+  "603516",
+  "002901",
+  "000848",
+  "002032",
+  "603833",
+  "603160",
+  "002304",
+  "600519",
+  "300741",
+  "603288",
+}
+
 
 
 ########################################################

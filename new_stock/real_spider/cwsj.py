@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-# Created on 2018-07-31 09:22:39
-# Project: cwsj
+# Created on 2018-07-28 04:28:42
+# Project: gpfh
 
-from pyspider.libs.base_handler import *
+
+# sys
 import json
+
+# thirdpart
+from pyspider.libs.base_handler import *
 import pandas as pd
-
 from requests.models import RequestEncodingMixin
-
 encode_params = RequestEncodingMixin._encode_params
 
-
+# this project
 def addSysPath(path):
   import sys
   for one in sys.path:
@@ -19,14 +21,21 @@ def addSysPath(path):
       return
   sys.path.append(path)
 
-
-# import sys
-# sys.path.append('/home/ken/workspace/code/self/github/py-code/new_stock')
 addSysPath('/home/ken/workspace/code/self/github/py-code/new_stock')
 ######################################################################################
 import util
 import util.utils
 import const
+
+MONGODB_ID = const.MONGODB_ID
+ID_NAME = const.CWSJ_KEYWORD.ID_NAME
+DB_NAME = const.CWSJ_KEYWORD.DB_NAME
+COLLECTION_HEAD = const.CWSJ_KEYWORD.COLLECTION_HEAD
+KEY_NAME = const.CWSJ_KEYWORD.KEY_NAME
+NEED_TO_NUMBER = const.CWSJ_KEYWORD.NEED_TO_NUMBER
+DATA_SUB = const.CWSJ_KEYWORD.DATA_SUB
+
+
 
 base_url = 'http://emweb.securities.eastmoney.com/NewFinanceAnalysis/MainTargetAjax?'
 
@@ -79,9 +88,9 @@ class Handler(BaseHandler):
 
   def saveDB(self, data: pd.DataFrame, key):
     def callback(result):
-      self.send_message(self.project_name, result, key + '_' + result['_id'])
+      self.send_message(self.project_name, result, key + '_' + result[MONGODB_ID])
 
-    util.saveMongoDB(data, util.genEmptyFunc(), 'stock', 'cwsj-' + key, callback)
+    util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, COLLECTION_HEAD + key, callback)
 
   def processFirstPage(self, response):
     if response.ok == False:
@@ -89,19 +98,17 @@ class Handler(BaseHandler):
 
     data = response.content.decode('utf-8')
     json_data = json.loads(data)
-    print(json_data)
     result = self.parse_page(json_data)
     save = response.save
     self.saveDB(result, save['key'])
 
   def parse_page(self, json):
-
     try:
       tmp = []
       for item in json:
-        one_stock = util.utils.dealwithData(item, util.utils.threeOP(const.CWSJ_KEYWORD.KEY_NAME, {},
-                                                                     const.CWSJ_KEYWORD.NEED_TO_NUMBER))
-        one_stock['_id'] = item.get('date')
+        one_stock = util.utils.dealwithData(item, util.utils.threeOP(KEY_NAME, DATA_SUB,
+                                                                     NEED_TO_NUMBER))
+        one_stock[MONGODB_ID] = item.get(ID_NAME)
         series = pd.Series(one_stock)
         tmp.append(series)
 
