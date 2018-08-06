@@ -21,6 +21,9 @@ import adjust.loop as loop
 import adjust.cwsj.forecastProfit as forecastProfit
 import adjust.cwsj.quarterProfit as quarterProfit
 import adjust.cwsj.quarterProfitRatio as quarterProfitRatio
+import adjust.cwsj.lastYearProfit as lastYearProfit
+import adjust.cwsj.forecastMidGrowthRate as forecastMidGrowthRate
+
 
 
 priorXQ = util.priorXQuarter
@@ -256,6 +259,8 @@ def test2(code):
   oneLoop.addOP(forecastProfit.GenForecastProfit())
   oneLoop.addOP(quarterProfit.GenQuarterProfit())
   oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio())
+  oneLoop.addOP(lastYearProfit.GenLastYearProfit())
+  oneLoop.addOP(forecastMidGrowthRate.GenForecastMidGrowthRate())
   oneLoop.verify(df)
 
 

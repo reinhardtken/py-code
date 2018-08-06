@@ -1,8 +1,18 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
 import datetime
 import pymongo
 from pymongo import MongoClient
 from pymongo import errors
 import pandas as pd
+import numpy as np
+
+
+def isnan(x):
+  if isinstance(x, str) and x == '无':
+    return True
+  return np.isnan(x)
+
 
 FirstQuarter = datetime.datetime.strptime('03-31', '%m-%d')
 SecondQuarter = datetime.datetime.strptime('06-30', '%m-%d')

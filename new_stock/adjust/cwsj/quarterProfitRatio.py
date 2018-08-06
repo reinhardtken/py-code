@@ -3,6 +3,7 @@
 # sys
 import json
 import math
+import datetime
 # thirdpart
 import pandas as pd
 import numpy as np
@@ -53,6 +54,14 @@ class GenQuarterProfitRatio(loop.AdjustOPSimpleColumnCheck):
   def baseColumns(self):
     return [ADJUST_NAME['jyjdbl_jy'], ADJUST_NAME['jsbnbl_jy'], ADJUST_NAME['jqsjdbl_jy']]
 
+  def bypass(self, data, columns):
+    if len(data.index) == 1:
+      if data.index[0] == datetime.datetime.strptime('2018-12-31', '%Y-%m-%d'):
+        if columns[1] == self.keyH or columns[1] == self.keyT:
+          return True
+
+    return False
+
   def op(self, data):
     for date, row in data.iterrows():
       if util.isSameQuarter(date, util.FirstQuarter):
@@ -72,8 +81,10 @@ class GenQuarterProfitRatio(loop.AdjustOPSimpleColumnCheck):
               priorData = data.loc[priorDate]
               yearProfit = row[KEY_NAME['jbmgsy']]
               threeQuarterProfit = priorData.loc[KEY_NAME['jbmgsy']]
-              data.loc[date, self.keyT] = (yearProfit - threeQuarterProfit) / threeQuarterProfit
-
+              if threeQuarterProfit > 0:
+                data.loc[date, self.keyT] = (yearProfit - threeQuarterProfit) / threeQuarterProfit
+              else:
+                data.loc[date, self.keyT] = float(1) / float(3)
               prior2Date = priorXQ(date, 2)
               prior2Data = data.loc[prior2Date]
               halfYearQuarterProfit = prior2Data.loc[KEY_NAME['jbmgsy']]

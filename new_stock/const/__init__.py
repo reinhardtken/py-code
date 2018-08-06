@@ -98,6 +98,8 @@ class CWSJ_KEYWORD:
     'ValueMax': '估值上限',
     'ForecastProfit': '预告基本每股收益',
     'ForecastQuarterProfit': '预告季度每股收益',
+    'LastYearProfit': '上一年每股收益',
+    'ForecastMidGrowthRate': '预测中间增长率',
 
 
     #for test,may not be right place

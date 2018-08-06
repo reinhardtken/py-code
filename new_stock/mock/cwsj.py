@@ -46,9 +46,12 @@ def QueryTop(top, code):
 
 def mock000725():
   def string2Datetime(x):
-    return datetime.datetime.strptime(x, '%Y-%m-%d')
+    print(type(x))
+    print(dir(x))
+    return x.to_pydatetime()
+    # return datetime.datetime.strptime(x, '%Y/%m/%d')
 
-  df = pd.read_excel('/home/ken/workspace/tmp/im_out-adjust-000725(1).xlsx')
+  df = pd.read_excel('/home/ken/workspace/tmp/im_out-adjust-000725(7).xlsx')
   df.loc[:, KEY_NAME['date']] = df.loc[:, KEY_NAME['date']].map(string2Datetime)
   df.set_index(KEY_NAME['date'], inplace=True)
   print(df)
