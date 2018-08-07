@@ -106,6 +106,17 @@ def nextXQuarter(date, x):
   return date
 
 
+def nowQuarter():
+  now = datetime.datetime.now()
+  if now.month >= 1 and now.month <= 3:
+    return now.replace(month=3, day=31, hour=0, minute=0, second=0, microsecond=0)
+  elif now.month >= 4 and now.month <= 6:
+    return now.replace(month=6, day=30, hour=0, minute=0, second=0, microsecond=0)
+  elif now.month >= 7 and now.month <= 9:
+    return now.replace(month=9, day=30, hour=0, minute=0, second=0, microsecond=0)
+  else:
+    return now.replace(month=12, day=31, hour=0, minute=0, second=0, microsecond=0)
+
 def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=None):
   client = MongoClient()
   db = client[dbName]
@@ -161,4 +172,5 @@ def addSysPath(path):
 
 
 if __name__ == '__main__':
+  nowQuarter()
   pass

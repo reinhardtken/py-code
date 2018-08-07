@@ -21,23 +21,46 @@ def genCutDateFunc(key):
 
 
 def genString2NumberFunc(key):
+  def tryFloat(v):
+    try:
+      return True, float(v)
+    except ValueError as e:
+      return False, v
+
   def toNumber(k, v):
     if k in key:
-      try:
-        v = float(v)
-      except ValueError as e:
-        try:
-          if v[-1] == '亿':  # 938亿
-            v = float(v[:-1]) * 100000000
-        except ValueError as e:
-          print(e)
+      succ, v = tryFloat(v)
+      if succ == True:
+        return k, v
+      newV = v.replace(',', '')
+      succ, v = tryFloat(newV)
+      if succ == True:
+        return k, v
+      if v[-1] == '亿':  # 938亿
+        _, v = tryFloat(v[:-1]) * 100000000
+
+
     return k, v
 
   return toNumber
 
 
+def genEatFunc(key):
+  def eat(k, v):
+    if k in key:
+      return k, v
+    else:
+      return None, None
+
+  return eat
+
+
 def threeOP(k1, k2, k3):
-  return [genchangeKeyFunc(k1), genCutDateFunc(k2), genString2NumberFunc(k3)]
+  return [genCutDateFunc(k1), genString2NumberFunc(k2), genchangeKeyFunc(k3)]
+
+
+def fourOP(k1, k2, k3, k4):
+  return [genCutDateFunc(k1), genString2NumberFunc(k2), genEatFunc(k3), genchangeKeyFunc(k4)]
 
 
 def dealwithData(data, itemList):
@@ -45,7 +68,9 @@ def dealwithData(data, itemList):
   for k, v in data.items():
     for op in itemList:
       k, v = op(k, v)
-    out[k] = v
+
+    if k is not None:
+      out[k] = v
 
   return out
 

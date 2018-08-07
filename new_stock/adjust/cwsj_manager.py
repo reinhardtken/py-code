@@ -14,6 +14,7 @@ if __name__ == '__main__':
 import util
 import util.utils as utils
 import const
+import stock
 from query import query_adjust_cwsj
 from query import query_cwsj
 import mock.cwsj as mock
@@ -21,6 +22,7 @@ import adjust.loop as loop
 import adjust.cwsj.forecastProfit as forecastProfit
 import adjust.cwsj.quarterProfit as quarterProfit
 import adjust.cwsj.quarterProfitRatio as quarterProfitRatio
+import adjust.cwsj.forecastQuarterProfit as forecastQuarterProfit
 import adjust.cwsj.lastYearProfit as lastYearProfit
 import adjust.cwsj.forecastMidGrowthRate as forecastMidGrowthRate
 import adjust.cwsj.forecastFinalGrowthRate as forecastFinalGrowthRate
@@ -37,6 +39,7 @@ nextXQ = util.nextXQuarter
 KN = const.CWSJ_KEYWORD.ADJUST_NAME
 ID_NAME = const.CWSJ_KEYWORD.ID_NAME
 KEY_NAME = const.CWSJ_KEYWORD.KEY_NAME
+ADJUST_NAME = const.CWSJ_KEYWORD.ADJUST_NAME
 MONGODB_ID = const.MONGODB_ID
 
 
@@ -259,15 +262,28 @@ def test(code):
 
 def test2(code):
   df = mock.mock000725()
+  # df = query_cwsj.QueryTop(-1, '000725')
+
+  s = stock.Stock('002415')
+  s.load(cwsj=None, yjyg=['2018-09-30', '2018-06-30', '2018-03-31'])
+  df = s.data
+  df.to_excel('/home/ken/workspace/tmp/base-002415.xls')
   oneLoop = loop.AdjustLoop()
   oneLoop.addOP(forecastProfit.GenForecastProfit())
   oneLoop.addOP(quarterProfit.GenQuarterProfit())
   oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio())
+  oneLoop.addOP(forecastQuarterProfit.GenForecastProfit())
   oneLoop.addOP(lastYearProfit.GenLastYearProfit())
   oneLoop.addOP(forecastMidGrowthRate.GenForecastMidGrowthRate())
+  oneLoop.addOP(forecastFinalGrowthRate.GenForecastFinalGrowthRate())
   oneLoop.addOP(peMinMax.GenPEMinMax())
   oneLoop.addOP(forecastPerShareProfit.GenForecastPerShareProfit())
   oneLoop.addOP(valueMinMax.GenValueMinMax())
+  df = oneLoop.loop(df)
+  oneLoop.columns.extend([KEY_NAME['jbmgsy'], ADJUST_NAME['zgb'], const.YJYG_KEYWORD.KEY_NAME['forecastl']])
+  column = oneLoop.columns
+  re = df.loc[:, column]
+  re.to_excel('/home/ken/workspace/tmp/out-002415.xls')
   oneLoop.verify(df)
 
 

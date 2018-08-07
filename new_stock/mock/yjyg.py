@@ -97,6 +97,19 @@ def mock000725():
   return df
 
 
+def findSample():
+  client = MongoClient()
+  db = client['stock']
+  collection = db['yjyg-2018-09-30']
+  for one in const.STOCK_LIST:
+    cursor = collection.find({'_id': one})
+    for c in cursor:
+      print(c)
+      break
+
+
 if __name__ == '__main__':
-  mock000725()
+  # mock000725()
+  findSample()
   pass
+

@@ -133,12 +133,14 @@ class AdjustOPSimpleColumnCheck(AdjustOP):
     else:
       return True
 
-
-
 class AdjustLoop:
   def __init__(self):
     self._newColumns = []
     self._opList = []
+
+  @property
+  def columns(self):
+    return self._newColumns
 
   def addOP(self, op):
     if isinstance(op, AdjustOP):
@@ -149,7 +151,7 @@ class AdjustLoop:
     df = pd.DataFrame(columns=self._newColumns, index=data.index)
     print(data)
     print(df)
-    data.join(df)
+    data = data.join(df)
     # newDF = pd.DataFrame.merge(data, df)
     for one in self._opList:
       one.op(data)

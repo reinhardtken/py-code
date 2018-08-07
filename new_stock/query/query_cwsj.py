@@ -6,6 +6,7 @@ import datetime
 
 # thirdpart
 import pandas as pd
+import pymongo
 from pymongo import MongoClient
 
 # this project
@@ -29,7 +30,7 @@ def QueryTop(top, code):
 
   out = []
 
-  cursor = collection.find()
+  cursor = collection.find().sort(KEY_NAME['date'], pymongo.DESCENDING)
   index = 0
   for c in cursor:
     c[KEY_NAME['date']] = datetime.datetime.strptime(c[KEY_NAME['date']], '%Y-%m-%d')
@@ -41,6 +42,13 @@ def QueryTop(top, code):
 
   df = pd.DataFrame(out)
   df.set_index(KEY_NAME['date'], inplace=True)
+  print(df)
+  try:
+    df.loc[:, KEY_NAME['zgb']].fillna(method='ffill', inplace=True)
+  except KeyError as e:
+    print(e)
+  print(df)
+  df.to_excel('/home/ken/workspace/tmp/new-000725.xls')
   return df
 
 

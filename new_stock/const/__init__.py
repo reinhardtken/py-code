@@ -42,7 +42,10 @@ class CWSJ_KEYWORD:
     "zcfzl": "资产负债率(%)",
     "ldzczfz": "流动负债/总负债(%)",
     "ldbl": "流动比率",
-    "sdbl": "速动比率"}
+    "sdbl": "速动比率",
+
+    'zgb': '总股本',
+  }
 
   DATA_SUB = {}
 
@@ -114,6 +117,8 @@ class CWSJ_KEYWORD:
     'jqsjdbl_jy': '较前三季度比例-检验',
 
   }
+
+
 
 
 class YJYG_KEYWORD:

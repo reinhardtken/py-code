@@ -117,9 +117,10 @@ class Handler(spider.FakeSpider):
 
     for one in out:
       print(one.text)
-      if one.text.startswith('2018'):
+      year = float(one.text[:4])
+      if year > 2015:
+      # if one.text.startswith('2018'):
         innerTask = Handler.InnerTask(one.text)
-
         save = innerTask.dump()
         self.crawl(innerTask.genUrl(1), headers=self.header(), callback=self.processSecondPage, save=save)
 
@@ -164,8 +165,8 @@ class Handler(spider.FakeSpider):
     try:
       tmp = []
       for item in json:
-        one_stock = util.utils.dealwithData(item, util.utils.threeOP(KEY_NAME, DATA_SUB,
-                                                                     NEED_TO_NUMBER))
+        one_stock = util.utils.dealwithData(item, util.utils.threeOP(DATA_SUB,
+                                                                     NEED_TO_NUMBER, KEY_NAME))
         one_stock[MONGODB_ID] = item.get(ID_NAME)
         series = pd.Series(one_stock)
         tmp.append(series)
