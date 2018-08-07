@@ -51,7 +51,7 @@ def mock000725():
     return x.to_pydatetime()
     # return datetime.datetime.strptime(x, '%Y/%m/%d')
 
-  df = pd.read_excel('/home/ken/workspace/tmp/im_out-adjust-000725(7).xlsx')
+  df = pd.read_excel('/home/ken/workspace/tmp/im_out-adjust-000725(11).xlsx')
   df.loc[:, KEY_NAME['date']] = df.loc[:, KEY_NAME['date']].map(string2Datetime)
   df.set_index(KEY_NAME['date'], inplace=True)
   print(df)

@@ -90,16 +90,19 @@ class CWSJ_KEYWORD:
     'QuarterProfitRatio': '较一季度比例',
     'HalfYearProfitRatio': '较上半年比例',
     'ThreeQuarterProfitRatio': '较前三季度比例',
+
+    'ForecastProfit': '预告基本每股收益',
+    'ForecastQuarterProfit': '预告季度每股收益',
+    'LastYearProfit': '上一年每股收益',
     'ForecastGrowthRate': '预测增长率',
-    'PerShareProfitForecast': '每股收益预测',
+    'ForecastMidGrowthRate': '预测中间增长率',
+    'ForecastFinalGrowthRate': '预测最终增长率',
+    'ForecastPerShareProfit': '每股收益预测',
     'PEMin': 'PE下限',
     'PEMax': 'PE上限',
     'ValueMin': '估值下限',
     'ValueMax': '估值上限',
-    'ForecastProfit': '预告基本每股收益',
-    'ForecastQuarterProfit': '预告季度每股收益',
-    'LastYearProfit': '上一年每股收益',
-    'ForecastMidGrowthRate': '预测中间增长率',
+
 
 
     #for test,may not be right place

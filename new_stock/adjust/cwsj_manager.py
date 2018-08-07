@@ -23,6 +23,10 @@ import adjust.cwsj.quarterProfit as quarterProfit
 import adjust.cwsj.quarterProfitRatio as quarterProfitRatio
 import adjust.cwsj.lastYearProfit as lastYearProfit
 import adjust.cwsj.forecastMidGrowthRate as forecastMidGrowthRate
+import adjust.cwsj.forecastFinalGrowthRate as forecastFinalGrowthRate
+import adjust.cwsj.peMinMax as peMinMax
+import adjust.cwsj.forecastPerShareProfit as forecastPerShareProfit
+import adjust.cwsj.valueMinMax as valueMinMax
 
 
 
@@ -240,14 +244,14 @@ def test(code):
   # except Exception as e:
   #     print(e)
 
-  oneLoop = loop.AdjustLoop()
-  oneLoop.addOP(GenQuarterProfit())
-  oneLoop.addOP(GenQuarterProfitRatio())
-  oneLoop.addOP(GenQuarterForecastGrowthRate())
-  oneLoop.addOP(GenPerShareProfitForecast2())
-  df = oneLoop.loop(baseData)
-  df = oneLoop.genResult(df)
-  print(df)
+  # oneLoop = loop.AdjustLoop()
+  # oneLoop.addOP(GenQuarterProfit())
+  # oneLoop.addOP(GenQuarterProfitRatio())
+  # oneLoop.addOP(GenQuarterForecastGrowthRate())
+  # oneLoop.addOP(GenPerShareProfitForecast2())
+  # df = oneLoop.loop(baseData)
+  # df = oneLoop.genResult(df)
+  # print(df)
 
   util.saveMongoDB(df, util.genKeyDateFunc(KN['date']), 'stock-adjust', 'cwsj-' + code)
 
@@ -261,6 +265,9 @@ def test2(code):
   oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio())
   oneLoop.addOP(lastYearProfit.GenLastYearProfit())
   oneLoop.addOP(forecastMidGrowthRate.GenForecastMidGrowthRate())
+  oneLoop.addOP(peMinMax.GenPEMinMax())
+  oneLoop.addOP(forecastPerShareProfit.GenForecastPerShareProfit())
+  oneLoop.addOP(valueMinMax.GenValueMinMax())
   oneLoop.verify(df)
 
 

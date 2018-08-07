@@ -55,10 +55,10 @@ class GenQuarterProfitRatio(loop.AdjustOPSimpleColumnCheck):
     return [ADJUST_NAME['jyjdbl_jy'], ADJUST_NAME['jsbnbl_jy'], ADJUST_NAME['jqsjdbl_jy']]
 
   def bypass(self, data, columns):
-    if len(data.index) == 1:
-      if data.index[0] == datetime.datetime.strptime('2018-12-31', '%Y-%m-%d'):
-        if columns[1] == self.keyH or columns[1] == self.keyT:
-          return True
+    # if len(data.index) == 1:
+    #   if data.index[0] == datetime.datetime.strptime('2018-12-31', '%Y-%m-%d'):
+    #     if columns[1] == self.keyH or columns[1] == self.keyT:
+    #       return True
 
     return False
 
@@ -81,17 +81,19 @@ class GenQuarterProfitRatio(loop.AdjustOPSimpleColumnCheck):
               priorData = data.loc[priorDate]
               yearProfit = row[KEY_NAME['jbmgsy']]
               threeQuarterProfit = priorData.loc[KEY_NAME['jbmgsy']]
-              if threeQuarterProfit > 0:
-                data.loc[date, self.keyT] = (yearProfit - threeQuarterProfit) / threeQuarterProfit
-              else:
-                data.loc[date, self.keyT] = float(1) / float(3)
+              if not util.isnan(threeQuarterProfit):
+                if threeQuarterProfit > 0:
+                  data.loc[date, self.keyT] = (yearProfit - threeQuarterProfit) / threeQuarterProfit
+                else:
+                  data.loc[date, self.keyT] = float(1) / float(3)
               prior2Date = priorXQ(date, 2)
               prior2Data = data.loc[prior2Date]
               halfYearQuarterProfit = prior2Data.loc[KEY_NAME['jbmgsy']]
-              if halfYearQuarterProfit > 0:
-                data.loc[date, self.keyH] = (yearProfit - halfYearQuarterProfit) / halfYearQuarterProfit
-              else:
-                data.loc[date, self.keyH] = 1
+              if not util.isnan(halfYearQuarterProfit):
+                if halfYearQuarterProfit > 0:
+                  data.loc[date, self.keyH] = (yearProfit - halfYearQuarterProfit) / halfYearQuarterProfit
+                else:
+                  data.loc[date, self.keyH] = 1
 
           except TypeError as e:
             print(e)
