@@ -33,12 +33,15 @@ ADJUST_NAME = const.CWSJ_KEYWORD.ADJUST_NAME
 MONGODB_ID = const.MONGODB_ID
 
 
-class GenForecastProfit(loop.AdjustOP):
+class GenForecastProfit(loop.AdjustOPSimpleColumnCheck):
   @property
   def key(self):
     return ADJUST_NAME['ForecastQuarterProfit']
 
   def columns(self):
+    return [self.key]
+
+  def baseColumns(self):
     return [self.key]
 
   def op(self, data):
@@ -48,29 +51,13 @@ class GenForecastProfit(loop.AdjustOP):
           data.loc[date, self.key] = row[ADJUST_NAME['ForecastProfit']]
         else:
           data.loc[date, self.key] = row[ADJUST_NAME['ForecastProfit']] -\
-            data.loc[priorQ(date), ADJUST_NAME['QuarterProfit']]
+            data.loc[priorQ(date), KEY_NAME['jbmgsy']]
       except KeyError as e:
         print(e)
 
-  def before(self, data):
-    data.loc[:, self.key] = np.nan
-    pass
-
+  # def before(self, data):
+  #   data.loc[:, self.key] = np.nan
+  #   pass
+  #
   def check(self, base, result):
-    def innerCheck(x):
-      if np.isnan(x):
-        return True
-      elif math.fabs(x) < 0.000001:
-        return True
-
-      return False
-
-    base = base.loc[:, self.key]
-    result = result.loc[:, self.key]
-    print(base)
-    print(result)
-    diff = base - result
-    print(diff)
-    re = diff.map(innerCheck)
-    print(re)
-    return re.all()
+    return loop.AdjustOPSimpleColumnCheck.check(self, base, result)

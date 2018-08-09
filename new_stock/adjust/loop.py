@@ -27,11 +27,11 @@ class AdjustOP:
     return self.__class__.__name__
 
   #for test
-  def bofore(self, data):
+  def before(self, data):
     pass
 
   def check(self, base, result):
-    return True
+    return False
 
 
 class AdjustOPSimpleColumnCheck(AdjustOP):
