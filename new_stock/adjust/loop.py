@@ -149,8 +149,8 @@ class AdjustLoop:
 
   def loop(self, data: pd.DataFrame):
     df = pd.DataFrame(columns=self._newColumns, index=data.index)
-    print(data)
-    print(df)
+    # print(data)
+    # print(df)
     data = data.join(df)
     # newDF = pd.DataFrame.merge(data, df)
     for one in self._opList:
@@ -174,9 +174,16 @@ class AdjustLoop:
       print('test all pass !!!')
 
 
-  def genResult(self, data):
+  def genResult(self, data, ext=None):
+    def inner(x):
+      print(dir(x.loc[const.COMMON_ID].values))
+      pass
     tmp = self._newColumns
     tmp.append(const.MONGODB_ID)
+    if ext:
+      tmp.extend(ext)
     df = pd.DataFrame(data=data.loc[:, tmp], index=data.index)
+    # df[const.MONGODB_ID] = df.apply(inner, axis=1)
+    # df[const.MONGODB_ID] = df.apply(lambda line : line[const.COMMON_ID].strftime('%Y-%m-%d'), axis=1)
     print(df)
     return df

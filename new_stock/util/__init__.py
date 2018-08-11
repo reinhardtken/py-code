@@ -1,11 +1,22 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
+#sys
 import datetime
+#thirdpart
 import pymongo
 from pymongo import MongoClient
 from pymongo import errors
 import pandas as pd
 import numpy as np
+# this project
+if __name__ == '__main__':
+  import sys
+
+  sys.path.append('/home/ken/workspace/code/self/github/py-code/new_stock')
+##########################
+import util
+import util.utils
+import const
 
 
 def isnan(x):
@@ -125,7 +136,7 @@ def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=No
   for k, v in data.iterrows():
     result = v.to_dict()
     # print(dir(k))
-    result.update(keyFunc(k))
+    result.update(keyFunc(k, result))
 
     try:
       if callback:
@@ -149,14 +160,18 @@ def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=No
 
 
 def genKeyDateFunc(k):
-  def keyDateFunc(v):
-    return {k: v.strftime('%Y-%m-%d')}
+  def keyDateFunc(v, d):
+    out = {k: v.strftime('%Y-%m-%d')}
+    if const.COMMON_ID not in d:
+      out[const.COMMON_ID] = v.strftime('%Y-%m-%d')
+
+    return out
 
   return keyDateFunc
 
 
 def genEmptyFunc():
-  def emptyFunc(v):
+  def emptyFunc(v, d):
     return {}
 
   return emptyFunc

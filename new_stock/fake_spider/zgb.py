@@ -129,13 +129,17 @@ class Handler(spider.FakeSpider):
 
   def parseSZPage(self, json):
     KEY_NAME = {
-      'agzgb': '总股本',
+      'agzgb': 'A股总股本',
+      'bgzgb': 'B股总股本',
+      'zgb': '总股本',
     }
     NEED_TO_NUMBER = {
-      'agzgb': '总股本',
+      'agzgb': 'A股总股本',
+      'bgzgb': 'B股总股本',
     }
     NOTEAT = {
       'agzgb': None,
+      'bgzgb': None,
     }
     DATA_SUB = {}
     try:
@@ -146,6 +150,8 @@ class Handler(spider.FakeSpider):
         one_stock[MONGODB_ID] = util.nowQuarter().strftime('%Y-%m-%d')#item.get(ID_NAME)
         one_stock[const.CWSJ_KEYWORD.KEY_NAME['date']] = one_stock[MONGODB_ID]
         one_stock[KEY_NAME['agzgb']] = one_stock[KEY_NAME['agzgb']] * 10000
+        one_stock[KEY_NAME['bgzgb']] = one_stock[KEY_NAME['bgzgb']] * 10000
+        one_stock[KEY_NAME['zgb']] = one_stock[KEY_NAME['bgzgb']] + one_stock[KEY_NAME['agzgb']]
         series = pd.Series(one_stock)
         tmp.append(series)
 

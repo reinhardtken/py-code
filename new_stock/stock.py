@@ -50,13 +50,21 @@ class Stock:
       self._df = Stock.loadFile(kwargs['file'])
       return
 
-    if 'cwsj' in kwargs:
+    if 'cwsj' in kwargs and kwargs['cwsj']:
       self._df = query.query_cwsj.QueryTop(-1, self._code)
 
     if 'yjyg' in kwargs:
       dates = kwargs['yjyg']
       df = query.query_yjyg.Query(dates, self._code)
-      self._df = self._df.join(df)
+      self._df = self._df.join(df, how='outer')
+
+    #sort
+    self._df.sort_index(inplace=True, ascending=False)
+    #fill na
+    try:
+      self._df.loc[:, const.CWSJ_KEYWORD.KEY_NAME['zgb']].fillna(method='ffill', inplace=True)
+    except KeyError as e:
+      print(e)
 
 
   def loadBenchmark(self, **kwargs):
@@ -64,7 +72,7 @@ class Stock:
       self._bdf = Stock.loadFile(kwargs['file'])
       return
 
-    if 'cwsj' in kwargs:
+    if 'cwsj' in kwargs and kwargs['cwsj']:
       self._bdf = query.query_cwsj.QueryTop(-1, self._code)
 
     if 'yjyg' in kwargs:
@@ -75,7 +83,7 @@ class Stock:
 
 if __name__ == '__main__':
   s = Stock('002415')
-  s.load(cwsj=None, yjyg=['2018-09-30', '2018-06-30', '2018-03-31'])
+  s.load(cwsj=True, yjyg=['2018-09-30', '2018-06-30', '2018-03-31'])
   df = s.data
   print(df)
   df.to_excel('/home/ken/workspace/tmp/new-002415.xls')

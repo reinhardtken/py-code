@@ -43,12 +43,8 @@ def QueryTop(top, code):
   df = pd.DataFrame(out)
   df.set_index(KEY_NAME['date'], inplace=True)
   print(df)
-  try:
-    df.loc[:, KEY_NAME['zgb']].fillna(method='ffill', inplace=True)
-  except KeyError as e:
-    print(e)
-  print(df)
-  df.to_excel('/home/ken/workspace/tmp/new-000725.xls')
+
+  # df.to_excel('/home/ken/workspace/tmp/new-000725.xls')
   return df
 
 
@@ -60,10 +56,39 @@ def dropAll():
     collection.drop()
 
 
-if __name__ == '__main__':
-  # dropAll()
-  df = QueryTop(-1, '000725')
+
+def dumpStockOutDB(code):
+  client = MongoClient()
+  db = client['stock-out']
+  collection = db['cwsj-' + code]
+
+  out = []
+
+  cursor = collection.find().sort(KEY_NAME['date'], pymongo.DESCENDING)
+  index = 0
+  for c in cursor:
+    c[KEY_NAME['date']] = c['_id']
+    out.append(c)
+    print(c)
+    index += 1
+
+  df = pd.DataFrame(out)
+  df.set_index(KEY_NAME['date'], inplace=True)
+
   print(df)
-  df.to_excel('/home/ken/workspace/tmp/out-000725.xls')
+  df.to_excel('/home/ken/workspace/tmp/stock-out-' + code + '.xls')
+  return df
+
+
+
+
+if __name__ == '__main__':
+  # dumpStockOutDB('600487')
+  for one in const.STOCK_LIST:
+    dumpStockOutDB(one)
+  # dropAll()
+  # df = QueryTop(-1, '000725')
+  # print(df)
+  # df.to_excel('/home/ken/workspace/tmp/out-000725.xls')
   # SaveData(re)
   pass

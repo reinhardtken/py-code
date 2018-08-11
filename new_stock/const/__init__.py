@@ -2,6 +2,7 @@
 # -*- encoding: utf-8 -*-
 
 MONGODB_ID = '_id'
+COMMON_ID = '季度'
 
 
 class CWSJ_KEYWORD:

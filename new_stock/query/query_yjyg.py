@@ -34,7 +34,8 @@ def Query(dates, code):
       out.append(c)
 
   df = pd.DataFrame(out)
-  df.set_index(const.CWSJ_KEYWORD.KEY_NAME['date'], inplace=True)
+  if len(df.index) > 0:
+    df.set_index(const.CWSJ_KEYWORD.KEY_NAME['date'], inplace=True)
   return df
 
 
