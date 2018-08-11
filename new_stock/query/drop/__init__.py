@@ -48,11 +48,15 @@ def allCWSJ():
 def allYJYG():
   dropAll('stock', 'yjyg-')
 
+def allEverydat():
+  dropAll('stock-everyday', '2018')
+
 
 
 if __name__ == '__main__':
-  allYJYG()
-  allGPFH()
-  allMacroMX()
-  allCWSJ()
+  allEverydat()
+  # allYJYG()
+  # allGPFH()
+  # allMacroMX()
+  # allCWSJ()
   pass

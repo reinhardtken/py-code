@@ -90,8 +90,8 @@ class Handler(BaseHandler):
       def callback(result):
         handler.send_message(handler.project_name, result, self._date + '_' + result['_id'])
 
-      util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, COLLECTION_HEAD + self._date, callback)
-
+      re = util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, COLLECTION_HEAD + self._date, callback)
+      util.everydayChange(re, 'gpfh')
 
 
   def url(self):
@@ -115,11 +115,12 @@ class Handler(BaseHandler):
     out = data_list.find('option')
 
     for one in out:
-      #if one.text.startswith('2018'):
       print(one.text)
-      innerTask = Handler.InnerTask(one.text)
-      save = innerTask.dump()
-      self.crawl(innerTask.genUrl(1), headers=self.header(), callback=self.processSecondPage, save=save)
+      year = float(one.text[:4])
+      if year > 2014:
+        innerTask = Handler.InnerTask(one.text)
+        save = innerTask.dump()
+        self.crawl(innerTask.genUrl(1), headers=self.header(), callback=self.processSecondPage, save=save)
 
   def processThirdPage(self, response):
     return self.processSecondPage(response)
@@ -162,8 +163,7 @@ class Handler(BaseHandler):
     try:
       tmp = []
       for item in json:
-        one_stock = util.utils.dealwithData(item, util.utils.threeOP(KEY_NAME, DATA_SUB,
-                                                                     NEED_TO_NUMBER))
+        one_stock = util.utils.dealwithData(item, util.utils.threeOP(DATA_SUB, NEED_TO_NUMBER, KEY_NAME))
         one_stock[MONGODB_ID] = item.get(ID_NAME)
         series = pd.Series(one_stock)
         tmp.append(series)

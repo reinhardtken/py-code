@@ -133,6 +133,9 @@ def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=No
   db = client[dbName]
   collection = db[collectionName]
 
+  out = {'db': dbName, 'collection': collectionName}
+  detail = {}
+
   for k, v in data.iterrows():
     result = v.to_dict()
     # print(dir(k))
@@ -143,20 +146,55 @@ def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=No
         callback(result)
     except Exception as e:
       print(e)
+    try:
+      update_result = collection.update_one({'_id': result['_id']},
+                                          {'$set': result})#, upsert=True)
 
-    update_result = collection.update_one({'_id': result['_id']},
-                                          {'$set': result})
+      if update_result.matched_count > 0:
+        print('upate to Mongo: %s : %s'%(dbName, collectionName))
+        if update_result.modified_count > 0:
+          detail[k] = result
 
-    if update_result.matched_count > 0:
-      print('upate to Mongo: %s : %s'%(dbName, collectionName))
+      if update_result.matched_count == 0:
+        try:
+          if collection.insert_one(result):
+            print('insert to Mongo: %s : %s' % (dbName, collectionName))
+            detail[k] = result
+        except errors.DuplicateKeyError as e:
+          print('faild to Mongo!!!!: %s : %s' % (dbName, collectionName))
+          pass
 
-    if update_result.matched_count == 0:
+    except Exception as e:
+      print(e)
+
+  out['detail'] = detail
+  print('leave saveMongoDB')
+  return out
+
+
+def everydayChange(result, crawl):
+  if len(result['detail']) > 0:
+    client = MongoClient()
+    db = client['stock-everyday']
+    collection = db[datetime.datetime.now().strftime('%Y-%m-%d')]
+
+    for k, v in result['detail'].items():
+      v['index'] = k
+      v['crawl'] = crawl
+      if '_id' in v:
+        v.pop('_id')
+
       try:
-        if collection.insert_one(result):
-          print('insert to Mongo: %s : %s' % (dbName, collectionName))
+        if collection.insert_one(v):
+          pass
       except errors.DuplicateKeyError as e:
-        print('faild to Mongo!!!!: %s : %s' % (dbName, collectionName))
+        print('faild to Mongo!!!!')
         pass
+
+  else:
+    pass
+
+
 
 
 def genKeyDateFunc(k):

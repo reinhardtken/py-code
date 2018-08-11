@@ -91,8 +91,8 @@ class Handler(spider.FakeSpider):
       def callback(result):
         handler.send_message(handler.project_name, result, self._date + '_' + result[KEY_NAME[ID_NAME]])
 
-      util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, COLLECTION_HEAD + self._date, callback)
-
+      re = util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, COLLECTION_HEAD + self._date, callback)
+      util.everydayChange(re, 'yjyg')
 
 
   def url(self):
