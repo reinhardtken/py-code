@@ -26,12 +26,30 @@ class Stock:
   def __init__(self, code):
     self._code = code
     self._df = None
+    self._bdf = None
 
   @property
   def data(self):
     return self._df
 
+  @property
+  def benchmark_data(self):
+    return self._bdf
+
+  def loadFile(file):
+    def string2Datetime(x):
+      return x.to_pydatetime()
+
+    df = pd.read_excel(file)
+    df.loc[:, const.CWSJ_KEYWORD.KEY_NAME['date']] = df.loc[:, const.CWSJ_KEYWORD.KEY_NAME['date']].map(string2Datetime)
+    df.set_index(const.CWSJ_KEYWORD.KEY_NAME['date'], inplace=True)
+    return df
+
   def load(self, **kwargs):
+    if 'file' in kwargs:
+      self._df = Stock.loadFile(kwargs['file'])
+      return
+
     if 'cwsj' in kwargs:
       self._df = query.query_cwsj.QueryTop(-1, self._code)
 
@@ -39,6 +57,20 @@ class Stock:
       dates = kwargs['yjyg']
       df = query.query_yjyg.Query(dates, self._code)
       self._df = self._df.join(df)
+
+
+  def loadBenchmark(self, **kwargs):
+    if 'file' in kwargs:
+      self._bdf = Stock.loadFile(kwargs['file'])
+      return
+
+    if 'cwsj' in kwargs:
+      self._bdf = query.query_cwsj.QueryTop(-1, self._code)
+
+    if 'yjyg' in kwargs:
+      dates = kwargs['yjyg']
+      df = query.query_yjyg.Query(dates, self._code)
+      self._bdf = self._bdf.join(df)
 
 
 if __name__ == '__main__':

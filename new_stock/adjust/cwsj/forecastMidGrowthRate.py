@@ -52,12 +52,12 @@ class GenForecastMidGrowthRate(loop.AdjustOPSimpleColumnCheck):
       if util.isnan(forecastQuarterProfit):
         fq = priorXQ(date, 1)
         sq = priorXQ(date, 3)
-        total = data.loc[date:sq, ADJUST_NAME['QuarterProfit']].sum()
+        total = data.loc[date:sq, ADJUST_NAME['QuarterProfit']].sum(skipna=False)
         jbmgsy = data.loc[fq, KEY_NAME['jbmgsy']]
         data.loc[date, self.key] = total/jbmgsy - 1
       else:
         fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
-        total = data.loc[date:priorXQ(date, 2), ADJUST_NAME['QuarterProfit']].sum()
+        total = data.loc[date:priorXQ(date, 2), ADJUST_NAME['QuarterProfit']].sum(skipna=False)
         jbmgsy = data.loc[priorQ(date), KEY_NAME['jbmgsy']]
         data.loc[date, self.key] = (fqp+total) / jbmgsy - 1
     else:
@@ -67,7 +67,7 @@ class GenForecastMidGrowthRate(loop.AdjustOPSimpleColumnCheck):
         jbmgsy = data.loc[priorQ(date), KEY_NAME['jbmgsy']]
         data.loc[date, self.key] = (fqp + quarterProfit)*(1+hpr) / jbmgsy - 1
       else:
-        total = data.loc[priorXQ(date, 1):priorXQ(date, 3), ADJUST_NAME['QuarterProfitRatio']].sum()
+        total = data.loc[priorXQ(date, 1):priorXQ(date, 3), ADJUST_NAME['QuarterProfitRatio']].sum(skipna=False)
         jbmgsy = data.loc[priorQ(date), KEY_NAME['jbmgsy']]
         data.loc[date, self.key] = (1 + total)*quarterProfit / jbmgsy - 1
 
@@ -103,7 +103,7 @@ class GenForecastMidGrowthRate(loop.AdjustOPSimpleColumnCheck):
         data.loc[date, self.key] = profit*(1 + data.loc[priorXQ(date, 2), ADJUST_NAME['HalfYearProfitRatio']]) / \
                                    data.loc[priorXQ(date, 2), KEY_NAME['jbmgsy']] - 1
       else:
-        data.loc[date, self.key] = (profit + data.loc[priorXQ(date, 2):priorXQ(date, 3), ADJUST_NAME['QuarterProfit']].sum()) / \
+        data.loc[date, self.key] = (profit + data.loc[priorXQ(date, 2):priorXQ(date, 3), ADJUST_NAME['QuarterProfit']].sum(skipna=False)) / \
                                    data.loc[priorXQ(date, 2), KEY_NAME['jbmgsy']] - 1
   def op(self, data):
     for date, row in data.iterrows():

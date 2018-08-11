@@ -45,175 +45,175 @@ MONGODB_ID = const.MONGODB_ID
 
 
 
-class GenQuarterForecastGrowthRate(loop.AdjustOP):
-  def columns(self):
-    return [const.CWSJ_KEYWORD.ADJUST_NAME['ForecastGrowthRate']]
-
-  def op(self, data):
-    for date, row in data.iterrows():
-      profit = row[KEY_NAME['jbmgsy']]
-      try:
-        if util.isSameQuarter(date, util.FirstQuarter):
-          priorDateBegin = priorQ(date)
-          priorDateEnd = priorXQ(date, 3)
-          priorData = data.loc[priorDateBegin:priorDateEnd]
-          last4thQuarter = priorData.loc[priorDateBegin, KN['QuarterProfitRatio']]
-          last3thQuarter = priorData.loc[priorXQ(date, 2), KN['QuarterProfitRatio']]
-          last2thQuarter = priorData.loc[priorDateEnd, KN['QuarterProfitRatio']]
-          forecast = ((profit + profit * last4thQuarter + \
-                       profit * last3thQuarter + \
-                       profit * last2thQuarter) / data.loc[
-                        priorQ(date), KEY_NAME['jbmgsy']]) - 1
-
-          data.loc[date, KN['ForecastGrowthRate']] = forecast
-
-        elif util.isSameQuarter(date, util.SecondQuarter):
-          last4thQuarter = data.loc[priorXQ(date, 2)]
-          forecast = ((profit + profit * last4thQuarter.loc[KN['HalfYearProfitRatio']]) \
-                      / data.loc[priorXQ(date, 2), KEY_NAME['jbmgsy']]) - 1
-          data.loc[date, KN['ForecastGrowthRate']] = forecast
-
-        elif util.isSameQuarter(date, util.ThirdQuarter):
-          last4thQuarter = data.loc[priorXQ(date, 3)]
-          forecast = ((profit + profit * last4thQuarter.loc[KN['ThreeQuarterProfitRatio']]) \
-                      / data.loc[priorXQ(date, 3), KEY_NAME['jbmgsy']]) - 1
-
-          data.loc[date, KN['ForecastGrowthRate']] = forecast
-
-        else:
-          forecast = (profit / data.loc[priorXQ(date, 4), KEY_NAME['jbmgsy']]) - 1
-          data.loc[date, KN['ForecastGrowthRate']] = forecast
-      except KeyError as e:
-        print(e)
-
-
-class GenPerShareProfitForecast(loop.AdjustOP):
-  def columns(self):
-    return [const.CWSJ_KEYWORD.ADJUST_NAME['PerShareProfitForecast']]
-
-  def op(self, data):
-    for date, row in data.iterrows():
-      try:
-        if util.isSameQuarter(date, util.FirstQuarter):
-          ratio1 = data.loc[priorQ(date), KN['QuarterProfitRatio']]
-          ratio2 = data.loc[priorXQ(date, 2), KN['QuarterProfitRatio']]
-          ratio3 = data.loc[priorXQ(date, 3), KN['QuarterProfitRatio']]
-          data.loc[date, KN['PerShareProfitForecast']] = row.loc[KN['QuarterProfit']] * \
-                                                         (1 + ratio1 + ratio2 + ratio3)
-          # data.loc[date, KN['QuarterProfitRatio']] = 1
-        elif util.isSameQuarter(date, util.SecondQuarter):
-          ratio = data.loc[priorXQ(date, 2), KN['HalfYearProfitRatio']]
-          data.loc[date, KN['PerShareProfitForecast']] = data.loc[date, KEY_NAME['jbmgsy']] * (
-              1 + ratio)
-        elif util.isSameQuarter(date, util.ThirdQuarter):
-          ratio = data.loc[priorXQ(date, 3), KN['ThreeQuarterProfitRatio']]
-          data.loc[date, KN['PerShareProfitForecast']] = data.loc[date, KEY_NAME['jbmgsy']] * (
-              1 + ratio)
-        else:
-          data.loc[date, KN['PerShareProfitForecast']] = data.loc[date, KEY_NAME['jbmgsy']]
-
-      except KeyError as e:
-        print(e)
-
-
-class GenPerShareProfitForecast(loop.AdjustOP):
-  def columns(self):
-    return [const.CWSJ_KEYWORD.ADJUST_NAME['PerShareProfitForecast']]
-
-  def op(self, data):
-    key = KN['PerShareProfitForecast']
-    for date, row in data.iterrows():
-      try:
-        if util.isSameQuarter(date, util.FirstQuarter):
-          ratio1 = data.loc[priorQ(date), KN['QuarterProfitRatio']]
-          ratio2 = data.loc[priorXQ(date, 2), KN['QuarterProfitRatio']]
-          ratio3 = data.loc[priorXQ(date, 3), KN['QuarterProfitRatio']]
-          data.loc[date, key] = row.loc[KN['QuarterProfit']] * \
-                                (1 + ratio1 + ratio2 + ratio3)
-          # data.loc[date, KN['QuarterProfitRatio']] = 1
-        elif util.isSameQuarter(date, util.SecondQuarter):
-          ratio = data.loc[priorXQ(date, 2), KN['HalfYearProfitRatio']]
-          data.loc[date, key] = data.loc[date, KEY_NAME['jbmgsy']] * (
-              1 + ratio)
-        elif util.isSameQuarter(date, util.ThirdQuarter):
-          ratio = data.loc[priorXQ(date, 3), KN['ThreeQuarterProfitRatio']]
-          data.loc[date, key] = data.loc[date, KEY_NAME['jbmgsy']] * (
-              1 + ratio)
-        else:
-          data.loc[date, key] = data.loc[date, KEY_NAME['jbmgsy']]
-
-      except KeyError as e:
-        print(e)
-
-
-class GenPerShareProfitForecast2(loop.AdjustOP):
-  def __init__(self):
-    import mock.yjyg
-    self.yjyg = mock.yjyg.mock000725()
-
-  def forecastProfit(self, date):
-    try:
-      one = self.yjyg.loc[date]
-      return one['forecastQuarter']
-    except KeyError as e:
-      return None
-
-  def columns(self):
-    return [const.CWSJ_KEYWORD.ADJUST_NAME['PerShareProfitForecast']]
-
-  def op(self, data):
-    key = KN['PerShareProfitForecast']
-    for date, row in data.iterrows():
-      try:
-        if util.isSameQuarter(date, util.FirstQuarter):
-          profit = row.loc[KN['QuarterProfit']]
-          forecaastProfit = self.forecastProfit(nextXQ(date, 1))
-          if profit < 0 and forecaastProfit is None:
-            data.loc[date, key] = \
-              profit + data.loc[priorXQ(date, 1), KN['QuarterProfit']] \
-              + data.loc[priorXQ(date, 2), KN['QuarterProfit']] \
-              + data.loc[priorXQ(date, 3), KN['QuarterProfit']]
-          elif profit < 0 and forecaastProfit is not None:
-            data.loc[date, key] = \
-              profit + forecaastProfit \
-              + data.loc[priorXQ(date, 2), KN['QuarterProfit']] \
-              + data.loc[priorXQ(date, 3), KN['QuarterProfit']]
-          elif profit > 0 and forecaastProfit is not None:
-            data.loc[date, key] = (profit + forecaastProfit) * (1 + \
-                                                                data.loc[priorXQ(date, 1), KN['HalfYearProfitRatio']])
-          else:
-            data.loc[date, key] = \
-              profit * (1 + data.loc[priorXQ(date, 1), KN['QuarterProfitRatio']] \
-                        + data.loc[priorXQ(date, 2), KN['QuarterProfitRatio']] \
-                        + data.loc[priorXQ(date, 3), KN['QuarterProfitRatio']])
-        elif util.isSameQuarter(date, util.SecondQuarter):
-          profit = row.loc[KEY_NAME['jbmgsy']]
-          forecaastProfit = self.forecastProfit(nextXQ(date, 1))
-          if profit > 0 and forecaastProfit is not None:
-            data.loc[date, key] = (profit + forecaastProfit) * (
-                  1 + data.loc[priorXQ(date, 2), KN['ThreeQuarterProfitRatio']])
-          elif profit < 0 and forecaastProfit is not None:
-            data.loc[date, key] = profit + forecaastProfit + data.loc[priorXQ(date, 2), KN['QuarterProfit']]
-          elif profit > 0 and forecaastProfit is None:
-            data.loc[date, key] = profit * (1 + data.loc[
-              priorXQ(date, 2), KN['HalfYearProfitRatio']])
-          else:
-            data.loc[date, key] = profit + data.loc[priorXQ(date, 2), KN['QuarterProfit']] \
-                                  + data.loc[priorXQ(date, 3), KN['QuarterProfit']]
-        elif util.isSameQuarter(date, util.ThirdQuarter):
-          profit = row.loc[KEY_NAME['jbmgsy']]
-          forecaastProfit = self.forecastProfit(nextXQ(date, 1))
-          if forecaastProfit is not None:
-            data.loc[date, key] = profit + forecaastProfit
-          elif profit < 0:
-            data.loc[date, key] = profit + data.loc[priorXQ(date, 3), KN['QuarterProfit']]
-          else:
-            data.loc[date, key] = profit * (1 + data.loc[priorXQ(date, 3), KN['ThreeQuarterProfitRatio']])
-
-        else:
-          data.loc[date, key] = row[KEY_NAME['jbmgsy']]
-      except KeyError as e:
-        print(e)
+# class GenQuarterForecastGrowthRate(loop.AdjustOP):
+#   def columns(self):
+#     return [const.CWSJ_KEYWORD.ADJUST_NAME['ForecastGrowthRate']]
+#
+#   def op(self, data):
+#     for date, row in data.iterrows():
+#       profit = row[KEY_NAME['jbmgsy']]
+#       try:
+#         if util.isSameQuarter(date, util.FirstQuarter):
+#           priorDateBegin = priorQ(date)
+#           priorDateEnd = priorXQ(date, 3)
+#           priorData = data.loc[priorDateBegin:priorDateEnd]
+#           last4thQuarter = priorData.loc[priorDateBegin, KN['QuarterProfitRatio']]
+#           last3thQuarter = priorData.loc[priorXQ(date, 2), KN['QuarterProfitRatio']]
+#           last2thQuarter = priorData.loc[priorDateEnd, KN['QuarterProfitRatio']]
+#           forecast = ((profit + profit * last4thQuarter + \
+#                        profit * last3thQuarter + \
+#                        profit * last2thQuarter) / data.loc[
+#                         priorQ(date), KEY_NAME['jbmgsy']]) - 1
+#
+#           data.loc[date, KN['ForecastGrowthRate']] = forecast
+#
+#         elif util.isSameQuarter(date, util.SecondQuarter):
+#           last4thQuarter = data.loc[priorXQ(date, 2)]
+#           forecast = ((profit + profit * last4thQuarter.loc[KN['HalfYearProfitRatio']]) \
+#                       / data.loc[priorXQ(date, 2), KEY_NAME['jbmgsy']]) - 1
+#           data.loc[date, KN['ForecastGrowthRate']] = forecast
+#
+#         elif util.isSameQuarter(date, util.ThirdQuarter):
+#           last4thQuarter = data.loc[priorXQ(date, 3)]
+#           forecast = ((profit + profit * last4thQuarter.loc[KN['ThreeQuarterProfitRatio']]) \
+#                       / data.loc[priorXQ(date, 3), KEY_NAME['jbmgsy']]) - 1
+#
+#           data.loc[date, KN['ForecastGrowthRate']] = forecast
+#
+#         else:
+#           forecast = (profit / data.loc[priorXQ(date, 4), KEY_NAME['jbmgsy']]) - 1
+#           data.loc[date, KN['ForecastGrowthRate']] = forecast
+#       except KeyError as e:
+#         print(e)
+#
+#
+# class GenPerShareProfitForecast(loop.AdjustOP):
+#   def columns(self):
+#     return [const.CWSJ_KEYWORD.ADJUST_NAME['PerShareProfitForecast']]
+#
+#   def op(self, data):
+#     for date, row in data.iterrows():
+#       try:
+#         if util.isSameQuarter(date, util.FirstQuarter):
+#           ratio1 = data.loc[priorQ(date), KN['QuarterProfitRatio']]
+#           ratio2 = data.loc[priorXQ(date, 2), KN['QuarterProfitRatio']]
+#           ratio3 = data.loc[priorXQ(date, 3), KN['QuarterProfitRatio']]
+#           data.loc[date, KN['PerShareProfitForecast']] = row.loc[KN['QuarterProfit']] * \
+#                                                          (1 + ratio1 + ratio2 + ratio3)
+#           # data.loc[date, KN['QuarterProfitRatio']] = 1
+#         elif util.isSameQuarter(date, util.SecondQuarter):
+#           ratio = data.loc[priorXQ(date, 2), KN['HalfYearProfitRatio']]
+#           data.loc[date, KN['PerShareProfitForecast']] = data.loc[date, KEY_NAME['jbmgsy']] * (
+#               1 + ratio)
+#         elif util.isSameQuarter(date, util.ThirdQuarter):
+#           ratio = data.loc[priorXQ(date, 3), KN['ThreeQuarterProfitRatio']]
+#           data.loc[date, KN['PerShareProfitForecast']] = data.loc[date, KEY_NAME['jbmgsy']] * (
+#               1 + ratio)
+#         else:
+#           data.loc[date, KN['PerShareProfitForecast']] = data.loc[date, KEY_NAME['jbmgsy']]
+#
+#       except KeyError as e:
+#         print(e)
+#
+#
+# class GenPerShareProfitForecast(loop.AdjustOP):
+#   def columns(self):
+#     return [const.CWSJ_KEYWORD.ADJUST_NAME['PerShareProfitForecast']]
+#
+#   def op(self, data):
+#     key = KN['PerShareProfitForecast']
+#     for date, row in data.iterrows():
+#       try:
+#         if util.isSameQuarter(date, util.FirstQuarter):
+#           ratio1 = data.loc[priorQ(date), KN['QuarterProfitRatio']]
+#           ratio2 = data.loc[priorXQ(date, 2), KN['QuarterProfitRatio']]
+#           ratio3 = data.loc[priorXQ(date, 3), KN['QuarterProfitRatio']]
+#           data.loc[date, key] = row.loc[KN['QuarterProfit']] * \
+#                                 (1 + ratio1 + ratio2 + ratio3)
+#           # data.loc[date, KN['QuarterProfitRatio']] = 1
+#         elif util.isSameQuarter(date, util.SecondQuarter):
+#           ratio = data.loc[priorXQ(date, 2), KN['HalfYearProfitRatio']]
+#           data.loc[date, key] = data.loc[date, KEY_NAME['jbmgsy']] * (
+#               1 + ratio)
+#         elif util.isSameQuarter(date, util.ThirdQuarter):
+#           ratio = data.loc[priorXQ(date, 3), KN['ThreeQuarterProfitRatio']]
+#           data.loc[date, key] = data.loc[date, KEY_NAME['jbmgsy']] * (
+#               1 + ratio)
+#         else:
+#           data.loc[date, key] = data.loc[date, KEY_NAME['jbmgsy']]
+#
+#       except KeyError as e:
+#         print(e)
+#
+#
+# class GenPerShareProfitForecast2(loop.AdjustOP):
+#   def __init__(self):
+#     import mock.yjyg
+#     self.yjyg = mock.yjyg.mock000725()
+#
+#   def forecastProfit(self, date):
+#     try:
+#       one = self.yjyg.loc[date]
+#       return one['forecastQuarter']
+#     except KeyError as e:
+#       return None
+#
+#   def columns(self):
+#     return [const.CWSJ_KEYWORD.ADJUST_NAME['PerShareProfitForecast']]
+#
+#   def op(self, data):
+#     key = KN['PerShareProfitForecast']
+#     for date, row in data.iterrows():
+#       try:
+#         if util.isSameQuarter(date, util.FirstQuarter):
+#           profit = row.loc[KN['QuarterProfit']]
+#           forecaastProfit = self.forecastProfit(nextXQ(date, 1))
+#           if profit < 0 and forecaastProfit is None:
+#             data.loc[date, key] = \
+#               profit + data.loc[priorXQ(date, 1), KN['QuarterProfit']] \
+#               + data.loc[priorXQ(date, 2), KN['QuarterProfit']] \
+#               + data.loc[priorXQ(date, 3), KN['QuarterProfit']]
+#           elif profit < 0 and forecaastProfit is not None:
+#             data.loc[date, key] = \
+#               profit + forecaastProfit \
+#               + data.loc[priorXQ(date, 2), KN['QuarterProfit']] \
+#               + data.loc[priorXQ(date, 3), KN['QuarterProfit']]
+#           elif profit > 0 and forecaastProfit is not None:
+#             data.loc[date, key] = (profit + forecaastProfit) * (1 + \
+#                                                                 data.loc[priorXQ(date, 1), KN['HalfYearProfitRatio']])
+#           else:
+#             data.loc[date, key] = \
+#               profit * (1 + data.loc[priorXQ(date, 1), KN['QuarterProfitRatio']] \
+#                         + data.loc[priorXQ(date, 2), KN['QuarterProfitRatio']] \
+#                         + data.loc[priorXQ(date, 3), KN['QuarterProfitRatio']])
+#         elif util.isSameQuarter(date, util.SecondQuarter):
+#           profit = row.loc[KEY_NAME['jbmgsy']]
+#           forecaastProfit = self.forecastProfit(nextXQ(date, 1))
+#           if profit > 0 and forecaastProfit is not None:
+#             data.loc[date, key] = (profit + forecaastProfit) * (
+#                   1 + data.loc[priorXQ(date, 2), KN['ThreeQuarterProfitRatio']])
+#           elif profit < 0 and forecaastProfit is not None:
+#             data.loc[date, key] = profit + forecaastProfit + data.loc[priorXQ(date, 2), KN['QuarterProfit']]
+#           elif profit > 0 and forecaastProfit is None:
+#             data.loc[date, key] = profit * (1 + data.loc[
+#               priorXQ(date, 2), KN['HalfYearProfitRatio']])
+#           else:
+#             data.loc[date, key] = profit + data.loc[priorXQ(date, 2), KN['QuarterProfit']] \
+#                                   + data.loc[priorXQ(date, 3), KN['QuarterProfit']]
+#         elif util.isSameQuarter(date, util.ThirdQuarter):
+#           profit = row.loc[KEY_NAME['jbmgsy']]
+#           forecaastProfit = self.forecastProfit(nextXQ(date, 1))
+#           if forecaastProfit is not None:
+#             data.loc[date, key] = profit + forecaastProfit
+#           elif profit < 0:
+#             data.loc[date, key] = profit + data.loc[priorXQ(date, 3), KN['QuarterProfit']]
+#           else:
+#             data.loc[date, key] = profit * (1 + data.loc[priorXQ(date, 3), KN['ThreeQuarterProfitRatio']])
+#
+#         else:
+#           data.loc[date, key] = row[KEY_NAME['jbmgsy']]
+#       except KeyError as e:
+#         print(e)
 
 
 #####################################################################################3
@@ -261,13 +261,18 @@ def test(code):
 
 
 def test2(code):
-  df = mock.mock000725()
-  # df = query_cwsj.QueryTop(-1, '000725')
-  c = df.columns
+  # df = mock.mock000725()
   # s = stock.Stock('002415')
-  # s.load(cwsj=None, yjyg=['2018-09-30', '2018-06-30', '2018-03-31'])
+  # s.load(file='/home/ken/workspace/tmp/im_out-adjust-000725(12).xlsx')
   # df = s.data
-  # df.to_excel('/home/ken/workspace/tmp/base-002415.xls')
+
+  s = stock.Stock('002415')
+  s.load(cwsj=None, yjyg=['2018-09-30', '2018-06-30', '2018-03-31'])
+  s.loadBenchmark(file='/home/ken/workspace/tmp/out-adjust-002415.xlsx')
+  df = s.data
+  # df = df.loc[:, [KN['date'], KN['zgb'], KN['jbmgsy']]]
+  bdf = s.benchmark_data
+  df.to_excel('/home/ken/workspace/tmp/base-002415.xls')
 
   oneLoop = loop.AdjustLoop()
   oneLoop.addOP(forecastProfit.GenForecastProfit())
@@ -286,7 +291,7 @@ def test2(code):
   # column = oneLoop.columns
   # re = df.loc[:, column]
   # re.to_excel('/home/ken/workspace/tmp/out-002415.xls')
-  oneLoop.verify(df)
+  oneLoop.verify(df, bdf)
 
 
 if __name__ == '__main__':

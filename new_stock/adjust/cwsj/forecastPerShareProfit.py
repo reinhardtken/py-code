@@ -50,16 +50,16 @@ class GenForecastPerShareProfit(loop.AdjustOPSimpleColumnCheck):
     forecastQuarterProfit = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
     if quarterProfit <= 0:
       if util.isnan(forecastQuarterProfit):
-        data.loc[date, self.key] = data.loc[date:priorXQ(date, 3), ADJUST_NAME['QuarterProfit']].sum()
+        data.loc[date, self.key] = data.loc[date:priorXQ(date, 3), ADJUST_NAME['QuarterProfit']].sum(skipna=False)
       else:
-        data.loc[date, self.key] = data.loc[date:priorXQ(date, 2), ADJUST_NAME['QuarterProfit']].sum()+ \
+        data.loc[date, self.key] = data.loc[date:priorXQ(date, 2), ADJUST_NAME['QuarterProfit']].sum(skipna=False)+ \
                                    forecastQuarterProfit
     else:
       if not util.isnan(forecastQuarterProfit):
         hpr = data.loc[priorQ(date), ADJUST_NAME['HalfYearProfitRatio']]
         data.loc[date, self.key] = (forecastQuarterProfit + quarterProfit)*(1+hpr)
       else:
-        total = data.loc[priorXQ(date, 1):priorXQ(date, 3), ADJUST_NAME['QuarterProfitRatio']].sum()
+        total = data.loc[priorXQ(date, 1):priorXQ(date, 3), ADJUST_NAME['QuarterProfitRatio']].sum(skipna=False)
         data.loc[date, self.key] = (1 + total)*quarterProfit
 
 
@@ -89,7 +89,7 @@ class GenForecastPerShareProfit(loop.AdjustOPSimpleColumnCheck):
       if profit > 0:
         data.loc[date, self.key] = profit*(1 + data.loc[priorXQ(date, 2), ADJUST_NAME['HalfYearProfitRatio']])
       else:
-        data.loc[date, self.key] = (profit + data.loc[priorXQ(date, 2):priorXQ(date, 3), ADJUST_NAME['QuarterProfit']].sum())
+        data.loc[date, self.key] = (profit + data.loc[priorXQ(date, 2):priorXQ(date, 3), ADJUST_NAME['QuarterProfit']].sum(skipna=False))
   def op(self, data):
     for date, row in data.iterrows():
       try:

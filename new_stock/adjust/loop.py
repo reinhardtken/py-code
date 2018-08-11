@@ -159,12 +159,14 @@ class AdjustLoop:
     return data
 
 
-  def verify(self, data: pd.DataFrame):
-    newData = data.copy()
+  def verify(self, data: pd.DataFrame, benchmark: pd.DataFrame=None):
+    if benchmark is None:
+      benchmark = data.copy()
+
     for one in self._opList:
-      one.before(newData)
-      one.op(newData)
-      suc = one.check(data, newData)
+      one.before(data)
+      one.op(data)
+      suc = one.check(benchmark, data)
       if not suc:
         print('%s test has failed!!!'%(one.name()))
         break
