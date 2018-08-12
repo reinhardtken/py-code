@@ -106,6 +106,7 @@ class CWSJ_KEYWORD:
     'PEMax': 'PE上限',
     'ValueMin': '估值下限',
     'ValueMax': '估值上限',
+    'LastYearROE': '上年净资产收益率(%)',
 
 
 

@@ -18,6 +18,7 @@ print(sys.path)
 import util
 import util.utils
 import const
+import query.query_stock_list as query
 import adjust.loop as loop
 
 
@@ -34,6 +35,9 @@ MONGODB_ID = const.MONGODB_ID
 
 
 class GenForecastProfit(loop.AdjustOPSimpleColumnCheck):
+  def __init__(self, code):
+    self.zgb = query.queryZgb(code)
+
   @property
   def key(self):
     return ADJUST_NAME['ForecastProfit']
@@ -47,38 +51,8 @@ class GenForecastProfit(loop.AdjustOPSimpleColumnCheck):
   def op(self, data):
     for date, row in data.iterrows():
       try:
-        # tmp1 = row[ADJUST_NAME['forecastl']]
-        # tmp2 = row[ADJUST_NAME['zgb']]
-        data.loc[date, self.key] = row[ADJUST_NAME['forecastl']] / row[ADJUST_NAME['zgb']]
+        data.loc[date, self.key] = row[ADJUST_NAME['forecastl']] / self.zgb
       except KeyError as e:
         print(e)
       except TypeError as e:
         print(e)
-
-  # def before(self, data):
-  #   # base = data.loc[:, ADJUST_NAME['ForecastProfit']].copy()
-  #
-  #   data.loc[:, self.key] = np.nan
-  #   # print(data.loc[:, ADJUST_NAME['ForecastProfit']])
-  #   # diff = base - data.loc[:, ADJUST_NAME['ForecastProfit']]
-  #   # print(diff)
-  #   pass
-  #
-  # def check(self, base, result):
-  #   def innerCheck(x):
-  #     if np.isnan(x):
-  #       return True
-  #     elif math.fabs(x) < 0.000001:
-  #       return True
-  #
-  #     return False
-  #
-  #   base = base.loc[:, ADJUST_NAME['ForecastProfit']]
-  #   result = result.loc[:, ADJUST_NAME['ForecastProfit']]
-  #   print(base)
-  #   print(result)
-  #   diff = base - result
-  #   print(diff)
-  #   re = diff.map(innerCheck)
-  #   print(re)
-  #   return re.all()

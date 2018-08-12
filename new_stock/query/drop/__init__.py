@@ -28,7 +28,7 @@ def dropAll(dbName, head):
   print(signature(db.drop_collection).parameters)
   print(names)
   for one in names:
-    if one.startswith(head):
+    if head == '#' or one.startswith(head):
       collection = db[one]
       collection.drop()
 
@@ -51,10 +51,18 @@ def allYJYG():
 def allEverydat():
   dropAll('stock-everyday', '2018')
 
+def allHS300():
+  dropAll('stock', 'hs300_stock_list')
+
+
+def allKData():
+  dropAll('stock_kdata', '#')
 
 
 if __name__ == '__main__':
-  allEverydat()
+  allKData()
+  # allHS300()
+  # allEverydat()
   # allYJYG()
   # allGPFH()
   # allMacroMX()

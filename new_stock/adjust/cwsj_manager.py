@@ -133,7 +133,7 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   # df.to_excel('/home/ken/workspace/tmp/stock.xls')
 
   oneLoop = loop.AdjustLoop()
-  oneLoop.addOP(forecastProfit.GenForecastProfit())
+  oneLoop.addOP(forecastProfit.GenForecastProfit(code))
   oneLoop.addOP(quarterProfit.GenQuarterProfit())
   oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio())
   oneLoop.addOP(forecastQuarterProfit.GenForecastProfit())
@@ -167,7 +167,7 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
 
 
 if __name__ == '__main__':
-  # calcOne('600487')
+  calcOne('002415', True, False, True)
   for one in const.STOCK_LIST:
     calcOne(one)
 

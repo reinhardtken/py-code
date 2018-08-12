@@ -36,21 +36,26 @@ MONGODB_ID = const.MONGODB_ID
 
 class GenLastYearProfit(loop.AdjustOPSimpleColumnCheck):
   @property
-  def key(self):
+  def keyP(self):
     return ADJUST_NAME['LastYearProfit']
 
+  @property
+  def keyR(self):
+    return ADJUST_NAME['LastYearROE']
+
   def columns(self):
-    return [self.key]
+    return [self.keyP, self.keyR]
 
   def baseColumns(self):
-    return [self.key]
+    return [self.keyP, ]#self.keyR]
 
   def op(self, data):
     for date, row in data.iterrows():
       try:
         d = util.priorYear(date)
         d = util.getFourthQuarter(d)
-        data.loc[date, self.key] = data.loc[d, KEY_NAME['jbmgsy']]
+        data.loc[date, self.keyP] = data.loc[d, KEY_NAME['jbmgsy']]
+        data.loc[date, self.keyR] = data.loc[d, KEY_NAME['jqjzcsyl']]
       except TypeError as e:
         print(e)
       except KeyError as e:

@@ -41,6 +41,7 @@ def QueryTop(top, code):
       break
 
   df = pd.DataFrame(out)
+  df.drop(KEY_NAME['zgb'], axis=1, inplace=True)
   df.set_index(KEY_NAME['date'], inplace=True)
   print(df)
 

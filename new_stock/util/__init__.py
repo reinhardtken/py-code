@@ -31,6 +31,16 @@ ThirdQuarter = datetime.datetime.strptime('09-30', '%m-%d')
 FourthQuarter = datetime.datetime.strptime('12-31', '%m-%d')
 
 
+def today():
+  now = datetime.datetime.now()
+  return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+def weekAgo():
+  t = today()
+  diff = datetime.timedelta(days=7)
+  return t - diff
+
+
 def getYear(date: datetime.datetime):
   return date.year
 
@@ -213,6 +223,59 @@ def genEmptyFunc():
     return {}
 
   return emptyFunc
+
+
+def genKeyCodeFunc(k):
+  return lambda v, d: {const.MONGODB_ID: v, k: v}
+
+def genKeyIDFunc(k):
+  return lambda v, d: {const.MONGODB_ID: k}
+
+def genKeyMONGODB_IDFunc():
+  return lambda v, d: {const.MONGODB_ID: v}
+
+
+def updateMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, insert=True, callback=None):
+  print('enter updateMongoDB')
+  client = MongoClient()
+  db = client[dbName]
+  collection = db[collectionName]
+
+  out = {'db': dbName, 'collection': collectionName}
+  detail = {}
+
+  for k, v in data.iterrows():
+    result = v.to_dict()
+    # print(dir(k))
+    result.update(keyFunc(k, result))
+
+    try:
+      if callback:
+        callback(result)
+    except Exception as e:
+      print(e)
+    try:
+      update_result = collection.update_one({'_id': result['_id']},
+                                          {'$set': result}, upsert=insert)
+
+      if update_result.matched_count > 0 and update_result.modified_count > 0:
+        print('update to Mongo: %s : %s'%(dbName, collectionName))
+        result['dbop'] = 'update'
+        detail[k] = result
+      elif update_result.upserted_id is not None:
+        print('insert to Mongo: %s : %s : %s' % (dbName, collectionName, update_result.upserted_id))
+        result['dbop'] = 'insert'
+        detail[k] = result
+
+    except errors.DuplicateKeyError as e:
+      print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (dbName, collectionName, result['_id']))
+    except Exception as e:
+      print(e)
+
+  out['detail'] = detail
+  print('leave updateMongoDB')
+  return out
+
 
 
 ###########################

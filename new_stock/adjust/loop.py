@@ -104,12 +104,12 @@ class AdjustOPSimpleColumnCheck(AdjustOP):
         return pd.Series([False, benchmark, x.result], index=['check', 'benchmark', 'result'])
 
 
-    if len(self.columns()) != len(self.baseColumns()):
+    if len(self.columns()) < len(self.baseColumns()):
       return False
 
     base_c = self.baseColumns()
     c = self.columns()
-    for index in range(len(self.columns())):
+    for index in range(len(self.baseColumns())):
       base = baseBenchmark.loc[:, base_c[index]]
       result = resultBenchmark.loc[:, c[index]]
       print('origin data!!!!')
