@@ -18,6 +18,7 @@ print(sys.path)
 import util
 import util.utils
 import const
+import query.query_stock_list as query
 import adjust.loop as loop
 
 
@@ -33,34 +34,23 @@ ADJUST_NAME = const.CWSJ_KEYWORD.ADJUST_NAME
 MONGODB_ID = const.MONGODB_ID
 
 
-
-class GenPEMinMax(loop.AdjustOPSimpleColumnCheck):
-  @property
-  def keyMin(self):
-    return ADJUST_NAME['PEMin']
+class GenForecastPE(loop.AdjustOPSimpleColumnCheck):
 
   @property
-  def keyMax(self):
-    return ADJUST_NAME['PEMax']
+  def key(self):
+    return ADJUST_NAME['ForcastPE']
 
   def columns(self):
-    return [self.keyMin, self.keyMax]
+    return [self.key]
 
   def baseColumns(self):
-    return [self.keyMin, self.keyMax]
+    return []
 
   def op(self, data):
     for date, row in data.iterrows():
       try:
-        fmg = row[ADJUST_NAME['ForecastMidGrowthRate']]
-        if not util.isnan(fmg):
-          if fmg > 0:
-            data.loc[date, self.keyMin] = 80 * fmg
-            data.loc[date, self.keyMax] = 150 * fmg
-          else:
-            data.loc[date, self.keyMin] = 1
-            data.loc[date, self.keyMax] = self.stock.gdp_speed * 100
-      except TypeError as e:
-        print(e)
+        data.loc[date, self.key] = self.stock.lastPrice / row[ADJUST_NAME['ForecastPerShareProfit']]
       except KeyError as e:
+        print(e)
+      except TypeError as e:
         print(e)

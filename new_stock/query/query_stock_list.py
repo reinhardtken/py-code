@@ -46,8 +46,6 @@ def queryOne(code):
   db = client['stock']
   collection = db['stock_list']
 
-  out = []
-
   cursor = collection.find({const.TS.BASICS.KEY_NAME['code']: code})
 
   for c in cursor:

@@ -34,32 +34,30 @@ MONGODB_ID = const.MONGODB_ID
 
 
 
-class GenPEMinMax(loop.AdjustOPSimpleColumnCheck):
+class GenDistanceMinMax(loop.AdjustOPSimpleColumnCheck):
   @property
   def keyMin(self):
-    return ADJUST_NAME['PEMin']
+    return ADJUST_NAME['DistanceMin']
 
   @property
   def keyMax(self):
-    return ADJUST_NAME['PEMax']
+    return ADJUST_NAME['DistanceMax']
 
   def columns(self):
     return [self.keyMin, self.keyMax]
 
   def baseColumns(self):
-    return [self.keyMin, self.keyMax]
+    return []
 
   def op(self, data):
     for date, row in data.iterrows():
       try:
-        fmg = row[ADJUST_NAME['ForecastMidGrowthRate']]
-        if not util.isnan(fmg):
-          if fmg > 0:
-            data.loc[date, self.keyMin] = 80 * fmg
-            data.loc[date, self.keyMax] = 150 * fmg
-          else:
-            data.loc[date, self.keyMin] = 1
-            data.loc[date, self.keyMax] = self.stock.gdp_speed * 100
+        valueMin = row[ADJUST_NAME['ValueMin']]
+        valueMax = row[ADJUST_NAME['ValueMax']]
+        if not util.isnan(valueMin):
+          data.loc[date, self.keyMin] = (self.stock.lastPrice - valueMin) / valueMin
+        if not util.isnan(valueMax):
+          data.loc[date, self.keyMax] = (valueMax - self.stock.lastPrice) / self.stock.lastPrice
       except TypeError as e:
         print(e)
       except KeyError as e:

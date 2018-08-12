@@ -17,6 +17,9 @@ import const
 
 
 class AdjustOP:
+  def __init__(self, stock):
+    self.stock = stock
+
   def columns(self):
     return []
 
@@ -172,6 +175,8 @@ class AdjustLoop:
         break
     else:
       print('test all pass !!!')
+
+    return data
 
 
   def genResult(self, data, ext=None):

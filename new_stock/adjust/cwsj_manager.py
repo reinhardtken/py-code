@@ -29,7 +29,9 @@ import adjust.cwsj.forecastFinalGrowthRate as forecastFinalGrowthRate
 import adjust.cwsj.peMinMax as peMinMax
 import adjust.cwsj.forecastPerShareProfit as forecastPerShareProfit
 import adjust.cwsj.valueMinMax as valueMinMax
-
+import adjust.cwsj.marketValue as marketValue
+import adjust.cwsj.forecastPE as forecastPE
+import adjust.cwsj.distanceMinMax as distanceMinMax
 
 
 priorXQ = util.priorXQuarter
@@ -54,71 +56,71 @@ def prepareResult(data):
   return df
 
 
-def test(code):
-  baseData = query_cwsj.QueryTop(-1, code)
-  adjustData = query_adjust_cwsj.QueryTop(-1, code)
-  print(baseData)
+# def test(code):
+#   baseData = query_cwsj.QueryTop(-1, code)
+#   adjustData = query_adjust_cwsj.QueryTop(-1, code)
+#   print(baseData)
+#
+#   if adjustData is None:
+#     adjustData = prepareResult(baseData)
+#   print(adjustData)
+#   # tmp = datetime.datetime.strptime('2018-03-31', '%Y-%m-%d')
+#   # tmp2 = datetime.datetime.strptime('2018-03-30', '%Y-%m-%d')
+#   # tmp3 = datetime.datetime.strptime('2017-03-31', '%Y-%m-%d')
+#   # # re = baseData.index.isin([tmp, tmp2, tmp3])
+#   # # print(re)
+#   # # print(baseData[re])
+#   # re = None
+#   # try:
+#   #     re = baseData.loc[tmp2]
+#   # except Exception as e:
+#   #     print(e)
+#
+#   # oneLoop = loop.AdjustLoop()
+#   # oneLoop.addOP(GenQuarterProfit())
+#   # oneLoop.addOP(GenQuarterProfitRatio())
+#   # oneLoop.addOP(GenQuarterForecastGrowthRate())
+#   # oneLoop.addOP(GenPerShareProfitForecast2())
+#   # df = oneLoop.loop(baseData)
+#   # df = oneLoop.genResult(df)
+#   # print(df)
+#
+#   util.saveMongoDB(df, util.genKeyDateFunc(KN['date']), 'stock-adjust', 'cwsj-' + code)
+#
 
-  if adjustData is None:
-    adjustData = prepareResult(baseData)
-  print(adjustData)
-  # tmp = datetime.datetime.strptime('2018-03-31', '%Y-%m-%d')
-  # tmp2 = datetime.datetime.strptime('2018-03-30', '%Y-%m-%d')
-  # tmp3 = datetime.datetime.strptime('2017-03-31', '%Y-%m-%d')
-  # # re = baseData.index.isin([tmp, tmp2, tmp3])
-  # # print(re)
-  # # print(baseData[re])
-  # re = None
-  # try:
-  #     re = baseData.loc[tmp2]
-  # except Exception as e:
-  #     print(e)
 
-  # oneLoop = loop.AdjustLoop()
-  # oneLoop.addOP(GenQuarterProfit())
-  # oneLoop.addOP(GenQuarterProfitRatio())
-  # oneLoop.addOP(GenQuarterForecastGrowthRate())
-  # oneLoop.addOP(GenPerShareProfitForecast2())
-  # df = oneLoop.loop(baseData)
-  # df = oneLoop.genResult(df)
-  # print(df)
-
-  util.saveMongoDB(df, util.genKeyDateFunc(KN['date']), 'stock-adjust', 'cwsj-' + code)
-
-
-
-def test2(code):
-  # df = mock.mock000725()
-  # s = stock.Stock('002415')
-  # s.load(file='/home/ken/workspace/tmp/im_out-adjust-000725(12).xlsx')
-  # df = s.data
-
-  s = stock.Stock('002415')
-  s.load(cwsj=None, yjyg=['2018-09-30', '2018-06-30', '2018-03-31'])
-  s.loadBenchmark(file='/home/ken/workspace/tmp/out-adjust-002415.xlsx')
-  df = s.data
-  # df = df.loc[:, [KN['date'], KN['zgb'], KN['jbmgsy']]]
-  bdf = s.benchmark_data
-  df.to_excel('/home/ken/workspace/tmp/base-002415.xls')
-
-  oneLoop = loop.AdjustLoop()
-  oneLoop.addOP(forecastProfit.GenForecastProfit())
-  oneLoop.addOP(quarterProfit.GenQuarterProfit())
-  oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio())
-  oneLoop.addOP(forecastQuarterProfit.GenForecastProfit())
-  oneLoop.addOP(lastYearProfit.GenLastYearProfit())
-  oneLoop.addOP(forecastMidGrowthRate.GenForecastMidGrowthRate())
-  oneLoop.addOP(forecastFinalGrowthRate.GenForecastFinalGrowthRate())
-  oneLoop.addOP(peMinMax.GenPEMinMax())
-  oneLoop.addOP(forecastPerShareProfit.GenForecastPerShareProfit())
-  oneLoop.addOP(valueMinMax.GenValueMinMax())
-  c = oneLoop.columns
-  # df = oneLoop.loop(df)
-  # oneLoop.columns.extend([KEY_NAME['jbmgsy'], ADJUST_NAME['zgb'], const.YJYG_KEYWORD.KEY_NAME['forecastl']])
-  # column = oneLoop.columns
-  # re = df.loc[:, column]
-  # re.to_excel('/home/ken/workspace/tmp/out-002415.xls')
-  oneLoop.verify(df, bdf)
+# def test2(code):
+#   # df = mock.mock000725()
+#   # s = stock.Stock('002415')
+#   # s.load(file='/home/ken/workspace/tmp/im_out-adjust-000725(12).xlsx')
+#   # df = s.data
+#
+#   s = stock.Stock('002415')
+#   s.load(cwsj=None, yjyg=['2018-09-30', '2018-06-30', '2018-03-31'])
+#   s.loadBenchmark(file='/home/ken/workspace/tmp/out-adjust-002415.xlsx')
+#   df = s.data
+#   # df = df.loc[:, [KN['date'], KN['zgb'], KN['jbmgsy']]]
+#   bdf = s.benchmark_data
+#   df.to_excel('/home/ken/workspace/tmp/base-002415.xls')
+#
+#   oneLoop = loop.AdjustLoop()
+#   oneLoop.addOP(forecastProfit.GenForecastProfit())
+#   oneLoop.addOP(quarterProfit.GenQuarterProfit())
+#   oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio())
+#   oneLoop.addOP(forecastQuarterProfit.GenForecastProfit())
+#   oneLoop.addOP(lastYearProfit.GenLastYearProfit())
+#   oneLoop.addOP(forecastMidGrowthRate.GenForecastMidGrowthRate())
+#   oneLoop.addOP(forecastFinalGrowthRate.GenForecastFinalGrowthRate())
+#   oneLoop.addOP(peMinMax.GenPEMinMax())
+#   oneLoop.addOP(forecastPerShareProfit.GenForecastPerShareProfit())
+#   oneLoop.addOP(valueMinMax.GenValueMinMax())
+#   c = oneLoop.columns
+#   # df = oneLoop.loop(df)
+#   # oneLoop.columns.extend([KEY_NAME['jbmgsy'], ADJUST_NAME['zgb'], const.YJYG_KEYWORD.KEY_NAME['forecastl']])
+#   # column = oneLoop.columns
+#   # re = df.loc[:, column]
+#   # re.to_excel('/home/ken/workspace/tmp/out-002415.xls')
+#   oneLoop.verify(df, bdf)
 
 
 def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
@@ -133,16 +135,21 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   # df.to_excel('/home/ken/workspace/tmp/stock.xls')
 
   oneLoop = loop.AdjustLoop()
-  oneLoop.addOP(forecastProfit.GenForecastProfit(code))
-  oneLoop.addOP(quarterProfit.GenQuarterProfit())
-  oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio())
-  oneLoop.addOP(forecastQuarterProfit.GenForecastProfit())
-  oneLoop.addOP(lastYearProfit.GenLastYearProfit())
-  oneLoop.addOP(forecastMidGrowthRate.GenForecastMidGrowthRate())
-  oneLoop.addOP(forecastFinalGrowthRate.GenForecastFinalGrowthRate())
-  oneLoop.addOP(peMinMax.GenPEMinMax())
-  oneLoop.addOP(forecastPerShareProfit.GenForecastPerShareProfit())
-  oneLoop.addOP(valueMinMax.GenValueMinMax())
+  oneLoop.addOP(marketValue.GenMarketValue(s))
+  oneLoop.addOP(marketValue.GenZGB(s))
+  oneLoop.addOP(marketValue.GenIndustry(s))
+  oneLoop.addOP(forecastProfit.GenForecastProfit(s))
+  oneLoop.addOP(quarterProfit.GenQuarterProfit(s))
+  oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio(s))
+  oneLoop.addOP(forecastQuarterProfit.GenForecastProfit(s))
+  oneLoop.addOP(lastYearProfit.GenLastYearProfit(s))
+  oneLoop.addOP(forecastMidGrowthRate.GenForecastMidGrowthRate(s))
+  oneLoop.addOP(forecastFinalGrowthRate.GenForecastFinalGrowthRate(s))
+  oneLoop.addOP(peMinMax.GenPEMinMax(s))
+  oneLoop.addOP(forecastPerShareProfit.GenForecastPerShareProfit(s))
+  oneLoop.addOP(forecastPE.GenForecastPE(s))
+  oneLoop.addOP(valueMinMax.GenValueMinMax(s))
+  oneLoop.addOP(distanceMinMax.GenDistanceMinMax(s))
   # c = oneLoop.columns
   # df = oneLoop.loop(df)
   # oneLoop.columns.extend([KEY_NAME['jbmgsy'], ADJUST_NAME['zgb'], const.YJYG_KEYWORD.KEY_NAME['forecastl']])
@@ -151,7 +158,7 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   # re.to_excel('/home/ken/workspace/tmp/out-002415.xls')
   dfOut = None
   if benchmark:
-    oneLoop.verify(df, bdf)
+    dfOut = oneLoop.verify(df, bdf)
   else:
     dfOut = oneLoop.loop(df)
 
@@ -167,7 +174,7 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
 
 
 if __name__ == '__main__':
-  calcOne('002415', True, False, True)
+  calcOne('002415', True, True, True)
   for one in const.STOCK_LIST:
     calcOne(one)
 

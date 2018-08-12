@@ -107,11 +107,16 @@ class CWSJ_KEYWORD:
     'ValueMin': '估值下限',
     'ValueMax': '估值上限',
     'LastYearROE': '上年净资产收益率(%)',
+    'MarketValue': '市值',
+    'ForcastPE': '目前PE(预)',
+    'DistanceMin': '下限距离',
+    'DistanceMax': '上限距离',
 
-
-
-    #for test,may not be right place
+    #for output may not be right here
     'zgb': '总股本',
+    'industry': '所属行业',
+
+    #for test,may not be right here
     'forecastl': '预计净利润下限',
     'djmgsy_jy': '当季每股收益-检验',
     'jyjdbl_jy': '较一季度比例-检验',

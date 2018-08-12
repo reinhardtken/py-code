@@ -35,8 +35,6 @@ MONGODB_ID = const.MONGODB_ID
 
 
 class GenForecastProfit(loop.AdjustOPSimpleColumnCheck):
-  def __init__(self, code):
-    self.zgb = query.queryZgb(code)
 
   @property
   def key(self):
@@ -51,7 +49,7 @@ class GenForecastProfit(loop.AdjustOPSimpleColumnCheck):
   def op(self, data):
     for date, row in data.iterrows():
       try:
-        data.loc[date, self.key] = row[ADJUST_NAME['forecastl']] / self.zgb
+        data.loc[date, self.key] = row[ADJUST_NAME['forecastl']] / self.stock.zgb
       except KeyError as e:
         print(e)
       except TypeError as e:

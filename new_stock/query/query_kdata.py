@@ -21,28 +21,26 @@ import const.TS as TS
 
 
 
-def QueryLastKData(code):
+def queryLastKData(code):
   client = MongoClient()
   db = client['stock_kdata']
   collection = db[code]
 
-  out = []
-
   cursor = collection.find().sort('date', pymongo.DESCENDING)
 
   for c in cursor:
-    out.append(c)
-    break
-
-  if len(out):
-    df = pd.DataFrame(out)
-    df.set_index(const.TS.BASICS.KEY_NAME['code'], inplace=True)
+    df = pd.Series(c)
     return df
   else:
     return None
 
 
+def queryLastClosePrice(code):
+  one = queryLastKData(code)
+  return one['close']
+
+
 
 if __name__ == '__main__':
-  QueryLastKData('002415')
+  queryLastKData('002415')
   pass
