@@ -47,6 +47,10 @@ class Stock:
     return self._basicInfo[const.TS.BASICS.KEY_NAME['zgb']]
 
   @property
+  def name(self):
+    return self._basicInfo[const.TS.BASICS.KEY_NAME['name']]
+
+  @property
   def industry(self):
     return self._basicInfo[const.TS.BASICS.KEY_NAME['industry']]
 
@@ -82,7 +86,11 @@ class Stock:
     if 'yjyg' in kwargs:
       dates = kwargs['yjyg']
       df = query.query_yjyg.Query(dates, self.code)
-      self._df = self._df.join(df, how='outer')
+      #drop
+      if len(df.index):
+        df.drop(const.YJYG_KEYWORD.KEY_NAME['scode'], axis=1, inplace=True)
+        df.drop(const.YJYG_KEYWORD.KEY_NAME['sname'], axis=1, inplace=True)
+        self._df = self._df.join(df, how='outer')
 
     #sort
     self._df.sort_index(inplace=True, ascending=False)
@@ -91,6 +99,9 @@ class Stock:
     #   self._df.loc[:, const.CWSJ_KEYWORD.KEY_NAME['zgb']].fillna(method='ffill', inplace=True)
     # except KeyError as e:
     #   print(e)
+    #drop
+    #c = self._df.columns
+
 
 
     #scala data

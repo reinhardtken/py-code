@@ -20,7 +20,7 @@ import const.TS as TS
 
 
 
-def QueryAll():
+def queryAll():
   client = MongoClient()
   db = client['stock']
   collection = db['stock_list']
@@ -40,7 +40,7 @@ def QueryAll():
     return None
 
 
-def QueryCodeList():
+def queryCodeList():
   client = MongoClient()
   db = client['stock']
   collection = db['hs300_stock_list']
@@ -58,5 +58,5 @@ def QueryCodeList():
 
 
 if __name__ == '__main__':
-  QueryCodeList()
+  queryCodeList()
   pass

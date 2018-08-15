@@ -93,3 +93,49 @@ class GenIndustry(loop.AdjustOPSimpleColumnCheck):
       print(e)
     except KeyError as e:
       print(e)
+
+
+
+class GenLastPrice(loop.AdjustOPSimpleColumnCheck):
+  @property
+  def key(self):
+    return ADJUST_NAME['lastPrice']
+
+  def columns(self):
+    return [self.key]
+
+  def baseColumns(self):
+    return []
+
+  def op(self, data):
+    try:
+      data.loc[:, self.key] = self.stock.lastPrice
+    except TypeError as e:
+      print(e)
+    except KeyError as e:
+      print(e)
+
+
+class GenCodeAndName(loop.AdjustOPSimpleColumnCheck):
+  @property
+  def keyC(self):
+    return ADJUST_NAME['code']
+
+  @property
+  def keyN(self):
+    return ADJUST_NAME['name']
+
+  def columns(self):
+    return [self.keyC, self.keyN]
+
+  def baseColumns(self):
+    return []
+
+  def op(self, data):
+    try:
+      data.loc[:, self.keyC] = self.stock.code
+      data.loc[:, self.keyN] = self.stock.name
+    except TypeError as e:
+      print(e)
+    except KeyError as e:
+      print(e)

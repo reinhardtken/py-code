@@ -28,7 +28,6 @@ def queryAll():
   out = []
 
   cursor = collection.find()
-  index = 0
   for c in cursor:
     out.append(c)
 

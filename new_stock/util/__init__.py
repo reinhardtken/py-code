@@ -138,6 +138,25 @@ def nowQuarter():
   else:
     return now.replace(month=12, day=31, hour=0, minute=0, second=0, microsecond=0)
 
+
+def performancePreviewRange():
+  now = datetime.datetime.now()
+  nowDay = now.replace(hour=0, minute=0, second=0, microsecond=0)
+  first = now.replace(month=4, day=30, hour=0, minute=0, second=0, microsecond=0)
+  second = now.replace(month=8, day=31, hour=0, minute=0, second=0, microsecond=0)
+  third = now.replace(month=10, day=31, hour=0, minute=0, second=0, microsecond=0)
+  if (now - first).total_seconds() < 0:
+    return [getFirstQuarter(nowDay), getSecondQuarter(nowDay)]
+  elif (now -second).total_seconds() < 0:
+    return [getSecondQuarter(nowDay), getThirdQuarter(nowDay)]
+  elif (now - third).total_seconds() < 0:
+    return [getThirdQuarter(nowDay), getFourthQuarter(nowDay)]
+  else:
+    return [getFourthQuarter(nowDay), getFirstQuarter(nextYear(nowDay))]
+
+
+
+
 def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=None):
   client = MongoClient()
   db = client[dbName]

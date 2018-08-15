@@ -115,6 +115,9 @@ class CWSJ_KEYWORD:
     #for output may not be right here
     'zgb': '总股本',
     'industry': '所属行业',
+    'lastPrice': '目前价格',
+    'code': '代码',
+    'name': '名称',
 
     #for test,may not be right here
     'forecastl': '预计净利润下限',
@@ -269,6 +272,10 @@ STOCK_LIST = {
   "300741",
   "603288",
 }
+
+TEST_STOCK_LIST = ['000725',
+  "000651",
+  "002508",]
 
 
 

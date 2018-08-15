@@ -5,6 +5,7 @@ import json
 
 # thirdpart
 import pandas as pd
+import numpy as np
 # this project
 if __name__ == '__main__':
   import sys
@@ -123,6 +124,27 @@ def prepareResult(data):
 #   oneLoop.verify(df, bdf)
 
 
+def fillOut(df):
+  forecastNow = np.nan
+  forecastNext = np.nan
+  notNull = df[ADJUST_NAME['ForecastQuarterProfit']].notnull()
+  out = df.loc[notNull, :].head(1)
+  if len(out.index):
+    r = util.performancePreviewRange()
+    try:
+      forecastNow = df.loc[r[0], ADJUST_NAME['ForecastQuarterProfit']]
+      forecastNext = df.loc[r[1], ADJUST_NAME['ForecastQuarterProfit']]
+    except KeyError as e:
+      print(e)
+    pass
+
+  notNull = df[KEY_NAME['jbmgsy']].notnull()
+  out = df.loc[notNull, :].head(1)
+  out['业绩预告（本期）'] = forecastNow
+  out['业绩预告（下期）'] = forecastNext
+  print(out)
+  return out
+
 def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   print('calcOne %s'%(code))
   s = stock.Stock(code)
@@ -138,6 +160,8 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   oneLoop.addOP(marketValue.GenMarketValue(s))
   oneLoop.addOP(marketValue.GenZGB(s))
   oneLoop.addOP(marketValue.GenIndustry(s))
+  oneLoop.addOP(marketValue.GenLastPrice(s))
+  oneLoop.addOP(marketValue.GenCodeAndName(s))
   oneLoop.addOP(forecastProfit.GenForecastProfit(s))
   oneLoop.addOP(quarterProfit.GenQuarterProfit(s))
   oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio(s))
@@ -172,10 +196,20 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   if saveFile:
     dfOut.to_excel('/home/ken/workspace/tmp/out-' + code + '.xls')
 
+  return dfOut
+
 
 if __name__ == '__main__':
-  calcOne('002415', True, True, True)
+  # calcOne('002415', True, True, True)
+  onedf = pd.DataFrame()
   for one in const.STOCK_LIST:
-    calcOne(one)
+    if len(onedf.index) == 0:
+      onedf = fillOut(calcOne(one))
+    else:
+      onedf = onedf.append(fillOut(calcOne(one)))
+
+
+
+  onedf.to_excel('/home/ken/workspace/tmp/out-all.xls')
 
   pass
