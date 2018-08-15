@@ -124,6 +124,46 @@ def prepareResult(data):
 #   oneLoop.verify(df, bdf)
 
 
+
+def test(saveDB=True, saveFile=False, benchmark=False):
+  s = stock.Stock('000725')
+  mock = {
+    'file': '/home/ken/workspace/tmp/im_out-adjust-000725(12).xlsx',
+    'zgb': 33862290000,
+  }
+  s.load(mock=mock)
+  # s = stock.Stock(code)
+  # s.load(cwsj=True, yjyg=['2018-09-30', '2018-06-30', '2018-03-31'])
+  # if benchmark:
+  #   s.loadBenchmark(file='/home/ken/workspace/tmp/out-adjust-' + code + '.xlsx')
+  df = s.data
+  # df = df.loc[:, [KN['date'], KN['zgb'], KN['jbmgsy']]]
+  bdf =df.copy()
+
+
+  oneLoop = loop.AdjustLoop()
+  oneLoop.addOP(marketValue.GenMarketValue(s))
+  oneLoop.addOP(marketValue.GenZGB(s))
+  oneLoop.addOP(marketValue.GenIndustry(s))
+  oneLoop.addOP(marketValue.GenLastPrice(s))
+  oneLoop.addOP(marketValue.GenCodeAndName(s))
+  oneLoop.addOP(forecastProfit.GenForecastProfit(s))
+  oneLoop.addOP(quarterProfit.GenQuarterProfit(s))
+  oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio(s))
+  oneLoop.addOP(forecastQuarterProfit.GenForecastProfit(s))
+  oneLoop.addOP(lastYearProfit.GenLastYearProfit(s))
+  oneLoop.addOP(forecastMidGrowthRate.GenForecastMidGrowthRate(s))
+  oneLoop.addOP(forecastFinalGrowthRate.GenForecastFinalGrowthRate(s))
+  oneLoop.addOP(peMinMax.GenPEMinMax(s))
+  oneLoop.addOP(forecastPerShareProfit.GenForecastPerShareProfit(s))
+  oneLoop.addOP(forecastPE.GenForecastPE(s))
+  oneLoop.addOP(valueMinMax.GenValueMinMax(s))
+  oneLoop.addOP(distanceMinMax.GenDistanceMinMax(s))
+  dfOut = oneLoop.verify(df, bdf)
+
+
+
+
 def fillOut(df):
   forecastNow = np.nan
   forecastNext = np.nan
@@ -200,13 +240,20 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
 
 
 if __name__ == '__main__':
+  # test()
   # calcOne('002415', True, True, True)
   onedf = pd.DataFrame()
-  for one in const.STOCK_LIST:
+  for one in const.TEST_STOCK_LIST:
+    if one == '603516':
+      pass
+    tmp = calcOne(one)
+    if one == '603516':
+      tmp.to_excel('/home/ken/workspace/tmp/603516.xls')
+    tmp2 = fillOut(tmp)
     if len(onedf.index) == 0:
-      onedf = fillOut(calcOne(one))
+      onedf = tmp2
     else:
-      onedf = onedf.append(fillOut(calcOne(one)))
+      onedf = onedf.append(tmp2)
 
 
 

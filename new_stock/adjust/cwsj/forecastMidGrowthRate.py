@@ -47,7 +47,11 @@ class GenForecastMidGrowthRate(loop.AdjustOPSimpleColumnCheck):
 
   def processFirstQuarter(self, data, date, row):
     quarterProfit = row[ADJUST_NAME['QuarterProfit']]
-    forecastQuarterProfit = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    forecastQuarterProfit = np.nan
+    try:
+      forecastQuarterProfit = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    except KeyError as e:
+      print(e)
     if quarterProfit <= 0:
       if util.isnan(forecastQuarterProfit):
         fq = priorXQ(date, 1)
@@ -56,16 +60,16 @@ class GenForecastMidGrowthRate(loop.AdjustOPSimpleColumnCheck):
         jbmgsy = data.loc[fq, KEY_NAME['jbmgsy']]
         data.loc[date, self.key] = total/jbmgsy - 1
       else:
-        fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+        # fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
         total = data.loc[date:priorXQ(date, 2), ADJUST_NAME['QuarterProfit']].sum(skipna=False)
         jbmgsy = data.loc[priorQ(date), KEY_NAME['jbmgsy']]
-        data.loc[date, self.key] = (fqp+total) / jbmgsy - 1
+        data.loc[date, self.key] = (forecastQuarterProfit+total) / jbmgsy - 1
     else:
       if not util.isnan(forecastQuarterProfit):
         hpr = data.loc[priorQ(date), ADJUST_NAME['HalfYearProfitRatio']]
-        fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+        # fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
         jbmgsy = data.loc[priorQ(date), KEY_NAME['jbmgsy']]
-        data.loc[date, self.key] = (fqp + quarterProfit)*(1+hpr) / jbmgsy - 1
+        data.loc[date, self.key] = (forecastQuarterProfit + quarterProfit)*(1+hpr) / jbmgsy - 1
       else:
         total = data.loc[priorXQ(date, 1):priorXQ(date, 3), ADJUST_NAME['QuarterProfitRatio']].sum(skipna=False)
         jbmgsy = data.loc[priorQ(date), KEY_NAME['jbmgsy']]
@@ -77,7 +81,11 @@ class GenForecastMidGrowthRate(loop.AdjustOPSimpleColumnCheck):
 
 
   def processThirdQuarter(self, data, date, row):
-    fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    fqp = np.nan
+    try:
+      fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    except KeyError as e:
+      print(e)
     profit = row[KEY_NAME['jbmgsy']]
     if not util.isnan(fqp):
       data.loc[date, self.key] = (fqp+profit)/data.loc[priorXQ(date, 3), KEY_NAME['jbmgsy']] - 1
@@ -89,7 +97,11 @@ class GenForecastMidGrowthRate(loop.AdjustOPSimpleColumnCheck):
                                  data.loc[priorXQ(date, 3), KEY_NAME['jbmgsy']] - 1
 
   def processSecondQuarter(self, data, date, row):
-    fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    fqp = np.nan
+    try:
+      fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    except KeyError as e:
+      print(e)
     profit = row[KEY_NAME['jbmgsy']]
     if not util.isnan(fqp):
       if profit > 0:

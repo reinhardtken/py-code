@@ -76,9 +76,9 @@ class Stock:
     return df
 
   def load(self, **kwargs):
-    if 'file' in kwargs:
-      self._df = Stock.loadFile(kwargs['file'])
-      return
+    if 'mock' in kwargs:
+      self._df = Stock.loadFile(kwargs['mock']['file'])
+      # return
 
     if 'cwsj' in kwargs and kwargs['cwsj']:
       self._df = query.query_cwsj.QueryTop(-1, self.code)
@@ -109,6 +109,13 @@ class Stock:
     self._gdp_speed = 0.067
     self._lastPrice = query.query_kdata.queryLastClosePrice(self.code)
     self._zsz = self.zgb * self.lastPrice
+
+
+    # mock
+    if 'mock' in kwargs:
+      self._basicInfo[const.TS.BASICS.KEY_NAME['zgb']] = kwargs['mock']['zgb']
+
+
 
 
   def loadBenchmark(self, **kwargs):

@@ -47,7 +47,11 @@ class GenForecastPerShareProfit(loop.AdjustOPSimpleColumnCheck):
 
   def processFirstQuarter(self, data, date, row):
     quarterProfit = row[ADJUST_NAME['QuarterProfit']]
-    forecastQuarterProfit = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    forecastQuarterProfit = np.nan
+    try:
+      forecastQuarterProfit = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    except KeyError as e:
+      print(e)
     if quarterProfit <= 0:
       if util.isnan(forecastQuarterProfit):
         data.loc[date, self.key] = data.loc[date:priorXQ(date, 3), ADJUST_NAME['QuarterProfit']].sum(skipna=False)
@@ -68,7 +72,11 @@ class GenForecastPerShareProfit(loop.AdjustOPSimpleColumnCheck):
 
 
   def processThirdQuarter(self, data, date, row):
-    fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    fqp = np.nan
+    try:
+      fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    except KeyError as e:
+      print(e)
     profit = row[KEY_NAME['jbmgsy']]
     if not util.isnan(fqp):
       data.loc[date, self.key] = fqp+profit
@@ -78,7 +86,11 @@ class GenForecastPerShareProfit(loop.AdjustOPSimpleColumnCheck):
       data.loc[date, self.key] = profit*(1+data.loc[priorXQ(date, 3), ADJUST_NAME['ThreeQuarterProfitRatio']])
 
   def processSecondQuarter(self, data, date, row):
-    fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    fqp = np.nan
+    try:
+      fqp = data.loc[nextXQ(date, 1), ADJUST_NAME['ForecastQuarterProfit']]
+    except KeyError as e:
+      print(e)
     profit = row[KEY_NAME['jbmgsy']]
     if not util.isnan(fqp):
       if profit > 0:
