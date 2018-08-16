@@ -36,8 +36,14 @@ def genString2NumberFunc(key):
       succ, v = tryFloat(newV)
       if succ == True:
         return k, v
-      if v[-1] == '亿':  # 938亿
-        _, v = tryFloat(v[:-1]) * 100000000
+      # if v.find('万亿') != -1:
+      #   print(v)
+      if v[-2:] == '万亿':  # 2.36万亿
+        _, v = tryFloat(v[:-2])
+        v *= 100000000 * 10000
+      elif v[-1] == '亿':  # 938亿
+        _, v = tryFloat(v[:-1])
+        v *= 100000000
 
 
     return k, v
@@ -67,7 +73,10 @@ def dealwithData(data, itemList):
   out = {}
   for k, v in data.items():
     for op in itemList:
-      k, v = op(k, v)
+      try:
+        k, v = op(k, v)
+      except ValueError as e:
+        print(e)
 
     if k is not None:
       out[k] = v
@@ -76,22 +85,22 @@ def dealwithData(data, itemList):
 
 
 
-def readList():
-  import xlrd
-
-  workbook = xlrd.open_workbook('/home/ken/workspace/tmp/in.xlsx')
-
-  sheet = workbook.sheet_by_name('股票池')
-  '''
-  sheet.nrows　　　　sheet的行数
-  sheet.row_values(index)　　　　返回某一行的值列表
-　　sheet.row(index)　　　　返回一个row对象，可以通过row[index]来获取这行里的单元格cell对象'''
-  nrows = sheet.nrows
-  out = []
-  for index in range(1, nrows):
-    print(nrows)
-    row = sheet.row(index)
-    out.append(row[0].value)
-
-  for one in out:
-    print('"' + str(one) + '",')
+# def readList():
+#   import xlrd
+#
+#   workbook = xlrd.open_workbook('/home/ken/workspace/tmp/in.xlsx')
+#
+#   sheet = workbook.sheet_by_name('股票池')
+#   '''
+#   sheet.nrows　　　　sheet的行数
+#   sheet.row_values(index)　　　　返回某一行的值列表
+# 　　sheet.row(index)　　　　返回一个row对象，可以通过row[index]来获取这行里的单元格cell对象'''
+#   nrows = sheet.nrows
+#   out = []
+#   for index in range(1, nrows):
+#     print(nrows)
+#     row = sheet.row(index)
+#     out.append(row[0].value)
+#
+#   for one in out:
+#     print('"' + str(one) + '",')

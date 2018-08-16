@@ -41,8 +41,14 @@ def QueryTop(top, code):
       break
 
   df = pd.DataFrame(out)
-  df.drop(KEY_NAME['zgb'], axis=1, inplace=True)
-  df.set_index(KEY_NAME['date'], inplace=True)
+  try:
+    df.set_index(KEY_NAME['date'], inplace=True)
+  except KeyError as e:
+    print(e)
+  try:
+    df.drop(KEY_NAME['zgb'], axis=1, inplace=True)
+  except KeyError as e:
+    print(e)
   print(df)
 
   # df.to_excel('/home/ken/workspace/tmp/new-000725.xls')

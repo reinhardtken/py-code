@@ -54,6 +54,8 @@ class GenForecastProfit(loop.AdjustOPSimpleColumnCheck):
             data.loc[priorQ(date), KEY_NAME['jbmgsy']]
       except KeyError as e:
         print(e)
+      except TypeError as e:
+        print(e)
 
   # def before(self, data):
   #   data.loc[:, self.key] = np.nan
