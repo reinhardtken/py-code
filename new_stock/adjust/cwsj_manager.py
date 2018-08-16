@@ -172,8 +172,8 @@ def filterOut(df):
   if len(out.index):
     r = util.performancePreviewRange()
     try:
-      forecastNow = df.loc[r[0], ADJUST_NAME['ForecastQuarterProfit']]
-      forecastNext = df.loc[r[1], ADJUST_NAME['ForecastQuarterProfit']]
+      forecastNow = df.loc[r[0], const.YJYG_KEYWORD.KEY_NAME['increasel']]
+      forecastNext = df.loc[r[1], const.YJYG_KEYWORD.KEY_NAME['increasel']]
     except KeyError as e:
       print(e)
     pass
@@ -255,7 +255,7 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   c = oneLoop.columns
   # c.extend([KEY_NAME['date'], KEY_NAME['jbmgsy'], ADJUST_NAME['zgb'], const.YJYG_KEYWORD.KEY_NAME['forecastl']])
   if saveDB:
-    dfOut = oneLoop.genResult(dfOut, [KEY_NAME['jbmgsy'], ADJUST_NAME['zgb'], const.YJYG_KEYWORD.KEY_NAME['forecastl']])
+    dfOut = oneLoop.genResult(dfOut, [KEY_NAME['jbmgsy'], ADJUST_NAME['zgb'], const.YJYG_KEYWORD.KEY_NAME['increasel']])
     #
     util.saveMongoDB(dfOut, util.genKeyDateFunc(const.MONGODB_ID), 'stock-out', 'cwsj-' + code)
 
@@ -266,17 +266,22 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
 
 
 if __name__ == '__main__':
+  import query.query_hs300
+  STOCK_LIST = query.query_hs300.queryCodeList()
+  # STOCK_LIST = ['000786']
   # test()
   # calcOne('002415', True, True, True)
   onedf = pd.DataFrame()
-  for one in const.STOCK_LIST:
+  for one in STOCK_LIST:
     # if one == '603516':
     #   pass
     tmp = calcOne(one)
-    # if one == '603516':
-    #   tmp.to_excel('/home/ken/workspace/tmp/603516.xls')
     tmp2 = filterOut(tmp)
     tmp3 = changeColumns(tmp2)
+    # if one == '000786':
+    #   tmp.to_excel('/home/ken/workspace/tmp/000786-1.xls')
+    #   tmp2.to_excel('/home/ken/workspace/tmp/000786-2.xls')
+    #   tmp3.to_excel('/home/ken/workspace/tmp/000786-3.xls')
     if len(onedf.index) == 0:
       onedf = tmp3
     else:
@@ -284,6 +289,6 @@ if __name__ == '__main__':
 
 
 
-  onedf.to_excel('/home/ken/workspace/tmp/out-all.xls')
+  onedf.to_excel('/home/ken/workspace/tmp/out-all.xls', index=False)
 
   pass
