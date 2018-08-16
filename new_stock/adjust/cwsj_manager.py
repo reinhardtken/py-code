@@ -164,7 +164,7 @@ def test(saveDB=True, saveFile=False, benchmark=False):
 
 
 
-def fillOut(df):
+def filterOut(df):
   forecastNow = np.nan
   forecastNext = np.nan
   notNull = df[ADJUST_NAME['ForecastQuarterProfit']].notnull()
@@ -180,10 +180,36 @@ def fillOut(df):
 
   notNull = df[KEY_NAME['jbmgsy']].notnull()
   out = df.loc[notNull, :].head(1)
-  out['业绩预告（本期）'] = forecastNow
-  out['业绩预告（下期）'] = forecastNext
+  out[ADJUST_NAME['ForecastNow']] = forecastNow
+  out[ADJUST_NAME['ForecastNext']] = forecastNext
   print(out)
   return out
+
+
+
+def changeColumns(df):
+  return df[[ADJUST_NAME['code'],
+             ADJUST_NAME['name'],
+             ADJUST_NAME['ForcastPE'],
+             ADJUST_NAME['ForecastNow'],
+             ADJUST_NAME['ForecastNext'],
+             ADJUST_NAME['DistanceMin'],
+             ADJUST_NAME['DistanceMax'],
+             ADJUST_NAME['lastPrice'],
+             ADJUST_NAME['ValueMin'],
+             ADJUST_NAME['ValueMax'],
+             ADJUST_NAME['LastYearROE'],
+             ADJUST_NAME['LastYearProfit'],
+             ADJUST_NAME['ForecastPerShareProfit'],
+             ADJUST_NAME['ForecastFinalGrowthRate'],
+             ADJUST_NAME['PEMin'],
+             ADJUST_NAME['PEMax'],
+             ADJUST_NAME['MarketValue'],
+             ADJUST_NAME['industry'],
+             '_id',
+             KEY_NAME['jbmgsy'],
+             ]]
+
 
 def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   print('calcOne %s'%(code))
@@ -243,17 +269,18 @@ if __name__ == '__main__':
   # test()
   # calcOne('002415', True, True, True)
   onedf = pd.DataFrame()
-  for one in const.TEST_STOCK_LIST:
-    if one == '603516':
-      pass
+  for one in const.STOCK_LIST:
+    # if one == '603516':
+    #   pass
     tmp = calcOne(one)
-    if one == '603516':
-      tmp.to_excel('/home/ken/workspace/tmp/603516.xls')
-    tmp2 = fillOut(tmp)
+    # if one == '603516':
+    #   tmp.to_excel('/home/ken/workspace/tmp/603516.xls')
+    tmp2 = filterOut(tmp)
+    tmp3 = changeColumns(tmp2)
     if len(onedf.index) == 0:
-      onedf = tmp2
+      onedf = tmp3
     else:
-      onedf = onedf.append(tmp2)
+      onedf = onedf.append(tmp3)
 
 
 

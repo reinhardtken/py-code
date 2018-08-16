@@ -109,6 +109,8 @@ class CWSJ_KEYWORD:
     'LastYearROE': '上年净资产收益率(%)',
     'MarketValue': '市值',
     'ForcastPE': '目前PE(预)',
+    'ForecastNow': '业绩预告（本期）',
+    'ForecastNext': '业绩预告（下期）',
     'DistanceMin': '下限距离',
     'DistanceMax': '上限距离',
 
@@ -271,11 +273,14 @@ STOCK_LIST = {
   "600519",
   "300741",
   "603288",
+  '000786',
 }
 
-TEST_STOCK_LIST = ['000725',
-  "000651",
-  "002508",]
+TEST_STOCK_LIST = ['603516',
+  # '000725',
+  # "000651",
+  # "002508",
+                   ]
 
 
 

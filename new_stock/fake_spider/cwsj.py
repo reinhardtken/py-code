@@ -29,8 +29,8 @@ COLLECTION_HEAD = const.CWSJ_KEYWORD.COLLECTION_HEAD
 KEY_NAME = const.CWSJ_KEYWORD.KEY_NAME
 NEED_TO_NUMBER = const.CWSJ_KEYWORD.NEED_TO_NUMBER
 DATA_SUB = const.CWSJ_KEYWORD.DATA_SUB
-
-
+# STOCK_LIST = const.STOCK_LIST
+STOCK_LIST = {'603516'}
 
 base_url = 'http://emweb.securities.eastmoney.com/NewFinanceAnalysis/MainTargetAjax?'
 
@@ -64,7 +64,7 @@ class Handler(spider.FakeSpider):
   def url(self):
 
     out = []
-    for code in const.STOCK_LIST:
+    for code in STOCK_LIST:
       url = encode_params(self.genParams(code))
       url = base_url + url
       out.append((url, code))
