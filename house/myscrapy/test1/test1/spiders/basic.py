@@ -87,6 +87,7 @@ class LJBeijingSpider(scrapy.Spider):
 
           oneOut['attention'] = ''.join(one.xpath('.//div/div[4]/text()[1]').extract())
           oneOut['follow'] = ''.join(one.xpath('.//div/div[4]/text()[2]').extract())
+          oneOut['release'] = ''.join(one.xpath('.//div/div[4]/div[1]/text()').extract())
         except Exception as e:
           print(e)
         yield oneOut
