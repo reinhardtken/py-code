@@ -145,7 +145,10 @@ class SeleniumMiddleware():
     self.wait = WebDriverWait(self.browser, self.timeout)
 
   def __del__(self):
-    self.browser.close()
+    try:
+      self.browser.close()
+    except Exception as e:
+      print(e)
 
   def executeTimes(self, driver, times):
     for i in range(times + 1):
@@ -167,6 +170,8 @@ class SeleniumMiddleware():
                           status=200)
     except TimeoutException:
       return HtmlResponse(url=request.url, status=500, request=request)
+    except Exception as e:
+      return HtmlResponse(url=request.url, status=501, request=request)
 
   @classmethod
   def from_crawler(cls, crawler):

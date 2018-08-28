@@ -38,7 +38,6 @@ class LJShanghaiSpider(scrapy.Spider):
 
 
     def parse(self, response):
-      # print(response)
       districts = self.parseDistricts(response)
       for one in districts:
         yield Request(one)
