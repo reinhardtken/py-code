@@ -139,7 +139,17 @@ class SeleniumMiddleware():
   def __init__(self, timeout=None, service_args=[], executable_path=None):
     self.logger = getLogger(__name__)
     self.timeout = timeout
-    self.browser = webdriver.PhantomJS(executable_path=executable_path, service_args=service_args)
+    # headless
+    options = webdriver.ChromeOptions()
+    options.add_argument('headless')
+    prefs = {
+      'profile.default_content_setting_values': {
+        'images': 2
+      }
+    }
+    options.add_experimental_option('prefs', prefs)
+    self.browser = webdriver.Chrome(executable_path=executable_path, chrome_options=options)
+    # self.browser = webdriver.PhantomJS(executable_path=executable_path, service_args=service_args)
     self.browser.set_window_size(1400, 700)
     self.browser.set_page_load_timeout(self.timeout)
     self.wait = WebDriverWait(self.browser, self.timeout)
@@ -176,5 +186,5 @@ class SeleniumMiddleware():
   @classmethod
   def from_crawler(cls, crawler):
     return cls(timeout=crawler.settings.get('SELENIUM_TIMEOUT'),
-               service_args=crawler.settings.get('PHANTOMJS_SERVICE_ARGS'),
-               executable_path=crawler.settings.get('PHANTOMJS_PATH'))
+               #service_args=crawler.settings.get('PHANTOMJS_SERVICE_ARGS'),
+               executable_path=crawler.settings.get('CHROME_DRIVER_PATH'))

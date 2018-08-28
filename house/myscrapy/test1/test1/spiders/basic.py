@@ -9,7 +9,7 @@ def String2Number(s):
   import re
   return float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
 
-class LJBeijingSpider(scrapy.Spider):
+class Spider(scrapy.Spider):
     name = 'lianjia-bj'
     allowed_domains = [
       'bj.lianjia.com',

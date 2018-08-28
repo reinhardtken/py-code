@@ -1,8 +1,10 @@
 from scrapy import cmdline
 
 cmdList = [
-"scrapy crawl lianjia-bj",
-"scrapy crawl lianjia-sh",
+# "scrapy crawl lianjia-bj",
+# "scrapy crawl lianjia-sh",
+# "scrapy crawl lianjia-sz",
+"scrapy crawl lianjia-gz",
 ]
 for one in cmdList:
   try:
