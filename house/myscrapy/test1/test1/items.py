@@ -14,7 +14,7 @@ class LianjiaHouseItem(scrapy.Item):
     title = scrapy.Field()
     _id = scrapy.Field()
     district = scrapy.Field()
-    building = scrapy.Field()
+    # building = scrapy.Field()
     layout = scrapy.Field()
     unitPrice = scrapy.Field()
     totalPrice = scrapy.Field()
@@ -32,4 +32,5 @@ class LianjiaHouseItem(scrapy.Item):
     # followInfo = scrapy.Field()
     attention = scrapy.Field()
     follow = scrapy.Field()
+    release = scrapy.Field()
     pass

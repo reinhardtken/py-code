@@ -9,17 +9,18 @@ def String2Number(s):
   import re
   return float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
 
-class BasicSpider(scrapy.Spider):
-    name = 'lianjia'
+class LJBeijingSpider(scrapy.Spider):
+    name = 'lianjia-bj'
     allowed_domains = [
       'bj.lianjia.com',
-      'lf.lianjia.com',
                        ]
     start_urls = [
       'https://bj.lianjia.com/ershoufang/chaoyang/',
     # 'https://bj.lianjia.com/ershoufang/dongcheng/rs%E6%9C%9D%E9%98%B3/,'
     ]
     head = 'https://bj.lianjia.com'
+    dbName = 'house'
+    collectionName = 'beijing'
 
     def parseDistricts(self, response):
       out = []
@@ -28,9 +29,11 @@ class BasicSpider(scrapy.Spider):
         urls = one.xpath('.//@href').extract()
         for url in urls:
           if url.startswith('http'):
-            out.append(url)
+            #忽略lf
+            # out.append(url)
+            pass
           else:
-            out.append(BasicSpider.head + url)
+            out.append(self.head + url)
 
       return out
 
@@ -59,7 +62,7 @@ class BasicSpider(scrapy.Spider):
           nextPage.extend(one.xpath('.//@href').extract())
 
       for one in nextPage:
-        nextURL = BasicSpider.head + one
+        nextURL = self.head + one
         print('next url: %s'%(nextURL))
         yield Request(nextURL)
 
@@ -69,7 +72,7 @@ class BasicSpider(scrapy.Spider):
         oneOut['title'] = ''.join(one.xpath('.//div/div[1]/a/text()').extract()).strip()
         oneOut['_id'] = ''.join(one.xpath('.//div/div[1]/a/@data-housecode').extract()).strip()
         try:
-          oneOut['building'] = ''.join(one.xpath('.//div/div[2]/div/a/text()').extract()).strip()
+          # oneOut['building'] = ''.join(one.xpath('.//div/div[2]/div/a/text()').extract()).strip()
           oneOut['unitPrice'] = String2Number(''.join(one.xpath('.//div/div[4]/div[3]/div[2]/span/text()').extract()).strip())
           oneOut['totalPrice'] = String2Number(''.join(one.xpath('.//div/div[4]/div[3]/div[1]/span/text()').extract()).strip())
 

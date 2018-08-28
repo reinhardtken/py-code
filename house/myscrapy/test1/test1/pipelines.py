@@ -24,8 +24,10 @@ class MongoPipeline(object):
 
     def open_spider(self, spider):
         self.client = pymongo.MongoClient()
-        self.dbName = 'house'
-        self.collectionName = 'beijing'
+        # self.dbName = 'house'
+        # self.collectionName = 'beijing'
+        self.dbName = spider.dbName
+        self.collectionName = spider.collectionName
         self.db = self.client[self.dbName]
         self.collection = self.db[self.collectionName]
 
