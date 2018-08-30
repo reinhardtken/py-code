@@ -27,6 +27,7 @@ class Spider(scrapy.Spider):
   ]
   start_urls = [
     'https://bj.lianjia.com/chengjiao/dongcheng/'
+    #'https://bj.lianjia.com/chengjiao/pinggu/'
   ]
   head = 'https://bj.lianjia.com'
   dbName = 'house-cj'
@@ -69,6 +70,8 @@ class Spider(scrapy.Spider):
       for one in p:
         np.extend(one.xpath('.//@href').extract())
 
+    if len(np) == 0:
+      pass
     return np
 
   def parseOne(self, one, district):
@@ -86,8 +89,13 @@ class Spider(scrapy.Spider):
 
     try:
       oneOut['askPrice'] = String2Number(''.join(one.xpath('./div/div[5]/span[2]/span[1]/text()').extract()).strip())
-      oneOut['bidPrice'] = String2Number(''.join(one.xpath('./div/div[2]/div[3]/span/text()').extract()).strip())
       oneOut['dealCycle'] = String2Number(''.join(one.xpath('./div/div[5]/span[2]/span[2]/text()').extract()).strip())
+      if np.isnan(oneOut['askPrice']):
+        #https://bj.lianjia.com/chengjiao/pinggu/
+        oneOut['askPrice'] = String2Number(''.join(one.xpath('./div/div[4]/span[2]/span[1]/text()').extract()).strip())
+        oneOut['dealCycle'] = String2Number(''.join(one.xpath('./div/div[4]/span[2]/span[2]/text()').extract()).strip())
+
+      oneOut['bidPrice'] = String2Number(''.join(one.xpath('./div/div[2]/div[3]/span/text()').extract()).strip())
       oneOut['dealDate'] = ''.join(one.xpath('./div/div[2]/div[2]/text()').extract()).strip()
 
     except Exception as e:
