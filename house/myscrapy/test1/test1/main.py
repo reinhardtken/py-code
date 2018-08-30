@@ -10,14 +10,16 @@ cmdList = [
 #"scrapy crawl lianjia-nj",
 #"scrapy crawl lianjia-cs",
 # "scrapy crawl lianjia-wh",
-"scrapy crawl lianjia-tj",
-"scrapy crawl lianjia-zz",
-"scrapy crawl lianjia-xa",
-"scrapy crawl lianjia-cd",
-"scrapy crawl lianjia-su",
-"scrapy crawl lianjia-cq",
-"scrapy crawl lianjia-xm",
-"scrapy crawl lianjia-hf",
+# "scrapy crawl lianjia-tj",
+# "scrapy crawl lianjia-zz",
+# "scrapy crawl lianjia-xa",
+# "scrapy crawl lianjia-cd",
+# "scrapy crawl lianjia-su",
+# "scrapy crawl lianjia-cq",
+# "scrapy crawl lianjia-xm",
+# "scrapy crawl lianjia-hf",
+
+"scrapy crawl lianjia-cj-bj",
 ]
 for one in cmdList:
   try:

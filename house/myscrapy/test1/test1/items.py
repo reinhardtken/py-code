@@ -42,3 +42,19 @@ class LianjiaHouseDigest(scrapy.Item):
     newHouse = scrapy.Field()
     secondhandHouse = scrapy.Field()
     rentHouse = scrapy.Field()
+
+
+class LianjiaTurnoverHouseItem(scrapy.Item):
+  title = scrapy.Field()
+  _id = scrapy.Field()
+  href = scrapy.Field()
+  district = scrapy.Field()
+
+  askPrice = scrapy.Field()
+  bidPrice = scrapy.Field()
+  diffPricePercent = scrapy.Field()
+  dealCycle = scrapy.Field()
+  dealDate = scrapy.Field()
+
+  square = scrapy.Field()
+  pass

@@ -5,9 +5,10 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 
+import logging
 
 import pymongo
-
+import numpy as np
 
 
 
@@ -31,10 +32,33 @@ class MongoPipeline(object):
         self.db = self.client[self.dbName]
         self.collection = self.db[self.collectionName]
 
+        self.processor = self.choseProcessor(spider.name)
+
+
+    def choseProcessor(self, name):
+      if name.startswith('lianjia-cj-'):
+        return self.processTurnoverData
+      elif name.startswith('lianjia-'):
+        return self.processSecondhandData
+
+
+    def processTurnoverData(self, item):
+      if np.isnan(item['bidPrice']) or item['bidPrice'] < 10:
+        #最近一个月成交，缺少具体数据
+        pass
+      else:
+        try:
+          item['diffPricePercent'] = (item['askPrice'] - item['bidPrice'])/item['askPrice']
+        except Exception as e:
+          logging.warning("processTurnoverData Exception %s" % (str(e)))
+        self.updateMongoDB(item)
+
+
+    def processSecondhandData(self, item):
+      self.updateMongoDB(item)
     
     def process_item(self, item, spider):
-        self.updateMongoDB(item)
-        # self.db[item.collection].insert(dict(item))
+        self.processor(item)
         return item
     
     def close_spider(self, spider):
