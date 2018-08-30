@@ -34,3 +34,11 @@ class LianjiaHouseItem(scrapy.Item):
     follow = scrapy.Field()
     release = scrapy.Field()
     pass
+
+
+class LianjiaHouseDigest(scrapy.Item):
+    city = scrapy.Field()
+    _id = scrapy.Field()
+    newHouse = scrapy.Field()
+    secondhandHouse = scrapy.Field()
+    rentHouse = scrapy.Field()

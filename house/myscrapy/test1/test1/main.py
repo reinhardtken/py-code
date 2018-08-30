@@ -8,11 +8,21 @@ cmdList = [
 #"scrapy crawl lianjia-hz",
 #"scrapy crawl lianjia-nj",
 #"scrapy crawl lianjia-cs",
-"scrapy crawl lianjia-wh",
+# "scrapy crawl lianjia-wh",
+# "scrapy crawl lianjia-digest",
+# "scrapy crawl lianjia-tj",
+# "scrapy crawl lianjia-zz",
+# "scrapy crawl lianjia-xa",
+# "scrapy crawl lianjia-cd",
+# "scrapy crawl lianjia-su",
+# "scrapy crawl lianjia-cq",
+# "scrapy crawl lianjia-xm",
+"scrapy crawl lianjia-hf",
 ]
 for one in cmdList:
   try:
     cmdline.execute(one.split())
+    print(one)
   except Exception as e:
     print(e)
 # cmdline.execute("scrapy crawl lianjia2 -s CLOSESPIDER_ITEMCOUNT=5".split())
