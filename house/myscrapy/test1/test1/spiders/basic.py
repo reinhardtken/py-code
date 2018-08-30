@@ -1,13 +1,22 @@
 # -*- coding: utf-8 -*-
 import urllib
+import re
+
 
 import scrapy
+import numpy as np
 from scrapy.http import Request
 import items
 
 def String2Number(s):
-  import re
-  return float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
+  out = np.nan
+  try:
+    out = float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
+  except Exception as e:
+    print(e)
+
+  return out
+
 
 class Spider(scrapy.Spider):
     name = 'lianjia-bj'

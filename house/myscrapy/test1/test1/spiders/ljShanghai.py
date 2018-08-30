@@ -1,14 +1,25 @@
 # -*- coding: utf-8 -*-
 import urllib
 import logging
+import re
 
 import scrapy
 from scrapy.http import Request
+import numpy as np
+
+
 import items
 
+
 def String2Number(s):
-  import re
-  return float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
+  out = np.nan
+  try:
+    out = float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
+  except Exception as e:
+    print(e)
+
+  return out
+
 
 class Spider(scrapy.Spider):
     name = 'lianjia-sh'
@@ -67,9 +78,16 @@ class Spider(scrapy.Spider):
       oneOut['title'] = ''.join(one.xpath('.//div[1]/div[1]/a/text()').extract()).strip()
       oneOut['_id'] = ''.join(one.xpath('.//div[1]/div[1]/a/@data-housecode').extract()).strip()
       try:
-        oneOut['unitPrice'] = String2Number(''.join(one.xpath('.//div[1]/div[6]/div[2]/span/text()').extract()).strip())
-        oneOut['totalPrice'] = String2Number(
-          ''.join(one.xpath('.//div[1]/div[6]/div[1]/span/text()').extract()).strip())
+        unitPrice = String2Number(''.join(one.xpath('.//div[1]/div[6]/div[2]/span/text()').extract()).strip())
+        if not np.isnan(unitPrice):
+          oneOut['unitPrice'] = unitPrice
+          oneOut['totalPrice'] = String2Number(
+            ''.join(one.xpath('.//div[1]/div[6]/div[1]/span/text()').extract()).strip())
+        else:
+          #https://sh.lianjia.com/ershoufang/changning/pg96/
+          oneOut['unitPrice'] = String2Number(''.join(one.xpath('.//div[1]/div[7]/div[2]/span/text()').extract()).strip())
+          oneOut['totalPrice'] = String2Number(
+            ''.join(one.xpath('.//div[1]/div[7]/div[1]/span/text()').extract()).strip())
 
         oneOut['community'] = ''.join(one.xpath('.//div[1]/div[2]/div/a/text()').extract())
         houseInfo = ''.join(one.xpath('.//div[1]/div[2]/div/text()').extract())
