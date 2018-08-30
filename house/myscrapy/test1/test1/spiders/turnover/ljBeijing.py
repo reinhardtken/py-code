@@ -15,7 +15,7 @@ def String2Number(s):
   try:
     out = float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
   except Exception as e:
-    print(e)
+    pass
 
   return out
 
