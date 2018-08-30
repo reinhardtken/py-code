@@ -62,6 +62,7 @@ DOWNLOADER_MIDDLEWARES = {
 #EXTENSIONS = {
 #    'scrapy.extensions.telnet.TelnetConsole': None,
 #}
+EXTENSIONS = {'test1.extensions.HooksasyncExtension': 100}
 
 # Configure item pipelines
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
@@ -92,6 +93,7 @@ ITEM_PIPELINES = {
 
 
 #self setting
+LOG_LEVEL= 'WARNING'
 CHROME_DRIVER_PATH = r'/home/ken/prog/chromedriver_linux64/chromedriver'
 PHANTOMJS_PATH = r'/home/ken/prog/phantomjs-2.1.1-linux-x86_64/bin/phantomjs'
 SELENIUM_TIMEOUT = 20

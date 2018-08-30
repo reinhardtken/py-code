@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import urllib
+import logging
 
 import scrapy
 from scrapy.http import Request
@@ -83,20 +84,21 @@ class Spider(scrapy.Spider):
         positionInfo = positionInfo.split(')')
         if len(positionInfo) > 0:
           oneOut['level'] = positionInfo[0].strip() + ')'
-          if len(houseInfo) > 1:
+          if len(positionInfo) > 1:
             oneOut['structure'] = positionInfo[1].strip()
 
         followInfo = ''.join(one.xpath('.//div[1]/div[4]/text()').extract())
         followInfo = followInfo.split('/')
         if len(followInfo) > 0:
           oneOut['attention'] = followInfo[0].strip()
-          if len(houseInfo) > 1:
+          if len(followInfo) > 1:
             oneOut['follow'] = followInfo[1].strip()
-            if len(houseInfo) > 2:
+            if len(followInfo) > 2:
               oneOut['release'] = followInfo[2].strip()
 
       except Exception as e:
         print(e)
+        logging.warning("parseOne Exception %s"%(str(e)))
       return oneOut
 
     def parse(self, response):

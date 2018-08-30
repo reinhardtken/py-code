@@ -41,7 +41,7 @@ class MongoPipeline(object):
         self.client.close()
 
     def updateMongoDB(self, data):
-        print('enter updateMongoDB')
+        #print('enter updateMongoDB')
         try:
             update_result = self.collection.update_one({'_id': data['_id']},
                                                   {'$set': data}, upsert=True)
@@ -56,4 +56,4 @@ class MongoPipeline(object):
             print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
         except Exception as e:
             print(e)
-        print('leave updateMongoDB')
+        #print('leave updateMongoDB')

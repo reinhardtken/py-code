@@ -139,6 +139,15 @@ class SeleniumMiddleware():
   def __init__(self, timeout=None, service_args=[], executable_path=None):
     self.logger = getLogger(__name__)
     self.timeout = timeout
+    self.executable_path = executable_path
+    self.timeoutCounter = 0
+    self.innerInit()
+
+  def __del__(self):
+    self.innerDestroy()
+
+
+  def innerInit(self):
     # headless
     options = webdriver.ChromeOptions()
     options.add_argument('headless')
@@ -148,17 +157,23 @@ class SeleniumMiddleware():
       }
     }
     options.add_experimental_option('prefs', prefs)
-    self.browser = webdriver.Chrome(executable_path=executable_path, chrome_options=options)
+    #try:
+    self.browser = webdriver.Chrome(executable_path=self.executable_path, chrome_options=options)
     # self.browser = webdriver.PhantomJS(executable_path=executable_path, service_args=service_args)
     self.browser.set_window_size(1400, 700)
     self.browser.set_page_load_timeout(self.timeout)
     self.wait = WebDriverWait(self.browser, self.timeout)
+    #except Exception as e:
+      #print(e)
+    pass
 
-  def __del__(self):
+  def innerDestroy(self):
     try:
-      self.browser.close()
+      if self.browser is not None:
+        self.browser.close()
     except Exception as e:
       print(e)
+    pass
 
   def executeTimes(self, driver, times):
     for i in range(times + 1):
@@ -172,15 +187,27 @@ class SeleniumMiddleware():
     :param spider: Spider对象
     :return: HtmlResponse
     """
-    self.logger.debug('PhantomJS is Starting')
+    self.logger.debug('ChromeDriver is Starting')
+
+    if self.timeoutCounter >= 3:
+      self.timeoutCounter = 0
+      self.innerDestroy()
+      self.innerInit()
+
     try:
       self.browser.get(request.url)
       self.executeTimes(self.browser, 1)
       return HtmlResponse(url=request.url, body=self.browser.page_source, request=request, encoding='utf-8',
                           status=200)
-    except TimeoutException:
+    except TimeoutException as e:
+      print(e)
+      self.logger.warning('TimeoutException: %s' % str(e))
+      self.timeoutCounter += 1
+
       return HtmlResponse(url=request.url, status=500, request=request)
     except Exception as e:
+      print(e)
+      self.logger.warning('Exception: %s' % str(e))
       return HtmlResponse(url=request.url, status=501, request=request)
 
   @classmethod
