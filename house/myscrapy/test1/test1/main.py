@@ -3,7 +3,7 @@ from scrapy import cmdline
 cmdList = [
 # "scrapy crawl lianjia-digest",
 # "scrapy crawl lianjia-bj",
-#"scrapy crawl lianjia-sh",
+"scrapy crawl lianjia-sh",
 #"scrapy crawl lianjia-sz",
 #"scrapy crawl lianjia-gz",
 #"scrapy crawl lianjia-hz",
@@ -19,7 +19,7 @@ cmdList = [
 # "scrapy crawl lianjia-xm",
 # "scrapy crawl lianjia-hf",
 
-"scrapy crawl lianjia-cj-bj",
+# "scrapy crawl lianjia-cj-bj",
 ]
 for one in cmdList:
   try:

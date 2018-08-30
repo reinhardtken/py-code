@@ -35,17 +35,38 @@ class Spider(scrapy.Spider):
     xpath = {
       'districts': '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[1]/a',
       'districtName': '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[1]/a[@class="selected"]/text()',
-      'lists': '/html/body/div[4]/div[1]/ul/li',
+      'subDistricts': '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a',
+      'subDistrictName': '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[@class="selected"]/text()',
+
+        'lists': '/html/body/div[4]/div[1]/ul/li',
 
       'nextPageText': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()]/text()',
       'nextPage': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()]/@href',
       'allPage': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a',
     }
 
+    received = set()
+
     def parseDistricts(self, response):
       out = []
 
       ones = response.xpath(self.xpath['districts'])
+      for one in ones:
+        urls = one.xpath('.//@href').extract()
+        for url in urls:
+          if url.startswith('http'):
+            # out.append(url)
+            pass
+          else:
+            out.append(self.head + url)
+
+      return out
+
+
+    def parseSubDistricts(self, response):
+      out = []
+
+      ones = response.xpath(self.xpath['subDistricts'])
       for one in ones:
         urls = one.xpath('.//@href').extract()
         for url in urls:
@@ -72,9 +93,10 @@ class Spider(scrapy.Spider):
       return np
 
 
-    def parseOne(self, one, district):
+    def parseOne(self, one, district, subDistrict):
       oneOut = items.LianjiaHouseItem()
       oneOut['district'] = district
+      oneOut['subDistrict'] = subDistrict
       oneOut['title'] = ''.join(one.xpath('.//div[1]/div[1]/a/text()').extract()).strip()
       oneOut['_id'] = ''.join(one.xpath('.//div[1]/div[1]/a/@data-housecode').extract()).strip()
       try:
@@ -120,24 +142,45 @@ class Spider(scrapy.Spider):
       return oneOut
 
     def parse(self, response):
+      self.received.add(response.url)
+
       districts = self.parseDistricts(response)
-      for one in districts:
-        yield Request(one)
+      realOut = set(districts) - self.received
+      for one in realOut:
+        yield Request(one, meta={'step': 0})
+
+      subDistricts = self.parseSubDistricts(response)
+      realOut = set(subDistricts) - self.received
+      for one in realOut:
+        yield Request(one, meta={'step': 1})
 
 
-      nextPage = self.nextPage(response)
-      for one in nextPage:
-        nextURL = self.head + one
-        print('next url: %s'%(nextURL))
-        yield Request(nextURL)
+      district = np.nan
+      subDistrict = np.nan
 
+      if response.meta['step'] == 1:
+        d = response.xpath(self.xpath['districtName']).extract()
+        if len(d):
+          district = d[0]
 
-      ones = response.xpath(self.xpath['lists'])
-      district = 'nan'
-      d = response.xpath(self.xpath['districtName']).extract()
-      if len(d):
-        district = d[0]
+        d = response.xpath(self.xpath['subDistrictName']).extract()
+        if len(d):
+          subDistrict = d[0]
 
-      for one in ones:
-        oneOut = self.parseOne(one, district)
-        yield oneOut
+        nextPage = self.nextPage(response)
+        realOut = set(nextPage) - self.received
+        for one in realOut:
+          nextURL = self.head + one
+          print('next url: %s %s %s'%(district, subDistrict, nextURL))
+          yield Request(nextURL, meta={'step': 2, 'district': district, 'subDistrict': subDistrict})
+
+      if response.meta['step'] == 2:
+        district = response.meta['district']
+        subDistrict = response.meta['subDistrict']
+
+      if response.meta['step'] >= 1:
+        ones = response.xpath(self.xpath['lists'])
+
+        for one in ones:
+          oneOut = self.parseOne(one, district, subDistrict)
+          yield oneOut
