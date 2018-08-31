@@ -175,13 +175,13 @@ class SeleniumMiddleware():
       print(e)
     pass
 
-  def waitLogic(self):
+  def waitLogic(self, spider):
     url = None
     for i in range(3):
       self.browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
       wait = WebDriverWait(self.browser, 2)
       try:
-        url = wait.until(EC.presence_of_element_located((By.XPATH, '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()]')))
+        url = wait.until(EC.presence_of_element_located((By.XPATH, spider.xpath['anchor'])))
         if url is not None:
           break
       except Exception as e:
@@ -206,7 +206,7 @@ class SeleniumMiddleware():
 
     try:
       self.browser.get(request.url)
-      self.waitLogic()
+      self.waitLogic(spider)
       return HtmlResponse(url=request.url, body=self.browser.page_source, request=request, encoding='utf-8',
                           status=200)
     except TimeoutException as e:

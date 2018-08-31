@@ -21,7 +21,7 @@ def String2Number(s):
 
 
 class Spider(scrapy.Spider):
-  name = 'lianjia-cj-bj'
+  name = 'lianjia-cj-bj-old'
   allowed_domains = [
     'bj.lianjia.com',
   ]

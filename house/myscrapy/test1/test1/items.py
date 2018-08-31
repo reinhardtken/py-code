@@ -58,6 +58,7 @@ class LianjiaTurnoverHouseItem(scrapy.Item):
   _id = scrapy.Field()
   href = scrapy.Field()
   district = scrapy.Field()
+  subDistrict = scrapy.Field()
 
   askPrice = scrapy.Field()
   bidPrice = scrapy.Field()

@@ -54,6 +54,8 @@ class Spider(scrapy.Spider):
       'nextPage': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()]/@href',
       'allPage': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a',
       'allPage2': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()-1]/@href',
+
+      'anchor': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()]',
     }
 
     received = set()

@@ -56,7 +56,7 @@ class MongoPipeline(object):
     self.updateMongoDB(item)
 
   def process_item(self, item, spider):
-    if isinstance(item, items.LianjiaHouseItem):
+    if isinstance(item, items.LianjiaHouseItem) or isinstance(item, items.LianjiaTurnoverHouseItem):
       self.processor(item)
       raise scrapy.exceptions.DropItem()
 
