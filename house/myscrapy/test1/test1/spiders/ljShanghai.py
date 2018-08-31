@@ -30,6 +30,7 @@ class Spider(scrapy.Spider):
       'https://sh.lianjia.com/ershoufang/pudong/',
     ]
     head = 'https://sh.lianjia.com'
+    nextPageOrder = -1
     dbName = 'house'
     collectionName = 'shanghai'
     xpath = {
@@ -43,6 +44,7 @@ class Spider(scrapy.Spider):
       'nextPageText': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()]/text()',
       'nextPage': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()]/@href',
       'allPage': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a',
+      'allPage2': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()-1]/@href',
     }
 
     received = set()
@@ -78,8 +80,7 @@ class Spider(scrapy.Spider):
 
       return out
 
-
-    def nextPage(self, response):
+    def nextPagePlusOne(self, response, url):
       np = []
       nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
       if nextPageText == '下一页':
@@ -88,9 +89,31 @@ class Spider(scrapy.Spider):
         p = response.xpath(self.xpath['allPage'])
         # 框架支持url排重,这里就不排重了
         for one in p:
-          np.extend(one.xpath('.//@href').extract())
+          np.extend(url + one.xpath('.//@href').extract())
 
       return np
+
+    def nextPageNegativeOne(self, response, url):
+      np = []
+      maxURL = None
+      nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
+      if nextPageText == '下一页':
+        maxURL = response.xpath(self.xpath['allPage2']).extract()[0].strip()
+      else:
+        maxURL = response.xpath(self.xpath['nextPage']).extract()[0].strip()
+
+      tmp = maxURL.split('/')
+      maxNumber = String2Number(tmp[-2]) if tmp[-1] == '' else String2Number(tmp[-1])
+      for i in range(2, int(maxNumber) + 1):
+        np.append(url + 'pg' + str(i))
+
+      return np
+
+    def nextPage(self, response, url1, url2):
+      if self.nextPageOrder == -1:
+        return self.nextPageNegativeOne(response, url2)
+      else:
+        return self.nextPagePlusOne(response, url1)
 
 
     def parseOne(self, one, district, subDistrict):
@@ -152,7 +175,7 @@ class Spider(scrapy.Spider):
       subDistricts = self.parseSubDistricts(response)
       realOut = set(subDistricts) - self.received
       for one in realOut:
-        yield Request(one, meta={'step': 1})
+        yield Request(one, meta={'step': 1, 'url': one})
 
 
       district = np.nan
@@ -167,12 +190,12 @@ class Spider(scrapy.Spider):
         if len(d):
           subDistrict = d[0]
 
-        nextPage = self.nextPage(response)
+        nextPage = self.nextPage(response, self.head, response.meta['url'])
         realOut = set(nextPage) - self.received
         for one in realOut:
-          nextURL = self.head + one
-          print('next url: %s %s %s'%(district, subDistrict, nextURL))
-          yield Request(nextURL, meta={'step': 2, 'district': district, 'subDistrict': subDistrict})
+          # nextURL = self.head + one
+          print('next url: %s %s %s'%(district, subDistrict, one))
+          yield Request(one, meta={'step': 2, 'district': district, 'subDistrict': subDistrict})
 
       if response.meta['step'] == 2:
         district = response.meta['district']
