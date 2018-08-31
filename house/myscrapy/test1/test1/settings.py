@@ -62,7 +62,14 @@ DOWNLOADER_MIDDLEWARES = {
 #EXTENSIONS = {
 #    'scrapy.extensions.telnet.TelnetConsole': None,
 #}
-EXTENSIONS = {'test1.extensions.HooksasyncExtension': 100}
+EXTENSIONS = {
+  'test1.extensions.HooksasyncExtension': 100,
+  #Address already in use
+  #http://jinbitou.net/2016/08/18/1992.html
+  #不能使用telnet console同时运行两个scrapy进程(scrapy shell)
+  'scrapy.telnet.TelnetConsole': None,
+
+}
 
 # Configure item pipelines
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
@@ -94,8 +101,14 @@ ITEM_PIPELINES = {
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
-
+def nowString():
+  import datetime
+  now = datetime.datetime.now()
+  now = now.replace(microsecond=0)
+  return now.strftime('%Y-%m-%d-%H-%M-%S')
 #self setting
+filename = '/home/ken/workspace/tmp/log/' + nowString() + '.log'
+LOG_FILE = filename
 LOG_LEVEL= 'WARNING'
 CHROME_DRIVER_PATH = r'/home/ken/prog/chromedriver_linux64/chromedriver'
 PHANTOMJS_PATH = r'/home/ken/prog/phantomjs-2.1.1-linux-x86_64/bin/phantomjs'
