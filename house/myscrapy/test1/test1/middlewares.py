@@ -162,7 +162,7 @@ class SeleniumMiddleware():
     # self.browser = webdriver.PhantomJS(executable_path=executable_path, service_args=service_args)
     self.browser.set_window_size(1400, 700)
     self.browser.set_page_load_timeout(self.timeout)
-    self.wait = WebDriverWait(self.browser, self.timeout)
+    # self.wait = WebDriverWait(self.browser, self.timeout)
     #except Exception as e:
       #print(e)
     pass
@@ -175,10 +175,20 @@ class SeleniumMiddleware():
       print(e)
     pass
 
-  def executeTimes(self, driver, times):
-    for i in range(times + 1):
-      driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-      time.sleep(2)
+  def waitLogic(self):
+    url = None
+    for i in range(3):
+      self.browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+      wait = WebDriverWait(self.browser, 2)
+      try:
+        url = wait.until(EC.presence_of_element_located((By.XPATH, '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()]')))
+        if url is not None:
+          break
+      except Exception as e:
+        print(e)
+    else:
+      self.logger.warning('SeleniumMiddleware wait failed!!! %s'%(self.browser.current_url))
+
 
   def process_request(self, request, spider):
     """
@@ -196,7 +206,7 @@ class SeleniumMiddleware():
 
     try:
       self.browser.get(request.url)
-      self.executeTimes(self.browser, 1)
+      self.waitLogic()
       return HtmlResponse(url=request.url, body=self.browser.page_source, request=request, encoding='utf-8',
                           status=200)
     except TimeoutException as e:
