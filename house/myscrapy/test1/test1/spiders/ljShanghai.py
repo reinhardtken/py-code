@@ -2,6 +2,7 @@
 import urllib
 import logging
 import re
+import datetime
 
 import scrapy
 from scrapy.http import Request
@@ -21,8 +22,15 @@ def String2Number(s):
   return out
 
 
+def todayString():
+  now = datetime.datetime.now()
+  now = now.replace(hour=0, minute=0, second=0, microsecond=0)
+  return now.strftime('%Y-%m-%d')
+
+
 class Spider(scrapy.Spider):
     name = 'lianjia-sh'
+    city = '上海'
     allowed_domains = [
       'sh.lianjia.com',
                        ]
@@ -38,6 +46,7 @@ class Spider(scrapy.Spider):
       'districtName': '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[1]/a[@class="selected"]/text()',
       'subDistricts': '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a',
       'subDistrictName': '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[@class="selected"]/text()',
+      'districtNumber': '/html/body/div[4]/div[1]/div[2]/h2/span/text()',
 
         'lists': '/html/body/div[4]/div[1]/ul/li',
 
@@ -98,9 +107,13 @@ class Spider(scrapy.Spider):
       maxURL = None
       nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
       if nextPageText == '下一页':
-        maxURL = response.xpath(self.xpath['allPage2']).extract()[0].strip()
+        tmp = response.xpath(self.xpath['allPage2']).extract()
+        if len(tmp):
+          maxURL = tmp[0].strip()
       else:
-        maxURL = response.xpath(self.xpath['nextPage']).extract()[0].strip()
+        tmp = response.xpath(self.xpath['nextPage']).extract()
+        if len(tmp):
+          maxURL = tmp[0].strip()
 
       tmp = maxURL.split('/')
       maxNumber = String2Number(tmp[-2]) if tmp[-1] == '' else String2Number(tmp[-1])
@@ -192,6 +205,15 @@ class Spider(scrapy.Spider):
           d = response.xpath(self.xpath['subDistrictName']).extract()
           if len(d):
             subDistrict = d[0]
+
+          number = String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
+          n = items.LianjiaHouseDetailDigest()
+          n['city'] = self.city
+          n['district'] = district
+          n['subDistrict'] = subDistrict
+          n['number'] = number
+          n['_id'] = todayString() + '_' + n['city'] + '_' + n['district'] + '_' + n['subDistrict']
+          yield n
 
           nextPage = self.nextPage(response, self.head, response.meta['url'])
           realOut = set(nextPage) - self.received

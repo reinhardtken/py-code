@@ -67,7 +67,10 @@ EXTENSIONS = {'test1.extensions.HooksasyncExtension': 100}
 # Configure item pipelines
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   'test1.pipelines.MongoPipeline': 300,
+  'test1.pipelines.MongoPipeline': 300,
+  'test1.pipelines.MongoPipelineDetailDigest': 301,
+  'test1.pipelines.MongoPipelineDigest': 302,
+
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

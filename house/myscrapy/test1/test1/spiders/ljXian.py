@@ -9,6 +9,7 @@ import spiders.ljShanghai
 
 class Spider(spiders.ljShanghai.Spider):
     name = 'lianjia-xa'
+    city = '西安'
     allowed_domains = [
       'xa.lianjia.com',
                        ]
