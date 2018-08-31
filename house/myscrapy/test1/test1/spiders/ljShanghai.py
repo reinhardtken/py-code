@@ -181,29 +181,32 @@ class Spider(scrapy.Spider):
       district = np.nan
       subDistrict = np.nan
 
-      if response.meta['step'] == 1:
-        d = response.xpath(self.xpath['districtName']).extract()
-        if len(d):
-          district = d[0]
 
-        d = response.xpath(self.xpath['subDistrictName']).extract()
-        if len(d):
-          subDistrict = d[0]
+      if 'step' in response.meta:
 
-        nextPage = self.nextPage(response, self.head, response.meta['url'])
-        realOut = set(nextPage) - self.received
-        for one in realOut:
-          # nextURL = self.head + one
-          print('next url: %s %s %s'%(district, subDistrict, one))
-          yield Request(one, meta={'step': 2, 'district': district, 'subDistrict': subDistrict})
+        if response.meta['step'] == 1:
+          d = response.xpath(self.xpath['districtName']).extract()
+          if len(d):
+            district = d[0]
 
-      if response.meta['step'] == 2:
-        district = response.meta['district']
-        subDistrict = response.meta['subDistrict']
+          d = response.xpath(self.xpath['subDistrictName']).extract()
+          if len(d):
+            subDistrict = d[0]
 
-      if response.meta['step'] >= 1:
-        ones = response.xpath(self.xpath['lists'])
+          nextPage = self.nextPage(response, self.head, response.meta['url'])
+          realOut = set(nextPage) - self.received
+          for one in realOut:
+            # nextURL = self.head + one
+            print('next url: %s %s %s'%(district, subDistrict, one))
+            yield Request(one, meta={'step': 2, 'district': district, 'subDistrict': subDistrict})
 
-        for one in ones:
-          oneOut = self.parseOne(one, district, subDistrict)
-          yield oneOut
+        if response.meta['step'] == 2:
+          district = response.meta['district']
+          subDistrict = response.meta['subDistrict']
+
+        if response.meta['step'] >= 1:
+          ones = response.xpath(self.xpath['lists'])
+
+          for one in ones:
+            oneOut = self.parseOne(one, district, subDistrict)
+            yield oneOut
