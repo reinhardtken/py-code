@@ -19,7 +19,7 @@ def String2Number(s):
 
 
 class Spider(scrapy.Spider):
-    name = 'lianjia-bj'
+    name = 'lianjia-bj-old'
     city = '北京'
     allowed_domains = [
       'bj.lianjia.com',

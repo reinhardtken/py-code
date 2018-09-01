@@ -1,18 +1,20 @@
+
+
 from scrapy import cmdline
 
 cmdList = [
 # "scrapy crawl lianjia-digest",
-# "scrapy crawl lianjia-bj",
-"scrapy crawl lianjia-sh",
+"scrapy crawl lianjia-bj",
+#"scrapy crawl lianjia-sh",
 #"scrapy crawl lianjia-sz",
 #"scrapy crawl lianjia-gz",
 #"scrapy crawl lianjia-hz",
 #"scrapy crawl lianjia-nj",
-#"scrapy crawl lianjia-cs",
+# "scrapy crawl lianjia-cs",
 # "scrapy crawl lianjia-wh",
 # "scrapy crawl lianjia-tj",
-# "scrapy crawl lianjia-zz",
-# "scrapy crawl lianjia-xa",
+#"scrapy crawl lianjia-zz",
+#"scrapy crawl lianjia-xa",
 # "scrapy crawl lianjia-cd",
 # "scrapy crawl lianjia-su",
 # "scrapy crawl lianjia-cq",
