@@ -17,7 +17,7 @@ class Spider(spiders.ljShanghai.Spider):
       'https://hf.lianjia.com/ershoufang/baohe/',
     ]
     head = 'https://hf.lianjia.com'
-    dbName = 'house'
+
     collectionName = 'hefei'
 
     xpath = spiders.ljShanghai.Spider.xpath

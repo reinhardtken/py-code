@@ -119,6 +119,9 @@ class Spider(scrapy.Spider):
       if len(tmp):
         maxURL = tmp[0].strip()
 
+    if maxURL is None:
+      return []
+
     tmp = maxURL.split('/')
     maxNumber = String2Number(tmp[-2]) if tmp[-1] == '' else String2Number(tmp[-1])
     for i in range(2, int(maxNumber) + 1):

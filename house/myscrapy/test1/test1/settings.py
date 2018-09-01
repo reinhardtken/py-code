@@ -108,7 +108,7 @@ def nowString():
   return now.strftime('%Y-%m-%d-%H-%M-%S')
 #self setting
 filename = '/home/ken/workspace/tmp/log/' + nowString() + '.log'
-LOG_FILE = filename
+# LOG_FILE = filename
 LOG_LEVEL= 'WARNING'
 CHROME_DRIVER_PATH = r'/home/ken/prog/chromedriver_linux64/chromedriver'
 PHANTOMJS_PATH = r'/home/ken/prog/phantomjs-2.1.1-linux-x86_64/bin/phantomjs'

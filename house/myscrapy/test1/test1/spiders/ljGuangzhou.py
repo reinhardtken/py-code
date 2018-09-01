@@ -17,6 +17,6 @@ class Spider(spiders.ljShanghai.Spider):
       'https://gz.lianjia.com/ershoufang/tianhe/',
     ]
     head = 'https://gz.lianjia.com'
-    dbName = 'house'
+
     collectionName = 'guangzhou'
 

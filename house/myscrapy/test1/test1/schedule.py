@@ -17,13 +17,32 @@ if __name__ == "__main__":
   allow = set(["lianjia-cq",
                     "lianjia-xm",
                     "lianjia-hf",])
+
+  allow2 = set([
+    # "scrapy crawl lianjia-bj",
+#"scrapy crawl lianjia-sh",
+"scrapy crawl lianjia-cj-sz",
+"scrapy crawl lianjia-cj-gz",
+"scrapy crawl lianjia-cj-hz",
+"scrapy crawl lianjia-cj-nj",
+"scrapy crawl lianjia-cj-cs",
+"scrapy crawl lianjia-cj-wh",
+"scrapy crawl lianjia-cj-tj",
+"scrapy crawl lianjia-cj-zz",
+"scrapy crawl lianjia-cj-xa",
+"scrapy crawl lianjia-cj-cd",
+"scrapy crawl lianjia-cj-su",
+"scrapy crawl lianjia-cj-cq",
+"scrapy crawl lianjia-cj-xm",
+"scrapy crawl lianjia-cj-hf",
+    ])
   process = CrawlerProcess(get_project_settings())
   sloader = SpiderLoader(get_project_settings())
   scheduler = TwistedScheduler()
   hour = 3
   for spidername in sloader.list():
     # scheduler.add_job(task, 'cron', minute="*/20")
-    if spidername in allow:
+    if spidername in allow2:
       #https://apscheduler.readthedocs.io/en/latest/modules/triggers/cron.html
       scheduler.add_job(process.crawl, 'cron', args=[spidername], hour="*/" + str(hour))
       hour += 1

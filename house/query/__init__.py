@@ -2,39 +2,51 @@
 
 # sys
 import datetime
+import re
 
 # thirdpart
 import pandas as pd
+import pymongo
 from pymongo import MongoClient
+import numpy as np
 
 # this project
 if __name__ == '__main__':
   import sys
 
 ##########################
+#db.getCollection('beijing').find({'district': '朝阳', 'dealDate': {'$gte': new Date('2018-01-01')}})
+def String2Number(s):
+  out = np.nan
+  try:
+    out = float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
+  except Exception as e:
+    pass
 
+  return out
 
-
-def queryTop(top):
+def test():
   client = MongoClient()
-  db = client['house']
+  db = client['house-cj']
   collection = db['beijing']
 
-  out = []
-
   cursor = collection.find()
-  index = 0
   for c in cursor:
-    out.append(c)
-    index += 1
-    if top != -1 and index > top:
-      break
-
-  if len(out):
-    df = pd.DataFrame(out)
-    return df
-  else:
-    return None
+    title = c['title']
+    tmp = title.strip().split(' ')
+    building = None
+    houseType = None
+    square = None
+    if len(tmp) > 0:
+      building = tmp[0]
+      if len(tmp) > 1:
+        houseType = tmp[1]
+        if len(tmp) > 2:
+          square = String2Number(tmp[2])
+          unitPrice = c['bidPrice'] / square
+          re = {'$set': {'building': building, 'houseType': houseType, 'square': square, 'unitPrice': unitPrice}}
+          print(re)
+          collection.update_one({'_id': c['_id']}, re)
 
 
 
@@ -60,33 +72,37 @@ def queryTopDistrict(top, d):
     return None
 
 
-def test():
+def queryTurnOverData(city, district):
   client = MongoClient()
-  db = client['house']
-  collection = db['detail_digest']
-
+  db = client['house-cj']
+  collection = db[city]
+  now = datetime.datetime.now()
+  thisYear = now.replace(year=2014, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+  august =  now.replace(month=8, day=1, hour=0, minute=0, second=0, microsecond=0)
   out = []
 
-  cursor = collection.find({})
-  index = 0
+  cursor = collection.find({'district': district, 'dealDate': {'$gte': thisYear, '$lt': august}}).sort('dealDate', pymongo.DESCENDING)
   for c in cursor:
     out.append(c)
 
+  if len(out):
+    df = pd.DataFrame(out)
+    return df
 
+
+
+def createIndex():
+  client = MongoClient()
+  db = client['house']
+  collection = db['beijing']
+  print(dir(collection))
+  collection.create_index([('distrcit', pymongo.TEXT)])
+  out = collection.list_indexes()
   for one in out:
-    if one['city'] == '上海':
-      old = one['_id']
-      one['_id'] = one['_id'].replace('上海', '苏州')
-      one['city'] = '苏州'
-      collection.delete_one({'_id': old})
-      collection.insert_one(one)
+    print(one)
+  print(out)
 
 
 if __name__ == '__main__':
   test()
-  df = queryTop(-1)
-  df = queryTopDistrict(-1, '东城')
-  print(df)
-  df.to_excel('/home/ken/workspace/tmp/house.xls')
-  # SaveData(re)
   pass

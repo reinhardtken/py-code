@@ -38,9 +38,8 @@ class Spider(spiders.ljShanghai.Spider):
     'https://bj.lianjia.com/ershoufang/chaoyang/',
   ]
   head = 'https://bj.lianjia.com'
-  dbName = 'house'
+
   collectionName = 'beijing'
-  nextPageOrder = -1
 
   xpath = {
     'districts': '//*[@id="position"]/dl[2]/dd/div[1]/div[1]/a',

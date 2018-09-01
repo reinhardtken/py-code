@@ -137,6 +137,6 @@ def dealNumberTrend(district):
 if __name__ == '__main__':
   districts = ['海淀', '朝阳', '东城', '西城']
   for district in districts:
-    # unitPriceTrend(district)
-    dealNumberTrend(district)
+    unitPriceTrend(district)
+    # dealNumberTrend(district)
   pass
