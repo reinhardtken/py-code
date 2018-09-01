@@ -6,6 +6,8 @@
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 
 import logging
+import datetime
+import re
 
 import pymongo
 import numpy as np
@@ -13,6 +15,15 @@ import scrapy.exceptions
 
 import items
 
+
+def String2Number(s):
+  out = np.nan
+  try:
+    out = float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
+  except Exception as e:
+    pass
+
+  return out
 
 class MongoPipeline(object):
   # def __init__(self, mongo_uri, mongo_db):
@@ -48,6 +59,20 @@ class MongoPipeline(object):
     else:
       try:
         item['diffPricePercent'] = (item['askPrice'] - item['bidPrice']) / item['askPrice']
+        item['dealDate'] = datetime.datetime.strptime(item['dealDate'], '%Y.%m.%d')
+
+        title = item['title']
+        tmp = title.strip().split(' ')
+        item['building'] = None
+        item['houseType'] = None
+        item['square'] = None
+        if len(tmp) > 0:
+          item['building'] = tmp[0]
+          if len(tmp) > 1:
+            item['houseType'] = tmp[1]
+            if len(tmp) > 2:
+              item['square'] = String2Number(tmp[2])
+              item['unitPrice'] = item['bidPrice'] / item['square']
       except Exception as e:
         logging.warning("processTurnoverData Exception %s" % (str(e)))
       self.updateMongoDB(item)

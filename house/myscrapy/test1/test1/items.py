@@ -63,8 +63,11 @@ class LianjiaTurnoverHouseItem(scrapy.Item):
   askPrice = scrapy.Field()
   bidPrice = scrapy.Field()
   diffPricePercent = scrapy.Field()
+  unitPrice = scrapy.Field()
   dealCycle = scrapy.Field()
   dealDate = scrapy.Field()
 
+  building = scrapy.Field()
+  houseType = scrapy.Field()
   square = scrapy.Field()
   pass
