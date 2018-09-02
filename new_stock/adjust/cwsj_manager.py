@@ -267,28 +267,30 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
 
 if __name__ == '__main__':
   import query.query_hs300
-  STOCK_LIST = query.query_hs300.queryCodeList()
-  # STOCK_LIST = ['000786']
-  # test()
-  # calcOne('002415', True, True, True)
-  onedf = pd.DataFrame()
-  for one in STOCK_LIST:
-    # if one == '603516':
-    #   pass
-    tmp = calcOne(one)
-    tmp2 = filterOut(tmp)
-    tmp3 = changeColumns(tmp2)
-    # if one == '000786':
-    #   tmp.to_excel('/home/ken/workspace/tmp/000786-1.xls')
-    #   tmp2.to_excel('/home/ken/workspace/tmp/000786-2.xls')
-    #   tmp3.to_excel('/home/ken/workspace/tmp/000786-3.xls')
-    if len(onedf.index) == 0:
-      onedf = tmp3
-    else:
-      onedf = onedf.append(tmp3)
+
+  stockList = [
+    # (query.query_hs300.queryCodeList(), '/home/ken/workspace/tmp/out-hs300.xls'),
+    (const.STOCK_LIST, '/home/ken/workspace/tmp/out-all.xls'),
+  ]
 
 
+  for s in stockList:
+    onedf = pd.DataFrame()
+    for one in s[0]:
+      # if one == '603516':
+      #   pass
+      tmp = calcOne(one)
+      tmp2 = filterOut(tmp)
+      tmp3 = changeColumns(tmp2)
+      # if one == '000786':
+      #   tmp.to_excel('/home/ken/workspace/tmp/000786-1.xls')
+      #   tmp2.to_excel('/home/ken/workspace/tmp/000786-2.xls')
+      #   tmp3.to_excel('/home/ken/workspace/tmp/000786-3.xls')
+      if len(onedf.index) == 0:
+        onedf = tmp3
+      else:
+        onedf = onedf.append(tmp3)
 
-  onedf.to_excel('/home/ken/workspace/tmp/out-all.xls', index=False)
+    onedf.to_excel(s[1], index=False)
 
   pass

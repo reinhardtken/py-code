@@ -54,7 +54,7 @@ ROBOTSTXT_OBEY = False
 # See https://doc.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
     'test1.middlewares.Test1DownloaderMiddleware': 543,
-    # 'test1.middlewares.SeleniumMiddleware': 544,
+    'test1.middlewares.SeleniumMiddleware': 544,
 }
 
 # Enable or disable extensions
