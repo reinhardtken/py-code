@@ -110,7 +110,7 @@ class Handler(spider.FakeSpider):
     for one in out:
       print(one.text)
       year = float(one.text[:4])
-      if year > 2014:
+      if year > 2017:
         innerTask = Handler.InnerTask(one.text)
         save = innerTask.dump()
         self.crawl(innerTask.genUrl(1), headers=self.header(), callback=self.processSecondPage, save=save)

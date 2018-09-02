@@ -118,7 +118,7 @@ class Handler(spider.FakeSpider):
     for one in out:
       print(one.text)
       year = float(one.text[:4])
-      if year > 2015:
+      if year > 2017:
       # if one.text.startswith('2018'):
         innerTask = Handler.InnerTask(one.text)
         save = innerTask.dump()

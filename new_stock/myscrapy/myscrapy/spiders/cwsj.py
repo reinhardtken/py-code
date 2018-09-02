@@ -85,32 +85,6 @@ class Spider(scrapy.Spider):
     return out
 
 
-  def parseQuarter(self, response):
-
-    re = []
-    pq = pyquery.PyQuery(response.body)
-    dataList = pq('#sel_bgq')
-    out = dataList.find('option')
-
-    for one in out:
-      print(one.text)
-      year = float(one.text[:4])
-      if year > self.startYear:
-        re.append((self.baseURL + encode_params(self.genParams(1, one.text)), one.text))
-
-    return re
-
-
-  def nextPage(self, json, meta):
-    out = []
-    if 'pages' in json:
-      total = json.get('pages')
-      for i in range(2, total + 1):
-        out.append(self.baseURL + encode_params(self.genParams(i, meta['quarter'])))
-
-    return out
-
-
 
   def parsePage(self, json):
     try:
