@@ -19,32 +19,39 @@ import items
 import util
 import util.utils
 import const
+import query.query_hs300
 
 class Spider(scrapy.Spider):
-  name = 'stock-yjyg'
+  name = 'stock-cwsj'
   startYear = 2017
-  baseURL = 'http://dcfm.eastmoney.com//em_mutisvcexpandinterface/api/js/get?'
+  baseURL = 'http://emweb.securities.eastmoney.com/NewFinanceAnalysis/MainTargetAjax?'
 
   MONGODB_ID = const.MONGODB_ID
-  ID_NAME = const.YJYG_KEYWORD.ID_NAME
-  DB_NAME = const.YJYG_KEYWORD.DB_NAME
-  COLLECTION_HEAD = const.YJYG_KEYWORD.COLLECTION_HEAD
-  KEY_NAME = const.YJYG_KEYWORD.KEY_NAME
-  NEED_TO_NUMBER = const.YJYG_KEYWORD.NEED_TO_NUMBER
-  DATA_SUB = const.YJYG_KEYWORD.DATA_SUB
+  ID_NAME = const.CWSJ_KEYWORD.ID_NAME
+  DB_NAME = const.CWSJ_KEYWORD.DB_NAME
+  COLLECTION_HEAD = const.CWSJ_KEYWORD.COLLECTION_HEAD
+  KEY_NAME = const.CWSJ_KEYWORD.KEY_NAME
+  NEED_TO_NUMBER = const.CWSJ_KEYWORD.NEED_TO_NUMBER
+  DATA_SUB = const.CWSJ_KEYWORD.DATA_SUB
+  # STOCK_LIST = const.STOCK_LIST
+  # STOCK_LIST = {'600028'}
+  # STOCK_LIST = {'000725'}
+  STOCK_LIST = query.query_hs300.queryCodeList()
+  # KEY = 'var XbnsgnRv'
 
   allowed_domains = [
-    'data.eastmoney.com',
-    'dcfm.eastmoney.com',
+    'www.eastmoney.com',
+    'emweb.securities.eastmoney.com',
   ]
   start_urls = [
-    'http://data.eastmoney.com/bbsj/201806/yjyg.html'
+    'http://www.eastmoney.com'
   ]
 
   headers = {
-    'Host': 'data.eastmoney.com',
-    'Referer': 'http://data.eastmoney.com/yjfp/201712.html',
+    'Host': 'emweb.securities.eastmoney.com',
+    'Referer': 'http://emweb.securities.eastmoney.com/NewFinanceAnalysis/Index?type=web&code=SZ000725',
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+    'X-Requested-With': 'XMLHttpRequest',
   }
 
   xpath = {
@@ -52,38 +59,44 @@ class Spider(scrapy.Spider):
 
   received = set()
 
+  def genParams(self, code):
+    def addHead(code):
+      if code.startswith('6'):
+        return 'SH' + code
+      elif code.startswith('0') or code.startswith('3'):
+        return 'SZ' + code
 
-  def genParams(self, page, date):
+    code = addHead(code)
     params = {
-      'type': 'YJBB20_YJYG',
-      'token': '70f12f2f4f091e459a279469fe49eca5',
-      'st': 'ndate',
-      'sr': '-1',
-      'p': page,
-      'ps': '30',
-      'js': 'var aUDOBatW={pages:(tp),data: (x)}',
-      'filter': '(IsLatest=\'T\')(enddate=^' + date + '^)',
-      'rt': int(time.time()),
+      'ctype': 4,
+      'type': 0,
+      'code': code,  # = SZ000725
+
     }
     return params
+
+  def genStockList(self):
+    out = []
+    for code in self.STOCK_LIST:
+      url = encode_params(self.genParams(code))
+      url = self.baseURL + url
+      out.append((url, code))
+
+    return out
+
 
   def parseQuarter(self, response):
 
     re = []
     pq = pyquery.PyQuery(response.body)
-    dataList = pq('#date_type')
+    dataList = pq('#sel_bgq')
     out = dataList.find('option')
+
     for one in out:
+      print(one.text)
       year = float(one.text[:4])
       if year > self.startYear:
         re.append((self.baseURL + encode_params(self.genParams(1, one.text)), one.text))
-
-    # ones = response.xpath(self.xpath['quarterList'])
-    # for one in ones:
-    #   text = one.xpath('./text()').extract().strip()
-    #   year = float(text[:4])
-    #   if year > self.startYear:
-    #     re.append(self.baseURL + encode_params(self.genParams(1, text)))
 
     return re
 
@@ -103,14 +116,12 @@ class Spider(scrapy.Spider):
     try:
       tmp = []
       for item in json:
-        one_stock = util.utils.dealwithData(item, util.utils.threeOP(self.DATA_SUB,
-                                                                     self.NEED_TO_NUMBER, self.KEY_NAME))
+        one_stock = util.utils.dealwithData(item, util.utils.threeOP(self.DATA_SUB, self.NEED_TO_NUMBER, self.KEY_NAME))
         one_stock[self.MONGODB_ID] = item.get(self.ID_NAME)
         series = pd.Series(one_stock)
         tmp.append(series)
 
       df = pd.DataFrame(tmp)
-      print(df)
       return df
     except Exception as e:
       logging.warning("parsePage Exception %s" % (str(e)))
@@ -118,40 +129,38 @@ class Spider(scrapy.Spider):
   def saveDB(self, data: pd.DataFrame, date):
 
     re = util.saveMongoDB(data, util.genEmptyFunc(), self.DB_NAME, self.COLLECTION_HEAD + date, None)
-    util.everydayChange(re, 'yjyg')
+    util.everydayChange(re, 'cwsj')
 
   def parse(self, response):
     self.received.add(response.url)
 
     if 'step' not in response.meta:
-      quarter = self.parseQuarter(response)
+      code = self.genStockList()
       # realOut = set(quarter) - self.received
-      for one in quarter:
-        yield Request(one[0], meta={'step': 1, 'quarter': one[1]})
+      for one in code:
+        yield Request(one[0], meta={'step': 1, 'code': one[1]})
 
 
     if 'step' in response.meta:
       json_data = {}
       if response.meta['step'] >= 1:
-        content = response.body[13:]
+
+        content = response.body
         try:
           data = content.decode('utf-8')
-          data = data.replace('pages', '"pages"', 1)
-          data = data.replace('data', '"data"', 1)
           json_data = json.loads(data)
         except Exception as e:
           logging.warning("parse json Exception %s" % (str(e)))
 
-        if response.meta['step'] == 1:
-          nextPage = self.nextPage(json_data, response.meta)
-          # realOut = set(nextPage) - self.received
-          for one in nextPage:
-            yield Request(one, meta={'step': 2, 'quarter': response.meta['quarter']})
+        # if response.meta['step'] == 1:
+          # nextPage = self.nextPage(json_data, response.meta)
+          # # realOut = set(nextPage) - self.received
+          # for one in nextPage:
+          #   yield Request(one, meta={'step': 2, 'quarter': response.meta['quarter']})
 
-        if 'data' in json_data:
-          data = json_data.get('data')
-          df = self.parsePage(data)
-          if len(df):
-            self.saveDB(df, response.meta['quarter'])
+        df = self.parsePage(json_data)
+        if len(df):
+          self.saveDB(df, response.meta['code'])
+
 
 

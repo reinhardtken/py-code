@@ -21,24 +21,25 @@ import util.utils
 import const
 
 class Spider(scrapy.Spider):
-  name = 'stock-yjyg'
+  name = 'stock-gpfh'
   startYear = 2017
-  baseURL = 'http://dcfm.eastmoney.com//em_mutisvcexpandinterface/api/js/get?'
+  baseURL = 'http://data.eastmoney.com/DataCenter_V3/yjfp/getlist.ashx?'
 
   MONGODB_ID = const.MONGODB_ID
-  ID_NAME = const.YJYG_KEYWORD.ID_NAME
-  DB_NAME = const.YJYG_KEYWORD.DB_NAME
-  COLLECTION_HEAD = const.YJYG_KEYWORD.COLLECTION_HEAD
-  KEY_NAME = const.YJYG_KEYWORD.KEY_NAME
-  NEED_TO_NUMBER = const.YJYG_KEYWORD.NEED_TO_NUMBER
-  DATA_SUB = const.YJYG_KEYWORD.DATA_SUB
+  ID_NAME = const.GPFH_KEYWORD.ID_NAME
+  DB_NAME = const.GPFH_KEYWORD.DB_NAME
+  COLLECTION_HEAD = const.GPFH_KEYWORD.COLLECTION_HEAD
+  KEY_NAME = const.GPFH_KEYWORD.KEY_NAME
+  NEED_TO_NUMBER = const.GPFH_KEYWORD.NEED_TO_NUMBER
+  DATA_SUB = const.GPFH_KEYWORD.DATA_SUB
+  KEY = 'var XbnsgnRv'
 
   allowed_domains = [
     'data.eastmoney.com',
-    'dcfm.eastmoney.com',
+    #'dcfm.eastmoney.com',
   ]
   start_urls = [
-    'http://data.eastmoney.com/bbsj/201806/yjyg.html'
+    'http://data.eastmoney.com/yjfp/201712.html'
   ]
 
   headers = {
@@ -52,38 +53,32 @@ class Spider(scrapy.Spider):
 
   received = set()
 
-
   def genParams(self, page, date):
     params = {
-      'type': 'YJBB20_YJYG',
-      'token': '70f12f2f4f091e459a279469fe49eca5',
-      'st': 'ndate',
+      'js': self.KEY,
+      'pagesize': '50',
       'sr': '-1',
-      'p': page,
-      'ps': '30',
-      'js': 'var aUDOBatW={pages:(tp),data: (x)}',
-      'filter': '(IsLatest=\'T\')(enddate=^' + date + '^)',
+      'sortType': 'GQDJR',
+      'mtk': u'全部股票'.encode('gb2312'),  # %C8%AB%B2%BF%B9%C9%C6%B1',
+      'filter': '(ReportingPeriod=^' + date + '^)',  # '2017-12-31^)',
+      'page': page,
       'rt': int(time.time()),
     }
+
     return params
 
   def parseQuarter(self, response):
 
     re = []
     pq = pyquery.PyQuery(response.body)
-    dataList = pq('#date_type')
+    dataList = pq('#sel_bgq')
     out = dataList.find('option')
+
     for one in out:
+      print(one.text)
       year = float(one.text[:4])
       if year > self.startYear:
         re.append((self.baseURL + encode_params(self.genParams(1, one.text)), one.text))
-
-    # ones = response.xpath(self.xpath['quarterList'])
-    # for one in ones:
-    #   text = one.xpath('./text()').extract().strip()
-    #   year = float(text[:4])
-    #   if year > self.startYear:
-    #     re.append(self.baseURL + encode_params(self.genParams(1, text)))
 
     return re
 
@@ -103,14 +98,12 @@ class Spider(scrapy.Spider):
     try:
       tmp = []
       for item in json:
-        one_stock = util.utils.dealwithData(item, util.utils.threeOP(self.DATA_SUB,
-                                                                     self.NEED_TO_NUMBER, self.KEY_NAME))
+        one_stock = util.utils.dealwithData(item, util.utils.threeOP(self.DATA_SUB, self.NEED_TO_NUMBER, self.KEY_NAME))
         one_stock[self.MONGODB_ID] = item.get(self.ID_NAME)
         series = pd.Series(one_stock)
         tmp.append(series)
 
       df = pd.DataFrame(tmp)
-      print(df)
       return df
     except Exception as e:
       logging.warning("parsePage Exception %s" % (str(e)))
@@ -118,7 +111,7 @@ class Spider(scrapy.Spider):
   def saveDB(self, data: pd.DataFrame, date):
 
     re = util.saveMongoDB(data, util.genEmptyFunc(), self.DB_NAME, self.COLLECTION_HEAD + date, None)
-    util.everydayChange(re, 'yjyg')
+    util.everydayChange(re, 'gpfh')
 
   def parse(self, response):
     self.received.add(response.url)
@@ -133,11 +126,10 @@ class Spider(scrapy.Spider):
     if 'step' in response.meta:
       json_data = {}
       if response.meta['step'] >= 1:
+
         content = response.body[13:]
         try:
-          data = content.decode('utf-8')
-          data = data.replace('pages', '"pages"', 1)
-          data = data.replace('data', '"data"', 1)
+          data = content.decode('gb2312')
           json_data = json.loads(data)
         except Exception as e:
           logging.warning("parse json Exception %s" % (str(e)))
