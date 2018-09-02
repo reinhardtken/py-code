@@ -72,16 +72,14 @@ def queryTopDistrict(top, d):
     return None
 
 
-def queryTurnOverData(city, district):
+def queryTurnOverData(city, district, timeRange):
   client = MongoClient()
   db = client['house-cj']
   collection = db[city]
-  now = datetime.datetime.now()
-  thisYear = now.replace(year=2014, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-  august =  now.replace(month=8, day=1, hour=0, minute=0, second=0, microsecond=0)
+
   out = []
 
-  cursor = collection.find({'district': district, 'dealDate': {'$gte': thisYear, '$lt': august}}).sort('dealDate', pymongo.DESCENDING)
+  cursor = collection.find({'district': district, 'dealDate': {'$gte': timeRange[0], '$lt': timeRange[1]}}).sort('dealDate', pymongo.DESCENDING)
   for c in cursor:
     out.append(c)
 
@@ -93,10 +91,13 @@ def queryTurnOverData(city, district):
 
 def createIndex():
   client = MongoClient()
-  db = client['house']
+  db = client['house-cj']
   collection = db['beijing']
   print(dir(collection))
-  collection.create_index([('distrcit', pymongo.TEXT)])
+  # collection.create_index([('distrcit', pymongo.TEXT)])
+  # re = collection.create_index([('dealDate', pymongo.DESCENDING)])
+
+
   out = collection.list_indexes()
   for one in out:
     print(one)
@@ -104,5 +105,6 @@ def createIndex():
 
 
 if __name__ == '__main__':
-  test()
+  createIndex()
+  # test()
   pass
