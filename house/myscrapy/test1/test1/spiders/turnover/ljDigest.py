@@ -43,16 +43,24 @@ class Spider(scrapy.Spider):
     dbName = 'house-cj'
     collectionName = 'digest'
     xpath = {
-      'digest': '/html/body/div[5]/div[1]/div[2]/div[1]/span/text()',
+      'digest': '/html/body/div[5]/div[1]/div[2]/div[1]/span',
+      'digestText': '/html/body/div[5]/div[1]/div[2]/div[1]',
       # 'digest': '/html/body/div[1]/div/div[5]/div[2]/ul/li',
     }
 
 
     def parse(self, response):
       oneOut = items.LianjiaTurnoverHouseDigest()
-      text = response.xpath(self.xpath['digest'])
-      oneOut['city'] = text[-6:-4]
-      oneOut['_id'] = todayString() + '_' + oneOut['city']
-      oneOut['house'] = String2Number(text)
+      ones = response.xpath(self.xpath['digest'])
+      for one in ones:
+        one = ''.join(one.xpath('./text()').extract()).strip()
+        oneOut['house'] = String2Number(one)
+        break
 
-      yield oneOut
+      ones = response.xpath(self.xpath['digestText'])
+      for one in ones:
+        one = ''.join(one.xpath('./text()').extract()).strip()
+        oneOut['city'] = one[-6:-4]
+        oneOut['_id'] = todayString() + '_' + oneOut['city']
+        yield oneOut
+        break

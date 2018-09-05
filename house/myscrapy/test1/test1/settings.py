@@ -77,6 +77,8 @@ ITEM_PIPELINES = {
   'test1.pipelines.MongoPipeline': 300,
   'test1.pipelines.MongoPipelineDetailDigest': 301,
   'test1.pipelines.MongoPipelineDigest': 302,
+'test1.pipelines.MongoPipelineTurnoverDetailDigest': 303,
+  'test1.pipelines.MongoPipelineTurnoverDigest': 304,
 
 }
 
