@@ -23,12 +23,14 @@ import util
 import util.utils
 import const
 import const.TS as TS
-import query.query_hs300 as query
+import setting
 from fake_spider import spider
 
 MONGODB_ID = const.MONGODB_ID
 DB_NAME = TS.BASICS.DB_NAME
 COLLECTION_NAME = TS.BASICS.COLLECTION_NAME
+
+STOCK_LIST = setting.currentStockList()
 
 jsonCallBack = 'jsonpCallback24417'
 
@@ -71,10 +73,8 @@ class Handler(spider.FakeSpider):
 
   @property
   def stock_list(self):
-    out = []
-    # out.extend(query.QueryCodeList())
-    out.extend(const.STOCK_LIST)
-    return out
+    STOCK_LIST = setting.currentStockList()
+    return STOCK_LIST
 
   def url(self):
 

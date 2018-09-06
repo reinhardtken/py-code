@@ -21,7 +21,7 @@ import util
 import util.utils
 import const
 from fake_spider import spider
-import query.query_hs300
+import setting
 
 MONGODB_ID = const.MONGODB_ID
 ID_NAME = const.CWSJ_KEYWORD.ID_NAME
@@ -30,10 +30,7 @@ COLLECTION_HEAD = const.CWSJ_KEYWORD.COLLECTION_HEAD
 KEY_NAME = const.CWSJ_KEYWORD.KEY_NAME
 NEED_TO_NUMBER = const.CWSJ_KEYWORD.NEED_TO_NUMBER
 DATA_SUB = const.CWSJ_KEYWORD.DATA_SUB
-# STOCK_LIST = const.STOCK_LIST
-# STOCK_LIST = {'600028'}
-# STOCK_LIST = {'000725'}
-STOCK_LIST = query.query_hs300.queryCodeList()
+STOCK_LIST = setting.currentStockList()
 
 base_url = 'http://emweb.securities.eastmoney.com/NewFinanceAnalysis/MainTargetAjax?'
 

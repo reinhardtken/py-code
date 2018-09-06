@@ -33,6 +33,7 @@ import adjust.cwsj.valueMinMax as valueMinMax
 import adjust.cwsj.marketValue as marketValue
 import adjust.cwsj.forecastPE as forecastPE
 import adjust.cwsj.distanceMinMax as distanceMinMax
+import setting
 
 
 priorXQ = util.priorXQuarter
@@ -269,7 +270,7 @@ if __name__ == '__main__':
   import query.query_hs300
 
   stockList = [
-    # (query.query_hs300.queryCodeList(), '/home/ken/workspace/tmp/out-hs300.xls'),
+    (query.query_hs300.queryCodeList(), '/home/ken/workspace/tmp/out-hs300.xls'),
     (const.STOCK_LIST, '/home/ken/workspace/tmp/out-all.xls'),
   ]
 

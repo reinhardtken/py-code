@@ -16,8 +16,7 @@ import util
 import util.utils
 import const
 import const.TS as TS
-import query.query_hs300
-from fake_spider import spider
+import setting
 
 #http://tushare.org/classifying.html#id8
 # code :股票代码
@@ -66,6 +65,7 @@ def saveDB(data: pd.DataFrame, code, handler=None):
 
 
 if __name__ == '__main__':
-  for one in query.query_hs300.queryCodeList():
+  STOCK_LIST = setting.currentStockList()
+  for one in STOCK_LIST:
     re = getKData(one)
     saveDB(re, one)
