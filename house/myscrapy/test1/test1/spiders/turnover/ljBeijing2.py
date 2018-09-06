@@ -40,6 +40,7 @@ class Spider(scrapy.Spider):
   ]
   head = 'https://bj.lianjia.com'
   nextPageOrder = -1
+  reversed = True
   dbName = 'house-cj'
   collectionName = 'beijing'
 
@@ -52,11 +53,13 @@ class Spider(scrapy.Spider):
 
     'lists': '/html/body/div[5]/div[1]/ul/li',
 
+    'districtNumber': '/html/body/div[5]/div[1]/div[2]/div[1]/span/text()',
     'nextPageText': '/html/body/div[5]/div[1]/div[5]/div[2]/div/a[last()]/text()',
     'nextPage': '/html/body/div[5]/div[1]/div[5]/div[2]/div/a[last()]/@href',
     'allPage': '/html/body/div[5]/div[1]/div[5]/div[2]/div/a',
     'allPage2': '/html/body/div[5]/div[1]/div[5]/div[2]/div/a[last()-1]/@href',
 
+    'startAnchor': '/html/body/div[5]/div[1]/div[2]/div[1]/span/text()',
     'anchor': '/html/body/div[5]/div[1]/div[5]/div[2]/div/a[last()]',
   }
 
@@ -124,8 +127,12 @@ class Spider(scrapy.Spider):
 
     tmp = maxURL.split('/')
     maxNumber = String2Number(tmp[-2]) if tmp[-1] == '' else String2Number(tmp[-1])
-    for i in range(2, int(maxNumber) + 1):
-      np.append(url + 'pg' + str(i))
+    if self.reversed:
+      for i in range(int(maxNumber), 1, -1):
+        np.append(url + 'pg' + str(i))
+    else:
+      for i in range(2, int(maxNumber) + 1):
+        np.append(url + 'pg' + str(i))
 
     return np
 
@@ -194,6 +201,15 @@ class Spider(scrapy.Spider):
         d = response.xpath(self.xpath['subDistrictName']).extract()
         if len(d):
           subDistrict = d[0]
+
+        number = String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
+        n = items.LianjiaTurnoverHouseDetailDigest()
+        n['city'] = self.city
+        n['district'] = district
+        n['subDistrict'] = subDistrict
+        n['number'] = number
+        n['_id'] = todayString() + '_' + n['city'] + '_' + n['district'] + '_' + n['subDistrict']
+        yield n
 
         nextPage = self.nextPage(response, self.head, response.meta['url'])
         realOut = set(nextPage) - self.received

@@ -14,25 +14,26 @@ from scrapy.spiderloader import SpiderLoader
 if __name__ == "__main__":
   #https://blog.csdn.net/qq_40755643/article/details/80253395
   #https://segmentfault.com/q/1010000008578604
-  allow = set(["lianjia-cq",
-                    "lianjia-xm",
-                    "lianjia-hf",])
+  allow = set(["lianjia-wh",
+               "lianjia-tj",
+                    # "lianjia-xm",
+                    # "lianjia-hf",
+               ])
 
   allow2 = set([
-    # "scrapy crawl lianjia-bj",
-#"scrapy crawl lianjia-sh",
-"lianjia-cj-sz",
+    "lianjia-cj-bj",
+# "lianjia-cj-sz",
 # "lianjia-cj-gz",
 # "lianjia-cj-hz",
 # "lianjia-cj-nj",
-"lianjia-cj-cs",
+# "lianjia-cj-cs",
 # "lianjia-cj-wh",
 # "lianjia-cj-tj",
 # "lianjia-cj-zz",
-# "lianjia-cj-xa",
-# "lianjia-cj-cd",
-# "lianjia-cj-su",
-# "lianjia-cj-cq",
+#"lianjia-cj-xa",
+#"lianjia-cj-cd",
+#"lianjia-cj-su",
+#  "lianjia-cj-cq",
 # "lianjia-cj-xm",
 # "lianjia-cj-hf",
     ])
@@ -49,7 +50,8 @@ if __name__ == "__main__":
       # scheduler.add_job(func=aps_test, args=('一次性任务',),
       #                   next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=12))
       # scheduler.add_job(func=aps_test, args=('循环任务',), trigger='interval', seconds=3)
-      scheduler.add_job(process.crawl, 'cron', args=[spidername], next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=12))
+      print(spidername)
+      scheduler.add_job(process.crawl, 'cron', args=[spidername], next_run_time=datetime.datetime.now() + datetime.timedelta(hours=3))
       hour += 2
 
   scheduler.start()
