@@ -29,8 +29,9 @@ def String2Number(s):
 
 
 class Spider(spiders.ljShanghai.Spider):
-  name = 'lianjia-bj'
+  name = 'lianjia-esf-bj'
   city = '北京'
+  src = 'lj'
   allowed_domains = [
     'bj.lianjia.com',
   ]
@@ -132,7 +133,8 @@ class Spider(spiders.ljShanghai.Spider):
 
 
   def parseOne(self, one, district, subDistrict):
-    oneOut = items.LianjiaHouseItem()
+    oneOut = items.HouseItem()
+    oneOut['src'] = self.src
     oneOut['district'] = district
     oneOut['subDistrict'] = subDistrict
     oneOut['title'] = ''.join(one.xpath('.//div/div[1]/a/text()').extract()).strip()
@@ -193,7 +195,7 @@ class Spider(spiders.ljShanghai.Spider):
   #         subDistrict = d[0]
   #
   #       number = String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
-  #       n = items.LianjiaHouseDetailDigest()
+  #       n = items.HouseDetailDigest()
   #       n['city'] = self.city
   #       n['district'] = district
   #       n['subDistrict'] = subDistrict

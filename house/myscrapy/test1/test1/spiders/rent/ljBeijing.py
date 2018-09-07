@@ -39,7 +39,7 @@ class Spider(scrapy.Spider):
   ]
   head = 'https://bj.lianjia.com'
   nextPageOrder = -1
-  # reversed = True
+  reversed = False
   dbName = 'house-zf'
   collectionName = 'beijing'
 
@@ -52,7 +52,7 @@ class Spider(scrapy.Spider):
 
     'lists': '//*[@id="house-lst"]/li',
 
-    # 'districtNumber': '/html/body/div[5]/div[1]/div[2]/div[1]/span/text()',
+    'districtNumber': '/html/body/div[4]/div[3]/div[2]/div[1]/h2/span/text()',
 
     'nextPageText': '/html/body/div[4]/div[3]/div[2]/div[2]/div[2]/a[last()]/text()',
     'nextPage': '/html/body/div[4]/div[3]/div[2]/div[2]/div[2]/a[last()]/@href',
@@ -100,7 +100,8 @@ class Spider(scrapy.Spider):
     np = []
     nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
     if nextPageText == '下一页':
-      np.extend(response.xpath(self.xpath['nextPage']).extract())
+      for one in response.xpath(self.xpath['nextPage']).extract():
+        np.append(url + one)
     else:
       p = response.xpath(self.xpath['allPage'])
       # 框架支持url排重,这里就不排重了
@@ -197,14 +198,14 @@ class Spider(scrapy.Spider):
         if len(d):
           subDistrict = d[0]
 
-        # number = String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
-        # n = items.LianjiaTurnoverHouseDetailDigest()
-        # n['city'] = self.city
-        # n['district'] = district
-        # n['subDistrict'] = subDistrict
-        # n['number'] = number
-        # n['_id'] = todayString() + '_' + n['city'] + '_' + n['district'] + '_' + n['subDistrict']
-        # yield n
+        number = String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
+        n = items.LianjiaRentHouseDetailDigest()
+        n['city'] = self.city
+        n['district'] = district
+        n['subDistrict'] = subDistrict
+        n['number'] = number
+        n['_id'] = todayString() + '_' + n['city'] + '_' + n['district'] + '_' + n['subDistrict']
+        yield n
 
         nextPage = self.nextPage(response, self.head, response.meta['url'])
         realOut = set(nextPage) - self.received

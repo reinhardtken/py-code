@@ -25,7 +25,8 @@ cmdList = [
 # "scrapy crawl lianjia-cj-xa",
 # "scrapy crawl lianjia-cj-digest",
 
-"scrapy crawl lianjia-zf-bj",
+"scrapy crawl wiwj-esf-bj",
+
 ]
 
 for one in cmdList:

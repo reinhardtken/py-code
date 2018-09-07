@@ -29,34 +29,45 @@ def todayString():
 
 
 class Spider(scrapy.Spider):
-    name = 'lianjia-sh'
-    city = '上海'
-    src = 'lj'
+    name = 'wiwj-esf-bj'
+    city = '北京'
+    src = 'wiwj'
     allowed_domains = [
-      'sh.lianjia.com',
+      'bj.5i5j.com',
                        ]
     start_urls = [
-      'https://sh.lianjia.com/ershoufang/pudong/',
+      'https://bj.5i5j.com/ershoufang/chaoyangqu/',
     ]
-    head = 'https://sh.lianjia.com'
-    nextPageOrder = -1
+    head = 'https://bj.5i5j.com'
+#     headers = {
+#       'Accept	': 'text/html,application/xhtml+xm…plication/xml;q=0.9,*/*;q=0.8',
+# 'Accept-Encoding': 'gzip, deflate, br',
+# 'Accept-Language': 'en-GB,en;q=0.5',
+# 'Cache-Control'	: 'max-age=0',
+# 'Connection': 'keep-alive',
+# 'Cookie': '_Jo0OQK=6640C382031687852E9DC5…a86ed341d64b267ec6=1536342041',
+# 'DNT': '1',
+# 'Host': 'bj.5i5j.com',
+# 'Upgrade-Insecure-Requests': '1',
+#     }
+    nextPageOrder = 1
     dbName = 'house'
-    collectionName = 'shanghai'
+    collectionName = 'beijing'
     xpath = {
-      'districts': '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[1]/a',
-      'districtName': '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[1]/a[@class="selected"]/text()',
-      'subDistricts': '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a',
-      'subDistrictName': '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[@class="selected"]/text()',
-      'districtNumber': '/html/body/div[4]/div[1]/div[2]/h2/span/text()',
+      'districts': '/html/body/div[3]/div[2]/div/ul/li[1]/div[3]/div[1]/ul/a',
+      'districtName': '/html/body/div[3]/div[2]/div/ul/li[1]/div[3]/div[1]/ul/a/li[@class="new_di_tab_cur"]/text()',
+      'subDistricts': '/html/body/div[3]/div[2]/div/ul/li[1]/div[3]/div[1]/dl/dd/a',
+      'subDistrictName': '/html/body/div[3]/div[2]/div/ul/li[1]/div[3]/div[1]/dl/dd/a[@class="hover"]/text()',
+      'districtNumber': '/html/body/div[4]/div[1]/div[1]/span/text()',
 
-        'lists': '/html/body/div[4]/div[1]/ul/li',
+        'lists': '/html/body/div[4]/div[1]/div[2]/ul/li',
 
-      'nextPageText': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()]/text()',
-      'nextPage': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()]/@href',
-      'allPage': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a',
-      'allPage2': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()-1]/@href',
+      'nextPageText': '/html/body/div[4]/div[1]/div[3]/div[2]/a[1]/text()',
+      'nextPage': '/html/body/div[4]/div[1]/div[3]/div[2]/a[1]/@href',
+      # 'allPage': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a',
+      # 'allPage2': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()-1]/@href',
 
-      'anchor': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()]',
+      'anchor': '/html/body/div[4]/div[1]/div[3]/div[2]/a[1]',
     }
 
     received = set()
@@ -98,11 +109,11 @@ class Spider(scrapy.Spider):
       if nextPageText == '下一页':
         for one in response.xpath(self.xpath['nextPage']).extract():
           np.append(url + one)
-      else:
-        p = response.xpath(self.xpath['allPage'])
-        # 框架支持url排重,这里就不排重了
-        for one in p:
-          np.append(url + one.xpath('.//@href').extract())
+      # else:
+      #   p = response.xpath(self.xpath['allPage'])
+      #   # 框架支持url排重,这里就不排重了
+      #   for one in p:
+      #     np.extend(url + one.xpath('.//@href').extract())
 
       return np
 
@@ -138,44 +149,45 @@ class Spider(scrapy.Spider):
       oneOut['src'] = self.src
       oneOut['district'] = district
       oneOut['subDistrict'] = subDistrict
-      oneOut['title'] = ''.join(one.xpath('.//div[1]/div[1]/a/text()').extract()).strip()
-      oneOut['_id'] = ''.join(one.xpath('.//div[1]/div[1]/a/@data-housecode').extract()).strip()
+      oneOut['title'] = ''.join(one.xpath('./div[2]/h3/a/text()').extract()).strip()
+      href = ''.join(one.xpath('./div[2]/h3/a/@href').extract()).strip()
+      if len(href) > 0:
+        id = '-1'
+        try:
+          id = href.split('/')[-1][:-5]
+        except Exception as e:
+          logging.warning("parseOne Exception %s" % (str(e)))
+        oneOut['_id'] = id
+
       try:
-        unitPrice = String2Number(''.join(one.xpath('.//div[1]/div[6]/div[2]/span/text()').extract()).strip())
-        if not np.isnan(unitPrice):
-          oneOut['unitPrice'] = unitPrice
-          oneOut['totalPrice'] = String2Number(
-            ''.join(one.xpath('.//div[1]/div[6]/div[1]/span/text()').extract()).strip())
-        else:
-          #https://sh.lianjia.com/ershoufang/changning/pg96/
-          oneOut['unitPrice'] = String2Number(''.join(one.xpath('.//div[1]/div[7]/div[2]/span/text()').extract()).strip())
-          oneOut['totalPrice'] = String2Number(
-            ''.join(one.xpath('.//div[1]/div[7]/div[1]/span/text()').extract()).strip())
+        totalPrice = String2Number(''.join(one.xpath('./div[2]/div[1]/div/p[1]/strong/text()').extract()).strip())
+        oneOut['totalPrice'] = totalPrice
+        oneOut['unitPrice'] = String2Number(
+          ''.join(one.xpath('./div[2]/div[1]/div/p[2]/text()').extract()).strip())
 
-        oneOut['community'] = ''.join(one.xpath('.//div[1]/div[2]/div/a/text()').extract())
-        houseInfo = ''.join(one.xpath('.//div[1]/div[2]/div/text()').extract())
-        houseInfo = houseInfo.split('|')
-        if len(houseInfo) > 1:
-          oneOut['houseType'] = houseInfo[1].strip()
-          if len(houseInfo) > 2:
-            oneOut['square'] = String2Number(houseInfo[2].strip())
+        community = ''.join(one.xpath('./div[2]/div[1]/p[2]/a/text()').extract())
+        community = community.split(' ')
+        if len(community) >= 2:
+          oneOut['community'] = community[1]
 
-        oneOut['area'] = ''.join(one.xpath('.//div[1]/div[3]/div/a/text()').extract())
-        positionInfo = ''.join(one.xpath('.//div[1]/div[3]/div/text()').extract())
-        positionInfo = positionInfo.split(')')
-        if len(positionInfo) > 0:
-          oneOut['level'] = positionInfo[0].strip() + ')'
-          if len(positionInfo) > 1:
-            oneOut['structure'] = positionInfo[1].strip()
+        houseInfo = ''.join(one.xpath('./div[2]/div[1]/p[1]/text()').extract())
+        houseInfo = houseInfo.split('·')
+        if len(houseInfo) >= 1:
+          oneOut['houseType'] = houseInfo[0].strip()
+          if len(houseInfo) >= 2:
+            oneOut['square'] = String2Number(houseInfo[1].strip())
+            if len(houseInfo) >= 4:
+              oneOut['level'] = houseInfo[3].strip()
 
-        followInfo = ''.join(one.xpath('.//div[1]/div[4]/text()').extract())
-        followInfo = followInfo.split('/')
+        followInfo = ''.join(one.xpath('./div[2]/div[1]/p[3]/text()').extract())
+        followInfo = followInfo.split('·')
         if len(followInfo) > 0:
           oneOut['attention'] = followInfo[0].strip()
           if len(followInfo) > 1:
             oneOut['follow'] = followInfo[1].strip()
             if len(followInfo) > 2:
-              oneOut['release'] = followInfo[2].strip()
+              release = followInfo[2].strip()
+              oneOut['release'] = datetime.datetime.strptime(release[:10], '%Y-%m-%d')
 
       except Exception as e:
         print(e)

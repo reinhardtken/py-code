@@ -8,9 +8,10 @@
 import scrapy
 
 
-class LianjiaHouseItem(scrapy.Item):
+class HouseItem(scrapy.Item):
     # define the fields for your item here like:
     # name = scrapy.Field()
+    src = scrapy.Field()
     title = scrapy.Field()
     _id = scrapy.Field()
     district = scrapy.Field()
@@ -45,9 +46,10 @@ class LianjiaHouseDigest(scrapy.Item):
     rentHouse = scrapy.Field()
 
 
-class LianjiaHouseDetailDigest(scrapy.Item):
+class HouseDetailDigest(scrapy.Item):
   city = scrapy.Field()
   _id = scrapy.Field()
+  src = scrapy.Field()
   district = scrapy.Field()
   subDistrict = scrapy.Field()
   number = scrapy.Field()
@@ -110,3 +112,12 @@ class LianjiaRentHouseItem(scrapy.Item):
 
   follow = scrapy.Field()
   release = scrapy.Field()
+
+
+
+class LianjiaRentHouseDetailDigest(scrapy.Item):
+  city = scrapy.Field()
+  _id = scrapy.Field()
+  district = scrapy.Field()
+  subDistrict = scrapy.Field()
+  number = scrapy.Field()

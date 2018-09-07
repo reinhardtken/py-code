@@ -100,12 +100,13 @@ class Spider(scrapy.Spider):
     np = []
     nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
     if nextPageText == '下一页':
-      np.extend(response.xpath(self.xpath['nextPage']).extract())
+      for one in response.xpath(self.xpath['nextPage']).extract():
+        np.append(url + one)
     else:
       p = response.xpath(self.xpath['allPage'])
       # 框架支持url排重,这里就不排重了
       for one in p:
-        np.extend(url + one.xpath('.//@href').extract())
+        np.append(url + one.xpath('.//@href').extract())
 
     return np
 

@@ -85,6 +85,9 @@ class Test1DownloaderMiddleware(object):
         # - or return a Request object
         # - or raise IgnoreRequest: process_exception() methods of
         #   installed downloader middleware will be called
+        # for k, v in spider.headers.items():
+        #   request.headers[k] = v
+
         ua = random.choice(self.user_agent_list)
         if ua:
           # request.headers.setdefault('User-Agent', ua)

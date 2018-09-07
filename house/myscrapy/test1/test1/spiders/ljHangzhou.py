@@ -8,7 +8,7 @@ import spiders.ljShanghai
 
 
 class Spider(spiders.ljShanghai.Spider):
-    name = 'lianjia-hz'
+    name = 'lianjia-esf-hz'
     city = '杭州'
     allowed_domains = [
       'hz.lianjia.com',

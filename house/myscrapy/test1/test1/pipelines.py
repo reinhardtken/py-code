@@ -67,9 +67,9 @@ class MongoPipeline(SaveMongoDB):
     self.processor = self.choseProcessor(spider.name)
 
   def choseProcessor(self, name):
-    if name.startswith('lianjia-cj-'):
+    if name.find('-cj-') != -1:
       return self.processTurnoverData
-    elif name.startswith('lianjia-'):
+    elif name.find('-esf-') != -1:
       return self.processSecondhandData
 
   def processTurnoverData(self, item):
@@ -101,7 +101,7 @@ class MongoPipeline(SaveMongoDB):
     self.updateMongoDB(item)
 
   def process_item(self, item, spider):
-    if isinstance(item, items.LianjiaHouseItem) or isinstance(item, items.LianjiaTurnoverHouseItem):
+    if isinstance(item, items.HouseItem) or isinstance(item, items.LianjiaTurnoverHouseItem):
       self.processor(item)
       raise scrapy.exceptions.DropItem()
 
@@ -156,7 +156,7 @@ class MongoPipelineDetailDigest(SaveMongoDB):
 
 
   def process_item(self, item, spider):
-    if isinstance(item, items.LianjiaHouseDetailDigest):
+    if isinstance(item, items.HouseDetailDigest):
       self.updateMongoDB(item)
       raise scrapy.exceptions.DropItem()
 
@@ -239,6 +239,32 @@ class MongoPipelineRentHouse(SaveMongoDB):
 
   def process_item(self, item, spider):
     if isinstance(item, items.LianjiaRentHouseItem):
+      self.updateMongoDB(item)
+      raise scrapy.exceptions.DropItem()
+
+    return item
+
+  def close_spider(self, spider):
+    self.client.close()
+
+
+class MongoPipelineRentDetailDigest(SaveMongoDB):
+
+  @classmethod
+  def from_crawler(cls, crawler):
+    # return cls(mongo_uri=crawler.settings.get('MONGO_URI'), mongo_db=crawler.settings.get('MONGO_DB'))
+    return cls()
+
+  def open_spider(self, spider):
+    self.client = pymongo.MongoClient()
+    self.dbName = 'house-zf'
+    self.collectionName = 'detail_digest'
+    self.db = self.client[self.dbName]
+    self.collection = self.db[self.collectionName]
+
+
+  def process_item(self, item, spider):
+    if isinstance(item, items.LianjiaRentHouseDetailDigest):
       self.updateMongoDB(item)
       raise scrapy.exceptions.DropItem()
 
