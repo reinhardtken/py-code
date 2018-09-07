@@ -5,9 +5,9 @@ import requests
 import pyquery
 
 from selenium import webdriver
-
-CHROME_DRIVER_PATH = r'/home/ken/prog/chromedriver_linux64/chromedriver'
-PHANTOMJS_PATH = r'/home/ken/prog/phantomjs-2.1.1-linux-x86_64/bin/phantomjs'
+import setting
+# CHROME_DRIVER_PATH = r'/home/ken/prog/chromedriver_linux64/chromedriver'
+# PHANTOMJS_PATH = r'/home/ken/prog/phantomjs-2.1.1-linux-x86_64/bin/phantomjs'
 
 
 class Response:
@@ -89,10 +89,15 @@ class FakeSpider():
             print('Error', e.args)
 
         else:
-          # headless
-          options = webdriver.ChromeOptions()
-          options.add_argument('headless')
-          client = webdriver.Chrome(CHROME_DRIVER_PATH, chrome_options=options)
+          client = None
+          if setting.currentOS() == 'linux':
+            # headless
+            options = webdriver.ChromeOptions()
+            options.add_argument('headless')
+            client = webdriver.Chrome(setting.CHROME_DRIVER_PATH, chrome_options=options)
+          else:
+            client = webdriver.PhantomJS(executable_path =setting.PHANTOMJS_PATH, service_args=['--load-images=false', '--disk-cache=true'])
+            
           client.get(url)
           print(client.current_url)
           r = client.page_source
