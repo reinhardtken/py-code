@@ -86,3 +86,27 @@ class LianjiaTurnoverHouseItem(scrapy.Item):
   houseType = scrapy.Field()
   square = scrapy.Field()
   pass
+
+
+class LianjiaRentHouseItem(scrapy.Item):
+  title = scrapy.Field()
+  _id = scrapy.Field()
+
+  district = scrapy.Field()
+  subDistrict = scrapy.Field()
+
+
+
+  rentPrice = scrapy.Field()
+
+  # houseInfo = scrapy.Field()
+  community = scrapy.Field()
+  houseType = scrapy.Field()
+  square = scrapy.Field()
+
+  # positionInfo = scrapy.Field()
+  level = scrapy.Field()
+  structure = scrapy.Field()
+
+  follow = scrapy.Field()
+  release = scrapy.Field()

@@ -39,20 +39,21 @@ class Spider(scrapy.Spider):
   ]
   head = 'https://bj.lianjia.com'
   nextPageOrder = -1
-  reversed = True
+  # reversed = True
   dbName = 'house-zf'
   collectionName = 'beijing'
 
   xpath = {
     'districts': '//*[@id="filter-options"]/dl[1]/dd/div[1]/a',
-    'districtName': '//*[@id="filter-options"]/dl[1]/dd/div[1]/a[@class="selected"]/text()',
+    'districtName': '//*[@id="filter-options"]/dl[1]/dd/div[1]/a[@class="on"]/text()',
     'subDistricts': '//*[@id="filter-options"]/dl[1]/dd/div[2]/a',
-    'subDistrictName': '//*[@id="filter-options"]/dl[1]/dd/div[2]/a[@class="selected"]/text()',
+    'subDistrictName': '//*[@id="filter-options"]/dl[1]/dd/div[2]/a[@class="on"]/text()',
 
 
-    'lists': '//*[@id="house-lst"]/lii',
+    'lists': '//*[@id="house-lst"]/li',
 
     # 'districtNumber': '/html/body/div[5]/div[1]/div[2]/div[1]/span/text()',
+
     'nextPageText': '/html/body/div[4]/div[3]/div[2]/div[2]/div[2]/a[last()]/text()',
     'nextPage': '/html/body/div[4]/div[3]/div[2]/div[2]/div[2]/a[last()]/@href',
     'allPage': '/html/body/div[4]/div[3]/div[2]/div[2]/div[2]/a',
@@ -143,30 +144,25 @@ class Spider(scrapy.Spider):
 
 
   def parseOne(self, one, district, subDistrict):
-    oneOut = items.LianjiaTurnoverHouseItem()
+    oneOut = items.LianjiaRentHouseItem()
     oneOut['district'] = district
     oneOut['subDistrict'] = subDistrict
-    oneOut['title'] = ''.join(one.xpath('./div/div[1]/a/text()').extract()).strip()
-    oneOut['href'] = ''.join(one.xpath('./div/div[1]/a/@href').extract()).strip()
-    if len(oneOut['href']) > 0:
-      id = '-1'
-      try:
-        id = oneOut['href'].split('/')[-1][:-5]
-      except Exception as e:
-        logging.warning("parseOne Exception %s" % (str(e)))
-      oneOut['_id'] = id
+    oneOut['_id'] = ''.join(one.xpath('./@data-housecode').extract()).strip()
+    oneOut['title'] = ''.join(one.xpath('./div[2]/h2/a/text()').extract()).strip()
 
     try:
-      oneOut['askPrice'] = String2Number(''.join(one.xpath('./div/div[5]/span[2]/span[1]/text()').extract()).strip())
-      oneOut['dealCycle'] = String2Number(''.join(one.xpath('./div/div[5]/span[2]/span[2]/text()').extract()).strip())
-      if np.isnan(oneOut['askPrice']):
-        #https://bj.lianjia.com/chengjiao/pinggu/
-        oneOut['askPrice'] = String2Number(''.join(one.xpath('./div/div[4]/span[2]/span[1]/text()').extract()).strip())
-        oneOut['dealCycle'] = String2Number(''.join(one.xpath('./div/div[4]/span[2]/span[2]/text()').extract()).strip())
+      oneOut['community'] = ''.join(one.xpath('./div[2]/div[1]/div[1]/a/span/text()').extract()).strip()
+      oneOut['houseType'] = ''.join(one.xpath('./div[2]/div[1]/div[1]/span[1]/span/text()').extract()).strip()
+      oneOut['square'] = String2Number(''.join(one.xpath('./div[2]/div[1]/div[1]/span[2]/text()').extract()).strip())
 
-      oneOut['bidPrice'] = String2Number(''.join(one.xpath('./div/div[2]/div[3]/span/text()').extract()).strip())
-      oneOut['dealDate'] = ''.join(one.xpath('./div/div[2]/div[2]/text()').extract()).strip()
+      oneOut['rentPrice'] = String2Number(''.join(one.xpath('./div[2]/div[2]/div[1]/span/text()').extract()).strip())
 
+      oneOut['level'] = ''.join(one.xpath('./div[2]/div[1]/div[2]/div/text()[1]').extract())
+      oneOut['structure'] = ''.join(one.xpath('./div[2]/div[1]/div[2]/div/text()[2]').extract())
+
+      release = ''.join(one.xpath('./div[2]/div[2]/div[2]/text()').extract()).strip()
+      oneOut['release'] = datetime.datetime.strptime(release[:10], '%Y.%m.%d')
+      oneOut['follow'] = String2Number(''.join(one.xpath('./div[2]/div[3]/div/div[1]/span/text()').extract()).strip())
     except Exception as e:
       print(e)
       logging.warning("parseOne Exception %s" % (str(e)))
@@ -213,7 +209,6 @@ class Spider(scrapy.Spider):
         nextPage = self.nextPage(response, self.head, response.meta['url'])
         realOut = set(nextPage) - self.received
         for one in realOut:
-          # nextURL = self.head + one
           print('next url: %s %s %s'%(district, subDistrict, one))
           yield Request(one, meta={'step': 2, 'district': district, 'subDistrict': subDistrict})
 

@@ -25,7 +25,27 @@ def String2Number(s):
 
   return out
 
-class MongoPipeline(object):
+
+class SaveMongoDB(object):
+  def updateMongoDB(self, data):
+    # print('enter updateMongoDB')
+    try:
+      update_result = self.collection.update_one({'_id': data['_id']},
+                                                 {'$set': data}, upsert=True)
+
+      if update_result.matched_count > 0 and update_result.modified_count > 0:
+        print('update to Mongo: %s : %s' % (self.dbName, self.collectionName))
+
+      elif update_result.upserted_id is not None:
+        print('insert to Mongo: %s : %s : %s' % (self.dbName, self.collectionName, update_result.upserted_id))
+
+    except pymongo.errors.DuplicateKeyError as e:
+      print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
+    except Exception as e:
+      print(e)
+    # print('leave updateMongoDB')
+
+class MongoPipeline(SaveMongoDB):
   # def __init__(self, mongo_uri, mongo_db):
   #     self.mongo_uri = mongo_uri
   #     self.mongo_db = mongo_db
@@ -90,25 +110,9 @@ class MongoPipeline(object):
   def close_spider(self, spider):
     self.client.close()
 
-  def updateMongoDB(self, data):
-    # print('enter updateMongoDB')
-    try:
-      update_result = self.collection.update_one({'_id': data['_id']},
-                                                 {'$set': data}, upsert=True)
 
-      if update_result.matched_count > 0 and update_result.modified_count > 0:
-        print('update to Mongo: %s : %s' % (self.dbName, self.collectionName))
 
-      elif update_result.upserted_id is not None:
-        print('insert to Mongo: %s : %s : %s' % (self.dbName, self.collectionName, update_result.upserted_id))
-
-    except pymongo.errors.DuplicateKeyError as e:
-      print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
-    except Exception as e:
-      print(e)
-    # print('leave updateMongoDB')
-
-class MongoPipelineDigest(object):
+class MongoPipelineDigest(SaveMongoDB):
 
   @classmethod
   def from_crawler(cls, crawler):
@@ -133,26 +137,10 @@ class MongoPipelineDigest(object):
   def close_spider(self, spider):
     self.client.close()
 
-  def updateMongoDB(self, data):
-    # print('enter updateMongoDB')
-    try:
-      update_result = self.collection.update_one({'_id': data['_id']},
-                                                 {'$set': data}, upsert=True)
-
-      if update_result.matched_count > 0 and update_result.modified_count > 0:
-        print('update to Mongo: %s : %s' % (self.dbName, self.collectionName))
-
-      elif update_result.upserted_id is not None:
-        print('insert to Mongo: %s : %s : %s' % (self.dbName, self.collectionName, update_result.upserted_id))
-
-    except pymongo.errors.DuplicateKeyError as e:
-      print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
-    except Exception as e:
-      print(e)
-    # print('leave updateMongoDB')
 
 
-class MongoPipelineDetailDigest(object):
+
+class MongoPipelineDetailDigest(SaveMongoDB):
 
   @classmethod
   def from_crawler(cls, crawler):
@@ -177,26 +165,10 @@ class MongoPipelineDetailDigest(object):
   def close_spider(self, spider):
     self.client.close()
 
-  def updateMongoDB(self, data):
-    # print('enter updateMongoDB')
-    try:
-      update_result = self.collection.update_one({'_id': data['_id']},
-                                                 {'$set': data}, upsert=True)
-
-      if update_result.matched_count > 0 and update_result.modified_count > 0:
-        print('update to Mongo: %s : %s' % (self.dbName, self.collectionName))
-
-      elif update_result.upserted_id is not None:
-        print('insert to Mongo: %s : %s : %s' % (self.dbName, self.collectionName, update_result.upserted_id))
-
-    except pymongo.errors.DuplicateKeyError as e:
-      print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
-    except Exception as e:
-      print(e)
-    # print('leave updateMongoDB')
 
 
-class MongoPipelineTurnoverDigest(object):
+
+class MongoPipelineTurnoverDigest(SaveMongoDB):
 
   @classmethod
   def from_crawler(cls, crawler):
@@ -221,26 +193,10 @@ class MongoPipelineTurnoverDigest(object):
   def close_spider(self, spider):
     self.client.close()
 
-  def updateMongoDB(self, data):
-    # print('enter updateMongoDB')
-    try:
-      update_result = self.collection.update_one({'_id': data['_id']},
-                                                 {'$set': data}, upsert=True)
-
-      if update_result.matched_count > 0 and update_result.modified_count > 0:
-        print('update to Mongo: %s : %s' % (self.dbName, self.collectionName))
-
-      elif update_result.upserted_id is not None:
-        print('insert to Mongo: %s : %s : %s' % (self.dbName, self.collectionName, update_result.upserted_id))
-
-    except pymongo.errors.DuplicateKeyError as e:
-      print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
-    except Exception as e:
-      print(e)
-    # print('leave updateMongoDB')
 
 
-class MongoPipelineTurnoverDetailDigest(object):
+
+class MongoPipelineTurnoverDetailDigest(SaveMongoDB):
 
   @classmethod
   def from_crawler(cls, crawler):
@@ -265,20 +221,28 @@ class MongoPipelineTurnoverDetailDigest(object):
   def close_spider(self, spider):
     self.client.close()
 
-  def updateMongoDB(self, data):
-    # print('enter updateMongoDB')
-    try:
-      update_result = self.collection.update_one({'_id': data['_id']},
-                                                 {'$set': data}, upsert=True)
 
-      if update_result.matched_count > 0 and update_result.modified_count > 0:
-        print('update to Mongo: %s : %s' % (self.dbName, self.collectionName))
+class MongoPipelineRentHouse(SaveMongoDB):
 
-      elif update_result.upserted_id is not None:
-        print('insert to Mongo: %s : %s : %s' % (self.dbName, self.collectionName, update_result.upserted_id))
+  @classmethod
+  def from_crawler(cls, crawler):
+    # return cls(mongo_uri=crawler.settings.get('MONGO_URI'), mongo_db=crawler.settings.get('MONGO_DB'))
+    return cls()
 
-    except pymongo.errors.DuplicateKeyError as e:
-      print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
-    except Exception as e:
-      print(e)
-    # print('leave updateMongoDB')
+  def open_spider(self, spider):
+    self.client = pymongo.MongoClient()
+    self.dbName = spider.dbName
+    self.collectionName = spider.collectionName
+    self.db = self.client[self.dbName]
+    self.collection = self.db[self.collectionName]
+
+
+  def process_item(self, item, spider):
+    if isinstance(item, items.LianjiaRentHouseItem):
+      self.updateMongoDB(item)
+      raise scrapy.exceptions.DropItem()
+
+    return item
+
+  def close_spider(self, spider):
+    self.client.close()
