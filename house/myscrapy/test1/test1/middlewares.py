@@ -202,7 +202,7 @@ class SeleniumMiddleware():
     """
     self.logger.debug('ChromeDriver is Starting')
 
-    if self.timeoutCounter >= 3:
+    if self.timeoutCounter >= 1:
       self.timeoutCounter = 0
       self.innerDestroy()
       self.innerInit()

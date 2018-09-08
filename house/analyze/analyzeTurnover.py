@@ -207,10 +207,10 @@ def diffPriceTrend(df):
 
 # this project
 if __name__ == '__main__':
-  city = 'shanghai'
-  districts = ['浦东', '静安', '黄浦', '徐汇']
-  # city = 'beijing'
-  # districts = ['海淀', '朝阳', '东城', '西城']
+  # city = 'shanghai'
+  # districts = ['浦东', '静安', '黄浦', '徐汇']
+  city = 'beijing'
+  districts = ['海淀', '朝阳', '东城', '西城']
   # city = 'changsha'
   # districts = ['开福', '雨花', '芙蓉', '岳麓', '天心']
   # city = 'shenzhen'
@@ -223,8 +223,8 @@ if __name__ == '__main__':
 
   for district in districts:
     df = query.queryTurnOverData(city, district, (thisYear, august))
-    # unitPriceTrend(df)
+    unitPriceTrend(df)
     # dealNumberTrend(df)
     # dealCycleTrend(df)
-    diffPriceTrend(df)
+    # diffPriceTrend(df)
   pass

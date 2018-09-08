@@ -87,7 +87,21 @@ def queryTurnOverData(city, district, timeRange):
     df = pd.DataFrame(out)
     return df
 
+def test():
+  client = MongoClient()
+  db = client['house']
+  collection = db['detail_digest']
 
+  out = []
+
+  total = 0
+  cursor = collection.find({'src': 'wiwj', 'city': '长沙'})
+  for c in cursor:
+    total += c['number']
+
+  if len(out):
+    df = pd.DataFrame(out)
+    return df
 
 def createIndex():
   client = MongoClient()
@@ -105,6 +119,7 @@ def createIndex():
 
 
 if __name__ == '__main__':
+  test()
   createIndex()
   # test()
   pass
