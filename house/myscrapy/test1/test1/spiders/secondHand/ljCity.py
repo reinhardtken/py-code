@@ -4,10 +4,10 @@ import urllib
 import scrapy
 from scrapy.http import Request
 import items
-import spiders.ljShanghai
+import spiders.secondHand.wiwjBeijing
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
     name = 'lianjia-esf-cs'
     city = '长沙'
     allowed_domains = [
@@ -20,7 +20,7 @@ class Spider(spiders.ljShanghai.Spider):
     collectionName = 'changsha'
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-gz'
   city = '广州'
   allowed_domains = [
@@ -32,7 +32,7 @@ class Spider(spiders.ljShanghai.Spider):
   head = 'https://gz.lianjia.com'
   collectionName = 'guangzhou'
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-hz'
   city = '杭州'
   allowed_domains = [
@@ -45,7 +45,7 @@ class Spider(spiders.ljShanghai.Spider):
   collectionName = 'hangzhou'
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-hf'
   city = '合肥'
   allowed_domains = [
@@ -58,12 +58,12 @@ class Spider(spiders.ljShanghai.Spider):
 
   collectionName = 'hefei'
 
-  xpath = spiders.ljShanghai.Spider.xpath
+  xpath = spiders.secondHand.wiwjBeijing.Spider.xpath
   xpath['districts'] = '/html/body/div[3]/div/div[1]/dl[2]/dd/div/div[1]/a'
   xpath['districtName'] = '/html/body/div[3]/div/div[1]/dl[2]/dd/div/div[1]/a[@class="selected"]/text()'
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-nj'
   city = '南京'
   allowed_domains = [
@@ -75,7 +75,7 @@ class Spider(spiders.ljShanghai.Spider):
   head = 'https://nj.lianjia.com'
   collectionName = 'nanjing'
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-sz'
   city = '深圳'
   allowed_domains = [
@@ -89,7 +89,7 @@ class Spider(spiders.ljShanghai.Spider):
   collectionName = 'shenzhen'
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-su'
   city = '苏州'
   allowed_domains = [
@@ -102,7 +102,7 @@ class Spider(spiders.ljShanghai.Spider):
   collectionName = 'suzhou'
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-tj'
   city = '天津'
   allowed_domains = [
@@ -115,7 +115,7 @@ class Spider(spiders.ljShanghai.Spider):
   collectionName = 'tianjin'
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-wh'
   city = '武汉'
   allowed_domains = [
@@ -128,7 +128,7 @@ class Spider(spiders.ljShanghai.Spider):
   collectionName = 'wuhan'
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-xm'
   city = '厦门'
   allowed_domains = [
@@ -142,7 +142,7 @@ class Spider(spiders.ljShanghai.Spider):
   collectionName = 'xiamen'
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-xa'
   city = '西安'
   allowed_domains = [
@@ -155,7 +155,7 @@ class Spider(spiders.ljShanghai.Spider):
   collectionName = 'xian'
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-zz'
   city = '郑州'
   allowed_domains = [
@@ -169,7 +169,7 @@ class Spider(spiders.ljShanghai.Spider):
   collectionName = 'zhengzhou'
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-cq'
   city = '重庆'
   allowed_domains = [
@@ -182,7 +182,7 @@ class Spider(spiders.ljShanghai.Spider):
   collectionName = 'chongqing'
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.wiwjBeijing.Spider):
   name = 'lianjia-esf-cd'
   city = '成都'
   allowed_domains = [

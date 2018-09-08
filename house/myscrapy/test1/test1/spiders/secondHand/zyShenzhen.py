@@ -27,48 +27,44 @@ def todayString():
   now = now.replace(hour=0, minute=0, second=0, microsecond=0)
   return now.strftime('%Y-%m-%d')
 
+def today():
+  now = datetime.datetime.now()
+  now = now.replace(hour=0, minute=0, second=0, microsecond=0)
+  return now
+
 
 class Spider(scrapy.Spider):
-    name = 'wiwj-esf-bj'
-    city = '北京'
-    src = 'wiwj'
+    name = 'zy-esf-sz'
+    city = '深圳'
+    src = 'zy'
     allowed_domains = [
-      'bj.5i5j.com',
+      'sz.centanet.com',
                        ]
     start_urls = [
-      'https://bj.5i5j.com/ershoufang/chaoyangqu/',
+      'https://sz.centanet.com/ershoufang/longgang/',
     ]
-    head = 'https://bj.5i5j.com'
-#     headers = {
-#       'Accept	': 'text/html,application/xhtml+xm…plication/xml;q=0.9,*/*;q=0.8',
-# 'Accept-Encoding': 'gzip, deflate, br',
-# 'Accept-Language': 'en-GB,en;q=0.5',
-# 'Cache-Control'	: 'max-age=0',
-# 'Connection': 'keep-alive',
-# 'Cookie': '_Jo0OQK=6640C382031687852E9DC5…a86ed341d64b267ec6=1536342041',
-# 'DNT': '1',
-# 'Host': 'bj.5i5j.com',
-# 'Upgrade-Insecure-Requests': '1',
-#     }
+    head = 'https://sz.centanet.com'
+
     nextPageOrder = -1
     reversed = False
+    useAllPge = False
     dbName = 'house'
-    collectionName = 'beijing'
+    collectionName = 'shenzhen'
     xpath = {
-      'districts': '/html/body/div[3]/div[2]/div/ul/li[1]/div[3]/div[1]/ul/a',
-      'districtName': '/html/body/div[3]/div[2]/div/ul/li[1]/div[3]/div[1]/ul/a/li[@class="new_di_tab_cur"]/text()',
-      'subDistricts': '/html/body/div[3]/div[2]/div/ul/li[1]/div[3]/div[1]/dl/dd/a',
-      'subDistrictName': '/html/body/div[3]/div[2]/div/ul/li[1]/div[3]/div[1]/dl/dd/a[@class="hover"]/text()',
-      'districtNumber': '/html/body/div[4]/div[1]/div[1]/span/text()',
+      'districts': '/html/body/div[4]/div/div[1]/div[1]/p[2]/a',
+      'districtName': '/html/body/div[4]/div/div[1]/div[1]/p[2]/span[@class="curr"]/text()',
+      'subDistricts': '/html/body/div[4]/div/div[1]/div[1]/p[3]/span/a',
+      'subDistrictName': '/html/body/div[4]/div/div[1]/div[1]/p[3]/span[@class="curr"]/text()',
+      'districtNumber': '/html/body/div[5]/div/div/p/span/span/text()',
 
-        'lists': '/html/body/div[4]/div[1]/div[2]/ul/li',
+        'lists': '/html/body/div[6]/div/div',
 
-      'nextPageText': '/html/body/div[4]/div[1]/div[3]/div[2]/a[1]/text()',
-      'nextPage': '/html/body/div[4]/div[1]/div[3]/div[2]/a[1]/@href',
-      # 'allPage': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a',
+      'nextPageText': '/html/body/div[7]/div/div/div/a[last()-1]/text()',
+      'nextPage': '/html/body/div[7]/div/div/div/a[last()-1]/@href',
+      'allPage': '/html/body/div[7]/div/div/div/a[last()]',
       # 'allPage2': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()-1]/@href',
 
-      'anchor': '/html/body/div[4]/div[1]/div[3]/div[2]/a[1]',
+      'anchor': '/html/body/div[7]/div/div/div/a[last()-1]',
     }
 
     received = set()
@@ -121,18 +117,47 @@ class Spider(scrapy.Spider):
       return np
 
     def nextPageNegativeOne(self, response, url, number):
+      if self.useAllPge:
+        return self.nextPageNegativeOneAllPage(response, url)
+      else:
+        return self.nextPageNegativeOneNumber(response, url, number)
+
+    def nextPageNegativeOneNumber(self, response, url, number):
       out = []
       if not np.isnan(number):
-        maxNumber = int(number / 30) + 1
+        maxNumber = int(number / 25) + 1
         if self.reversed:
           for i in range(maxNumber, 1, -1):
-            out.append(url + 'n' + str(i))
+            out.append(url + 'g' + str(i))
         else:
           for i in range(2, maxNumber + 1):
-            one = url + 'n' + str(i)
+            one = url + 'g' + str(i)
             out.append(one)
 
       return out
+
+
+    def nextPageNegativeOneAllPage(self, response, url):
+      #没跑过。。。
+      np = []
+      maxURL = None
+      allPage = ''.join(response.xpath(self.xpath['allPage']).extract()).strip()
+      if len(allPage):
+        maxURL = allPage[0].strip()
+
+      if maxURL is None:
+        return []
+
+      tmp = maxURL.split('/')
+      maxNumber = String2Number(tmp[-2]) if tmp[-1] == '' else String2Number(tmp[-1])
+      if self.reversed:
+        for i in range(int(maxNumber), 1, -1):
+          np.append(url + 'g' + str(i))
+      else:
+        for i in range(2, int(maxNumber) + 1):
+          np.append(url + 'g' + str(i))
+
+      return np
 
 
     def nextPage(self, response, url1, url2, number):
@@ -147,8 +172,8 @@ class Spider(scrapy.Spider):
       oneOut['src'] = self.src
       oneOut['district'] = district
       oneOut['subDistrict'] = subDistrict
-      oneOut['title'] = ''.join(one.xpath('./div[2]/h3/a/text()').extract()).strip()
-      href = ''.join(one.xpath('./div[2]/h3/a/@href').extract()).strip()
+      oneOut['title'] = ''.join(one.xpath('./div[1]/h4/a/text()').extract()).strip()
+      href = ''.join(one.xpath('./div[1]/h4/a/@href').extract()).strip()
       if len(href) > 0:
         id = '-1'
         try:
@@ -158,34 +183,27 @@ class Spider(scrapy.Spider):
         oneOut['_id'] = id
 
       try:
-        totalPrice = String2Number(''.join(one.xpath('./div[2]/div[1]/div/p[1]/strong/text()').extract()).strip())
+        totalPrice = String2Number(''.join(one.xpath('./div[2]/p[1]/span/text()').extract()).strip())
         oneOut['totalPrice'] = totalPrice
         oneOut['unitPrice'] = String2Number(
-          ''.join(one.xpath('./div[2]/div[1]/div/p[2]/text()').extract()).strip())
+          ''.join(one.xpath('./div[2]/p[2]/text()').extract()).strip())
 
-        community = ''.join(one.xpath('./div[2]/div[1]/p[2]/a/text()').extract())
-        community = community.split(' ')
-        if len(community) >= 2:
-          oneOut['community'] = community[1]
+        oneOut['community'] = ''.join(one.xpath('./div[1]/p[1]/a/text()').extract())
+        # community = community.split(' ')
+        # if len(community) >= 2:
+        #   oneOut['community'] = community[1]
 
-        houseInfo = ''.join(one.xpath('./div[2]/div[1]/p[1]/text()').extract())
-        houseInfo = houseInfo.split('·')
-        if len(houseInfo) >= 1:
-          oneOut['houseType'] = houseInfo[0].strip()
-          if len(houseInfo) >= 2:
-            oneOut['square'] = String2Number(houseInfo[1].strip())
-            if len(houseInfo) >= 4:
-              oneOut['level'] = houseInfo[3].strip()
+        oneOut['houseType'] = ''.join(one.xpath('./div[1]/p[1]/span[2]/text()').extract()).strip()
+        if oneOut['houseType'] == '|':
+          oneOut['houseType'] = ''.join(one.xpath('./div[1]/p[1]/span[3]/text()').extract()).strip()
 
-        followInfo = ''.join(one.xpath('./div[2]/div[1]/p[3]/text()').extract())
-        followInfo = followInfo.split('·')
-        if len(followInfo) > 0:
-          oneOut['attention'] = followInfo[0].strip()
-          if len(followInfo) > 1:
-            oneOut['follow'] = followInfo[1].strip()
-            if len(followInfo) > 2:
-              release = followInfo[2].strip()
-              oneOut['release'] = datetime.datetime.strptime(release[:10], '%Y-%m-%d')
+        oneOut['square'] = String2Number(''.join(one.xpath('./div[1]/p[1]/span[4]/text()').extract()).strip())
+        if np.isnan(oneOut['square']):
+          oneOut['square'] = String2Number(''.join(one.xpath('./div[1]/p[1]/span[5]/text()').extract()).strip())
+
+        oneOut['level'] = ''.join(one.xpath('./div[1]/p[2]/span[1]/text()').extract()).strip()
+
+        oneOut['crawlDate'] = today()
 
       except Exception as e:
         print(e)
@@ -208,8 +226,8 @@ class Spider(scrapy.Spider):
           yield Request(one, meta={'step': 1, 'url': one})
 
 
-      district = np.nan
-      subDistrict = np.nan
+      district = ''
+      subDistrict = ''
 
 
       if 'step' in response.meta:
@@ -230,7 +248,11 @@ class Spider(scrapy.Spider):
           n['district'] = district
           n['subDistrict'] = subDistrict
           n['number'] = number
-          n['_id'] = todayString() + '_' + n['city'] + '_' + n['district'] + '_' + n['subDistrict']
+          today = todayString()
+          try:
+            n['_id'] = today + '_' + self.city + '_' + district + '_' + subDistrict
+          except Exception as e:
+            print(e)
           yield n
 
           nextPage = self.nextPage(response, self.head, response.meta['url'], number)

@@ -10,7 +10,7 @@ import numpy as np
 
 
 import items
-import spiders.ljShanghai
+import spiders.secondHand.ljShanghai
 
 def String2Number(s):
   out = np.nan
@@ -28,7 +28,7 @@ def String2Number(s):
 #   return now.strftime('%Y-%m-%d')
 
 
-class Spider(spiders.ljShanghai.Spider):
+class Spider(spiders.secondHand.ljShanghai.Spider):
   name = 'lianjia-esf-bj'
   city = '北京'
   src = 'lj'
@@ -58,78 +58,6 @@ class Spider(spiders.ljShanghai.Spider):
 
     'anchor': '//*[@id="leftContent"]/div[8]/div[2]/div/a[last()]',
   }
-
-  # received = set()
-  #
-  # def parseDistricts(self, response):
-  #   out = []
-  #
-  #   ones = response.xpath(self.xpath['districts'])
-  #   for one in ones:
-  #     urls = one.xpath('.//@href').extract()
-  #     for url in urls:
-  #       if url.startswith('http'):
-  #         # out.append(url)
-  #         pass
-  #       else:
-  #         out.append(self.head + url)
-  #
-  #   return out
-  #
-  #
-  # def parseSubDistricts(self, response):
-  #   out = []
-  #
-  #   ones = response.xpath(self.xpath['subDistricts'])
-  #   for one in ones:
-  #     urls = one.xpath('.//@href').extract()
-  #     for url in urls:
-  #       if url.startswith('http'):
-  #         # out.append(url)
-  #         pass
-  #       else:
-  #         out.append(self.head + url)
-  #
-  #   return out
-  #
-  # def nextPagePlusOne(self, response, url):
-  #   np = []
-  #   nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
-  #   if nextPageText == '下一页':
-  #     np.extend(response.xpath(self.xpath['nextPage']).extract())
-  #   else:
-  #     p = response.xpath(self.xpath['allPage'])
-  #     # 框架支持url排重,这里就不排重了
-  #     for one in p:
-  #       np.extend(url + one.xpath('.//@href').extract())
-  #
-  #   return np
-  #
-  # def nextPageNegativeOne(self, response, url):
-  #   np = []
-  #   maxURL = None
-  #   nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
-  #   if nextPageText == '下一页':
-  #     tmp = response.xpath(self.xpath['allPage2']).extract()
-  #     if len(tmp):
-  #       maxURL = tmp[0].strip()
-  #   else:
-  #     tmp = response.xpath(self.xpath['nextPage']).extract()
-  #     if len(tmp):
-  #       maxURL = tmp[0].strip()
-  #
-  #   tmp = maxURL.split('/')
-  #   maxNumber = String2Number(tmp[-2]) if tmp[-1] == '' else String2Number(tmp[-1])
-  #   for i in range(2, int(maxNumber) + 1):
-  #     np.append(url + 'pg' + str(i))
-  #
-  #   return np
-  #
-  # def nextPage(self, response, url1, url2):
-  #   if self.nextPageOrder == -1:
-  #     return self.nextPageNegativeOne(response, url2)
-  #   else:
-  #     return self.nextPagePlusOne(response, url1)
 
 
   def parseOne(self, one, district, subDistrict):
@@ -165,58 +93,3 @@ class Spider(spiders.ljShanghai.Spider):
       logging.warning("parseOne Exception %s"%(str(e)))
     return oneOut
 
-  # def parse(self, response):
-  #   self.received.add(response.url)
-  #
-  #   districts = self.parseDistricts(response)
-  #   realOut = set(districts) - self.received
-  #   for one in realOut:
-  #     yield Request(one, meta={'step': 0})
-  #
-  #   subDistricts = self.parseSubDistricts(response)
-  #   realOut = set(subDistricts) - self.received
-  #   for one in realOut:
-  #     yield Request(one, meta={'step': 1, 'url': one})
-  #
-  #
-  #   district = np.nan
-  #   subDistrict = np.nan
-  #
-  #
-  #   if 'step' in response.meta:
-  #
-  #     if response.meta['step'] == 1:
-  #       d = response.xpath(self.xpath['districtName']).extract()
-  #       if len(d):
-  #         district = d[0]
-  #
-  #       d = response.xpath(self.xpath['subDistrictName']).extract()
-  #       if len(d):
-  #         subDistrict = d[0]
-  #
-  #       number = String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
-  #       n = items.HouseDetailDigest()
-  #       n['city'] = self.city
-  #       n['district'] = district
-  #       n['subDistrict'] = subDistrict
-  #       n['number'] = number
-  #       n['_id'] = todayString() + '_' + n['city'] + '_' + n['district'] + '_' + n['subDistrict']
-  #       yield n
-  #
-  #       nextPage = self.nextPage(response, self.head, response.meta['url'])
-  #       realOut = set(nextPage) - self.received
-  #       for one in realOut:
-  #         # nextURL = self.head + one
-  #         print('next url: %s %s %s'%(district, subDistrict, one))
-  #         yield Request(one, meta={'step': 2, 'district': district, 'subDistrict': subDistrict})
-  #
-  #     if response.meta['step'] == 2:
-  #       district = response.meta['district']
-  #       subDistrict = response.meta['subDistrict']
-  #
-  #     if response.meta['step'] >= 1:
-  #       ones = response.xpath(self.xpath['lists'])
-  #
-  #       for one in ones:
-  #         oneOut = self.parseOne(one, district, subDistrict)
-  #         yield oneOut

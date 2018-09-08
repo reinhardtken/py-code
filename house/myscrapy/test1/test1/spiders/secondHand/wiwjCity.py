@@ -73,16 +73,15 @@ class SpiderGZ(spiders.secondHand.wiwjBeijing.Spider):
   collectionName = 'guangzhou'
 
 class SpiderHZ(spiders.secondHand.wiwjBeijing.Spider):
-  name = 'lianjia-cj-hz'
+  name = 'wiwj-esf-hz'
   city = '杭州'
   allowed_domains = [
-    'hz.lianjia.com',
+    'hz.5i5j.com',
   ]
   start_urls = [
-    'https://hz.lianjia.com/chengjiao/xihu/',
+    'https://hz.5i5j.com/ershoufang/gongshuqu/',
   ]
-  head = 'https://hz.lianjia.com'
-
+  head = 'https://hz.5i5j.com'
   collectionName = 'hangzhou'
 
 
@@ -100,18 +99,7 @@ class SpiderNJ(spiders.secondHand.wiwjBeijing.Spider):
   collectionName = 'nanjing'
 
 
-class SpiderSZ(spiders.secondHand.wiwjBeijing.Spider):
-  name = 'lianjia-cj-sz'
-  city = '深圳'
-  allowed_domains = [
-    'sz.lianjia.com',
-  ]
-  start_urls = [
-    'https://sz.lianjia.com/chengjiao/nanshanqu/',
-  ]
-  head = 'https://sz.lianjia.com'
 
-  collectionName = 'shenzhen'
 
 
 class SpiderSU(spiders.secondHand.wiwjBeijing.Spider):

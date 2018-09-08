@@ -35,6 +35,8 @@ class HouseItem(scrapy.Item):
     attention = scrapy.Field()
     follow = scrapy.Field()
     release = scrapy.Field()
+
+    crawlDate = scrapy.Field()
     pass
 
 
