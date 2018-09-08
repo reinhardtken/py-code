@@ -19,6 +19,7 @@ import items
 import util
 import util.utils
 import const
+import setting
 # import query.query_hs300
 
 class Spider(scrapy.Spider):
@@ -36,7 +37,7 @@ class Spider(scrapy.Spider):
   # STOCK_LIST = const.STOCK_LIST
   # STOCK_LIST = {'600028'}
   # STOCK_LIST = {'000725'}
-  STOCK_LIST = const.currentStockList()
+  STOCK_LIST = setting.currentStockList()
   # KEY = 'var XbnsgnRv'
 
   allowed_domains = [
