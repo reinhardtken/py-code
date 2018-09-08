@@ -65,28 +65,33 @@ class Spider(spiders.secondHand.ljShanghai.Spider):
     oneOut['src'] = self.src
     oneOut['district'] = district
     oneOut['subDistrict'] = subDistrict
-    oneOut['title'] = ''.join(one.xpath('.//div/div[1]/a/text()').extract()).strip()
-    oneOut['_id'] = ''.join(one.xpath('.//div/div[1]/a/@data-housecode').extract()).strip()
+    oneOut['title'] = ''.join(one.xpath('./div/div[1]/a/text()').extract()).strip()
+    oneOut['_id'] = ''.join(one.xpath('./div/div[1]/a/@data-housecode').extract()).strip()
     try:
       # oneOut['building'] = ''.join(one.xpath('.//div/div[2]/div/a/text()').extract()).strip()
       oneOut['unitPrice'] = String2Number(
-        ''.join(one.xpath('.//div/div[4]/div[3]/div[2]/span/text()').extract()).strip())
+        ''.join(one.xpath('./div/div[4]/div[3]/div[2]/span/text()').extract()).strip())
       oneOut['totalPrice'] = String2Number(
-        ''.join(one.xpath('.//div/div[4]/div[3]/div[1]/span/text()').extract()).strip())
+        ''.join(one.xpath('./div/div[4]/div[3]/div[1]/span/text()').extract()).strip())
+      if np.isnan(oneOut['unitPrice']):
+        oneOut['unitPrice'] = String2Number(
+          ''.join(one.xpath('./div/div[4]/div[2]/div[2]/span/text()').extract()).strip())
+        oneOut['totalPrice'] = String2Number(
+          ''.join(one.xpath('./div/div[4]/div[2]/div[1]/span/text()').extract()).strip())
 
-      oneOut['community'] = ''.join(one.xpath('.//div/div[2]/div/a/text()').extract())
-      oneOut['houseType'] = ''.join(one.xpath('.//div/div[2]/div/text()[1]').extract())
-      oneOut['square'] = String2Number(''.join(one.xpath('.//div/div[2]/div/text()[2]').extract()))
+      oneOut['community'] = ''.join(one.xpath('./div/div[2]/div/a/text()').extract())
+      oneOut['houseType'] = ''.join(one.xpath('./div/div[2]/div/text()[1]').extract())
+      oneOut['square'] = String2Number(''.join(one.xpath('./div/div[2]/div/text()[2]').extract()))
 
-      oneOut['level'] = ''.join(one.xpath('.//div/div[3]/div/text()[1]').extract())
+      oneOut['level'] = ''.join(one.xpath('./div/div[3]/div/text()[1]').extract())
       if oneOut['level'][-1] == '万':
         oneOut['level'] = oneOut['level'][:-1]
-      oneOut['structure'] = ''.join(one.xpath('.//div/div[3]/div/text()[2]').extract())
-      oneOut['area'] = ''.join(one.xpath('.//div/div[3]/div/a/text()').extract())
+      oneOut['structure'] = ''.join(one.xpath('./div/div[3]/div/text()[2]').extract())
+      oneOut['area'] = ''.join(one.xpath('./div/div[3]/div/a/text()').extract())
 
-      oneOut['attention'] = ''.join(one.xpath('.//div/div[4]/text()[1]').extract())
-      oneOut['follow'] = ''.join(one.xpath('.//div/div[4]/text()[2]').extract())
-      oneOut['release'] = ''.join(one.xpath('.//div/div[4]/div[1]/text()').extract())
+      oneOut['attention'] = ''.join(one.xpath('./div/div[4]/text()[1]').extract())
+      oneOut['follow'] = ''.join(one.xpath('./div/div[4]/text()[2]').extract())
+      oneOut['release'] = ''.join(one.xpath('./div/div[4]/div[1]/text()').extract())
 
     except Exception as e:
       print(e)

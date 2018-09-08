@@ -237,4 +237,7 @@ class Spider(scrapy.Spider):
 
           for one in ones:
             oneOut = self.parseOne(one, district, subDistrict)
-            yield oneOut
+            if len(oneOut['_id']):
+              yield oneOut
+            else:
+              continue

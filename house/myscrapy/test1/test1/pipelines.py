@@ -8,6 +8,7 @@
 import logging
 import datetime
 import re
+import math
 
 import pymongo
 import numpy as np
@@ -26,10 +27,38 @@ def String2Number(s):
   return out
 
 
+def today():
+  now = datetime.datetime.now()
+  now = now.replace(hour=0, minute=0, second=0, microsecond=0)
+  return now
+
+
 class SaveMongoDB(object):
   def updateMongoDB(self, data):
     # print('enter updateMongoDB')
+    out = None
     try:
+      if isinstance(data, items.HouseItem):
+        cursor = self.collection.find({'_id': data['_id']})
+        for c in cursor:
+          diff = math.fabs(data['totalPrice'] - c['totalPrice'])
+          if diff > 1:
+            out = {}#items.PriceTrend()
+            out['houseID'] = data['_id']
+            out['src'] = data['src']
+            out['square'] = data['square']
+            out['newUnitPrice'] = data['unitPrice']
+            out['newTotalPrice'] = data['totalPrice']
+            out['oldUnitPrice'] = c['unitPrice']
+            out['oldTotalPrice'] = c['totalPrice']
+            out['diffPercent'] = diff/out['oldTotalPrice']
+            if out['newTotalPrice'] > out['oldTotalPrice']:
+              out['trend'] = 1
+            else:
+              out['trend'] = -1
+            out['crawlDate'] = today()
+          break
+
       update_result = self.collection.update_one({'_id': data['_id']},
                                                  {'$set': data}, upsert=True)
 
@@ -44,6 +73,7 @@ class SaveMongoDB(object):
     except Exception as e:
       print(e)
     # print('leave updateMongoDB')
+    return out
 
 class MongoPipeline(SaveMongoDB):
   # def __init__(self, mongo_uri, mongo_db):
@@ -63,6 +93,8 @@ class MongoPipeline(SaveMongoDB):
     self.collectionName = spider.collectionName
     self.db = self.client[self.dbName]
     self.collection = self.db[self.collectionName]
+    self.dbPriceTrend = self.client['house-trend']
+    self.collectionPriceTrend = self.dbPriceTrend[self.collectionName]
 
     self.processor = self.choseProcessor(spider.name)
 
@@ -98,7 +130,21 @@ class MongoPipeline(SaveMongoDB):
       self.updateMongoDB(item)
 
   def processSecondhandData(self, item):
-    self.updateMongoDB(item)
+    out = self.updateMongoDB(item)
+    if out is not None:
+      self.processPriceTrendItem(out)
+
+
+  def processPriceTrendItem(self, data):
+    if isinstance(data, dict) and 'newTotalPrice' in data:
+      try:
+        insertResult = self.collectionPriceTrend.insert_one(data)
+      except pymongo.errors.DuplicateKeyError as e:
+        # print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['house']))
+        pass
+      except Exception as e:
+        print(e)
+
 
   def process_item(self, item, spider):
     if isinstance(item, items.HouseItem) or isinstance(item, items.LianjiaTurnoverHouseItem):

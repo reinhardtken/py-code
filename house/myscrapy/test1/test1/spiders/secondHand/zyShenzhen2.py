@@ -34,27 +34,27 @@ def today():
 
 
 class Spider(scrapy.Spider):
-    name = 'zy-esf-sz'
+    name = 'zy-esf-sz2'
     city = '深圳'
     src = 'zy'
     allowed_domains = [
       'sz.centanet.com',
                        ]
     start_urls = [
-      'https://sz.centanet.com/ershoufang/longgang/',
+      'https://sz.centanet.com/ershoufang/',
     ]
     head = 'https://sz.centanet.com'
 
     nextPageOrder = -1
-    reversed = True
+    reversed = False
     useAllPge = True
     dbName = 'house'
     collectionName = 'shenzhen'
     xpath = {
-      'districts': '/html/body/div[4]/div/div[1]/div[1]/p[2]/a',
-      'districtName': '/html/body/div[4]/div/div[1]/div[1]/p[2]/span[@class="curr"]/text()',
-      'subDistricts': '/html/body/div[4]/div/div[1]/div[1]/p[3]/span/a',
-      'subDistrictName': '/html/body/div[4]/div/div[1]/div[1]/p[3]/span[@class="curr"]/text()',
+      # 'districts': '/html/body/div[4]/div/div[1]/div[1]/p[2]/a',
+      # 'districtName': '/html/body/div[4]/div/div[1]/div[1]/p[2]/span[@class="curr"]/text()',
+      # 'subDistricts': '/html/body/div[4]/div/div[1]/div[1]/p[3]/span/a',
+      # 'subDistrictName': '/html/body/div[4]/div/div[1]/div[1]/p[3]/span[@class="curr"]/text()',
       'districtNumber': '/html/body/div[5]/div/div/p/span/span/text()',
 
         'lists': '/html/body/div[6]/div/div',
@@ -69,38 +69,38 @@ class Spider(scrapy.Spider):
 
     received = set()
 
-    def parseDistricts(self, response):
-      out = []
-
-      ones = response.xpath(self.xpath['districts'])
-      for one in ones:
-        urls = one.xpath('.//@href').extract()
-        for url in urls:
-          if url.startswith('http'):
-            # out.append(url)
-            pass
-          else:
-            out.append(self.head + url)
-
-      return out
-
-
-    def parseSubDistricts(self, response):
-      out = []
-
-      ones = response.xpath(self.xpath['subDistricts'])
-      for one in ones:
-        urls = one.xpath('.//@href').extract()
-        for url in urls:
-          if url.startswith('http'):
-            # out.append(url)
-            pass
-          else:
-            # if url.endswith('/0'):
-            #   url = url[:-1]
-            out.append(self.head + url)
-
-      return out
+    # def parseDistricts(self, response):
+    #   out = []
+    #
+    #   ones = response.xpath(self.xpath['districts'])
+    #   for one in ones:
+    #     urls = one.xpath('.//@href').extract()
+    #     for url in urls:
+    #       if url.startswith('http'):
+    #         # out.append(url)
+    #         pass
+    #       else:
+    #         out.append(self.head + url)
+    #
+    #   return out
+    #
+    #
+    # def parseSubDistricts(self, response):
+    #   out = []
+    #
+    #   ones = response.xpath(self.xpath['subDistricts'])
+    #   for one in ones:
+    #     urls = one.xpath('.//@href').extract()
+    #     for url in urls:
+    #       if url.startswith('http'):
+    #         # out.append(url)
+    #         pass
+    #       else:
+    #         # if url.endswith('/0'):
+    #         #   url = url[:-1]
+    #         out.append(self.head + url)
+    #
+    #   return out
 
     def nextPagePlusOne(self, response, url):
       np = []
@@ -116,11 +116,11 @@ class Spider(scrapy.Spider):
 
       return np
 
-    def nextPageNegativeOne(self, response, url, number):
+    def nextPageNegativeOne(self, response, url):
       if self.useAllPge:
         return self.nextPageNegativeOneAllPage(response, url)
       else:
-        return self.nextPageNegativeOneNumber(response, url, number)
+        pass
 
     def nextPageNegativeOneNumber(self, response, url, number):
       out = []
@@ -159,18 +159,18 @@ class Spider(scrapy.Spider):
       return np
 
 
-    def nextPage(self, response, url1, url2, number):
+    def nextPage(self, response):
       if self.nextPageOrder == -1:
-        return self.nextPageNegativeOne(response, url2, number)
+        return self.nextPageNegativeOne(response, response.url)
       else:
-        return self.nextPagePlusOne(response, url1)
+        pass
 
 
-    def parseOne(self, one, district, subDistrict):
+    def parseOne(self, one):
       oneOut = items.HouseItem()
       oneOut['src'] = self.src
-      oneOut['district'] = district
-      oneOut['subDistrict'] = subDistrict
+      oneOut['district'] = ''.join(one.xpath('./div[1]/p[3]/a[1]/text()').extract()).strip()
+      oneOut['subDistrict'] = ''.join(one.xpath('./div[1]/p[3]/a[2]/text()').extract()).strip()
       oneOut['title'] = ''.join(one.xpath('./div[1]/h4/a/text()').extract()).strip()
       href = ''.join(one.xpath('./div[1]/h4/a/@href').extract()).strip()
       if len(href) > 0:
@@ -212,61 +212,31 @@ class Spider(scrapy.Spider):
     def parse(self, response):
       self.received.add(response.url)
 
-      if 'step' not in response.meta or response.meta['step'] == 0:
-        districts = self.parseDistricts(response)
-        realOut = set(districts) - self.received
+      # if 'step' not in response.meta or response.meta['step'] == 0:
+      #   districts = self.parseDistricts(response)
+      #   realOut = set(districts) - self.received
+      #   for one in realOut:
+      #     yield Request(one, meta={'step': 0})
+
+      # if 'step' in response.meta and response.meta['step'] <= 1:
+      #   subDistricts = self.parseSubDistricts(response)
+      #   realOut = set(subDistricts) - self.received
+      #   for one in realOut:
+      #     yield Request(one, meta={'step': 1, 'url': one})
+
+
+      # district = ''
+      # subDistrict = ''
+      if 'step' not in response.meta:
+        nextPage = self.nextPage(response)
+        realOut = set(nextPage) - self.received
         for one in realOut:
-          yield Request(one, meta={'step': 0})
+          # print('next url: %s %s %s' % (district, subDistrict, one))
+          yield Request(one, meta={'step': 2, })
 
-      if 'step' in response.meta and response.meta['step'] <= 1:
-        subDistricts = self.parseSubDistricts(response)
-        realOut = set(subDistricts) - self.received
-        for one in realOut:
-          yield Request(one, meta={'step': 1, 'url': one})
-
-
-      district = ''
-      subDistrict = ''
+      ones = response.xpath(self.xpath['lists'])
+      for one in ones:
+        oneOut = self.parseOne(one)
+        yield oneOut
 
 
-      if 'step' in response.meta:
-
-        if response.meta['step'] == 1:
-          d = response.xpath(self.xpath['districtName']).extract()
-          if len(d):
-            district = d[0]
-
-          d = response.xpath(self.xpath['subDistrictName']).extract()
-          if len(d):
-            subDistrict = d[0]
-
-          number = String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
-          n = items.HouseDetailDigest()
-          n['city'] = self.city
-          n['src'] = self.src
-          n['district'] = district
-          n['subDistrict'] = subDistrict
-          n['number'] = number
-          today = todayString()
-          try:
-            n['_id'] = today + '_' + self.city + '_' + district + '_' + subDistrict
-          except Exception as e:
-            print(e)
-          yield n
-
-          nextPage = self.nextPage(response, self.head, response.meta['url'], number)
-          realOut = set(nextPage) - self.received
-          for one in realOut:
-            print('next url: %s %s %s'%(district, subDistrict, one))
-            yield Request(one, meta={'step': 2, 'district': district, 'subDistrict': subDistrict})
-
-        if response.meta['step'] == 2:
-          district = response.meta['district']
-          subDistrict = response.meta['subDistrict']
-
-        if response.meta['step'] >= 1:
-          ones = response.xpath(self.xpath['lists'])
-
-          for one in ones:
-            oneOut = self.parseOne(one, district, subDistrict)
-            yield oneOut
