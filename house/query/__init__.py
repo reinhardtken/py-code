@@ -87,6 +87,23 @@ def queryTurnOverData(city, district, timeRange):
     df = pd.DataFrame(out)
     return df
 
+
+def querySecondHandData(city, src):
+  client = MongoClient()
+  db = client['house']
+  collection = db[city]
+
+  out = []
+
+  cursor = collection.find({'src': src})
+  for c in cursor:
+    out.append(c)
+
+  if len(out):
+    df = pd.DataFrame(out)
+    return df
+
+
 def test():
   client = MongoClient()
   db = client['house']
@@ -186,7 +203,7 @@ def test(city):
       print(e)
 
 
-def queryCityPriceTrend(city, week=None):
+def queryCityPriceTrend(city, src, week=None):
   client = MongoClient()
   db = client['house-trend']
   collection = db[city]
@@ -194,45 +211,15 @@ def queryCityPriceTrend(city, week=None):
   out = []
   cursor = None
   if week is None:
-    cursor = collection.find()
+    cursor = collection.find({'src': src})
   else:
-    cursor = collection.find({'weekofYear': week})
+    cursor = collection.find({'src': src, 'weekofYear': week})
   for c in cursor:
     out.append(c)
 
   if len(out):
     df = pd.DataFrame(out)
     return df
-
-def genCityPriceTrendDigest(city, week):
-  df = queryCityPriceTrend(city, week)
-  upGroup = df.loc[lambda df: df.trend == 1, :]
-  downGroup = df.loc[lambda df: df.trend == -1, :]
-  upMean = upGroup['diffPercent'].mean()
-  downMean = downGroup['diffPercent'].mean()
-
-  client = MongoClient()
-  db = client['house-trend']
-  collection = db['priceTrend']
-  data = {
-    'city': city,
-    'week': week,
-    'up': len(upGroup),
-    'down': len(downGroup),
-    'upDiff': upMean,
-    'downDiff': downMean,
-  }
-
-  try:
-    update_result = collection.insert_one(data)
-
-  except pymongo.errors.DuplicateKeyError as e:
-    pass
-    # print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
-  except Exception as e:
-    print(e)
-
-  pass
 
 
 if __name__ == '__main__':
@@ -249,7 +236,8 @@ if __name__ == '__main__':
     'chongqing',
   ]
   for city in citys:
-    genCityPriceTrendDigest(city, 201836)
+    pass
+    # genCityPriceTrendDigest(city, 201836)
     # test(city)
   # createIndex()
   # test()

@@ -15,6 +15,8 @@ from matplotlib.dates import DayLocator, DateFormatter
 
 #this project
 import query
+import util
+import const
 
 
 def drawUnitPriceTrend(df, district):
@@ -108,14 +110,18 @@ def calcSize(x):
   size = int(x)
   if size < 40:
     return '<40平'
-  elif size >= 41 and size < 60:
+  elif size >= 40 and size < 60:
     return '40-60平'
-  elif size >= 61 and size < 80:
+  elif size >= 60 and size < 80:
     return '60-80平'
-  elif size >= 81 and size < 100:
+  elif size >= 80 and size < 100:
     return '80-100平'
+  elif size >= 100 and size < 120:
+    return '100-120平'
+  elif size >= 120 and size < 140:
+    return '120-140平'
   else:
-    return '>100平'
+    return '>=140平'
 
 def toYearMonth(x):
   return x.strftime('%Y-%m')
@@ -205,26 +211,155 @@ def diffPriceTrend(df):
   outDf = pd.DataFrame(out)
   drawTrend(outDf, district, 'houseSize', 'month', 'diffPricePercent')
 
+
+
+def analyzeCityPriceTrendDigest(city, src, week):
+  df = query.queryCityPriceTrend(city, src, week)
+  upGroup = df.loc[lambda df: df.trend == 1, :]
+  downGroup = df.loc[lambda df: df.trend == -1, :]
+  upMean = upGroup['diffPercent'].mean()
+  downMean = downGroup['diffPercent'].mean()
+
+  client = MongoClient()
+  db = client['house-trend']
+  collection = db['priceTrend']
+  data = {
+    'city': city,
+    'src': src,
+    'week': week,
+    'up': len(upGroup),
+    'down': len(downGroup),
+    'upDiff': upMean,
+    'downDiff': downMean,
+  }
+
+  try:
+    update_result = collection.insert_one(data)
+
+  except pymongo.errors.DuplicateKeyError as e:
+    pass
+    # print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
+  except Exception as e:
+    print(e)
+
+
+def analyzeCityAvgPriceDigest(city, src):
+  df2 = query.querySecondHandData(city, src)
+  if df2 is None or len(df2) == 0:
+    return
+
+  df = df2.loc[lambda df2: np.isnan(df2.square) == False, :]
+
+  df.loc[:, 'houseSize'] = df['square'].map(calcSize)
+  g = df.groupby('houseSize')
+  out = []
+  for k, v in g:
+    # g2 = v.groupby(lambda x : x['dealDate'].month)
+    # g2 = v.groupby('dealDate').apply(func)
+    unitPrice = v['unitPrice'].mean()
+    week = util.getWeekofYear()
+    one = {
+      '_id': city + '_' + src + '_' + str(week) + '_' + k,
+      'city': city,
+      'src': src,
+      'houseSize': k,
+      'unitPrice': unitPrice,
+      'number': len(v),
+      'weekofYear': week
+    }
+    out.append(one)
+
+  client = MongoClient()
+  db = client['house-trend']
+  collection = db['unitPriceAvg']
+
+
+  try:
+    for one in out:
+      update_result = collection.insert_one(one)
+
+  except pymongo.errors.DuplicateKeyError as e:
+    pass
+  except Exception as e:
+    print(e)
+
+
+
+
+def analyzeDistrictAvgPriceDigest(city, src):
+  df2 = query.querySecondHandData(city, src)
+  if df2 is None or len(df2) == 0:
+    return
+
+  df = df2.loc[lambda df2: np.isnan(df2.square) == False, :]
+
+  df.loc[:, 'houseSize'] = df['square'].map(calcSize)
+  g = df.groupby('district')
+  out = []
+  for k, v in g:
+    g2 = v.groupby('houseSize')
+    for k2, v2 in g2:
+      week = util.getWeekofYear()
+      unitPrice = v2['unitPrice'].mean()
+      one = {
+        '_id': city + '_' + k + '_' + src + '_' + str(week) + '_' + k2,
+        'city': city,
+        'district': k,
+        'src': src,
+        'houseSize': k2,
+        'unitPrice': unitPrice,
+        'number': len(v2),
+        'weekofYear': week,
+      }
+      out.append(one)
+
+  client = MongoClient()
+  db = client['house-trend']
+  collection = db['districtUnitPriceAvg']
+
+
+  try:
+    for one in out:
+      update_result = collection.insert_one(one)
+
+  except pymongo.errors.DuplicateKeyError as e:
+    pass
+  except Exception as e:
+    print(e)
+
+
+
 # this project
 if __name__ == '__main__':
-  # city = 'shanghai'
-  # districts = ['浦东', '静安', '黄浦', '徐汇']
-  city = 'beijing'
-  districts = ['海淀', '朝阳', '东城', '西城']
-  # city = 'changsha'
-  # districts = ['开福', '雨花', '芙蓉', '岳麓', '天心']
-  # city = 'shenzhen'
-  # districts = ['南山区', '福田区', '宝安区', '罗湖区']
+  srcs = const.SRCS
+  citys = const.CITYS
+  for src in srcs:
+    for city in citys:
+      # analyzeCityAvgPriceDigest(city, src)
+      analyzeDistrictAvgPriceDigest(city, src)
+      pass
 
 
-  now = datetime.datetime.now()
-  thisYear = now.replace(year=2016, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-  august = now.replace(month=8, day=1, hour=0, minute=0, second=0, microsecond=0)
-
-  for district in districts:
-    df = query.queryTurnOverData(city, district, (thisYear, august))
-    unitPriceTrend(df)
-    # dealNumberTrend(df)
-    # dealCycleTrend(df)
-    # diffPriceTrend(df)
   pass
+
+  # # city = 'shanghai'
+  # # districts = ['浦东', '静安', '黄浦', '徐汇']
+  # city = 'beijing'
+  # districts = ['海淀', '朝阳', '东城', '西城']
+  # # city = 'changsha'
+  # # districts = ['开福', '雨花', '芙蓉', '岳麓', '天心']
+  # # city = 'shenzhen'
+  # # districts = ['南山区', '福田区', '宝安区', '罗湖区']
+  #
+  #
+  # now = datetime.datetime.now()
+  # thisYear = now.replace(year=2016, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+  # august = now.replace(month=8, day=1, hour=0, minute=0, second=0, microsecond=0)
+  #
+  # for district in districts:
+  #   df = query.queryTurnOverData(city, district, (thisYear, august))
+  #   unitPriceTrend(df)
+  #   # dealNumberTrend(df)
+  #   # dealCycleTrend(df)
+  #   # diffPriceTrend(df)
+  # pass
