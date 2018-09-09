@@ -335,7 +335,7 @@ if __name__ == '__main__':
   citys = const.CITYS
   for src in srcs:
     for city in citys:
-      # analyzeCityAvgPriceDigest(city, src)
+      analyzeCityAvgPriceDigest(city, src)
       analyzeDistrictAvgPriceDigest(city, src)
       pass
 

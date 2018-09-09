@@ -14,16 +14,11 @@ import numpy as np
 if __name__ == '__main__':
   import sys
 
+  sys.path.append('/home/ken/workspace/code/self/github/py-code/house')
 ##########################
-#db.getCollection('beijing').find({'district': '朝阳', 'dealDate': {'$gte': new Date('2018-01-01')}})
-def String2Number(s):
-  out = np.nan
-  try:
-    out = float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
-  except Exception as e:
-    pass
+import const
 
-  return out
+
 
 def test():
   client = MongoClient()
@@ -136,10 +131,10 @@ def createIndex():
 
 
 
-def test():
+def addSrc(city, src):
   client = MongoClient()
   db = client['house']
-  collection = db['changsha']
+  collection = db[city]
   out = []
   cursor = collection.find()
   for c in cursor:
@@ -148,7 +143,7 @@ def test():
 
 
   for data in out:
-    data['src'] = 'lj'
+    data['src'] = src
     try:
       update_result = collection.update_one({'_id': data['_id']},
                                                  {'$set': data})
@@ -223,19 +218,9 @@ def queryCityPriceTrend(city, src, week=None):
 
 
 if __name__ == '__main__':
-  citys = [
-    'changsha',
-    'beijing',
-    'shanghai',
-    'shenzhen',
-    'guangzhou',
-    'chengdu',
-    'hangzhou',
-    'nanjing',
-    'wuhan',
-    'chongqing',
-  ]
+  citys = const.CITYS
   for city in citys:
+    addSrc(city, 'lj')
     pass
     # genCityPriceTrendDigest(city, 201836)
     # test(city)
