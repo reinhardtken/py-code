@@ -160,6 +160,13 @@ class SeleniumMiddleware():
       }
     }
     options.add_experimental_option('prefs', prefs)
+    #options.add_argument('lang=zh_CN.UTF-8')
+    #易居的网站会根据ua返回数据，默认会返回移动站数据，强制设置pcua后则不返回数据，问题尚未解决
+    #https://yijufangyou1.anjuke.com/gongsi-esf/
+    options.add_argument('user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36"')
+    # options.add_argument(
+    #   'user-agent="Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Mobile Safari/537.36"')
+
     #try:
     self.browser = webdriver.Chrome(executable_path=self.executable_path, chrome_options=options)
     # self.browser = webdriver.PhantomJS(executable_path=executable_path, service_args=service_args)
@@ -178,19 +185,23 @@ class SeleniumMiddleware():
       print(e)
     pass
 
-  def waitLogic(self, spider):
+  def waitLogic(self, spider, requestURL):
     url = None
     for i in range(3):
       self.browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
       wait = WebDriverWait(self.browser, 2)
       try:
         url = wait.until(EC.presence_of_element_located((By.XPATH, spider.xpath['anchor'])))
+        # url = wait.until(EC.presence_of_element_located((By.XPATH, spider.processAnchor(requestURL))))
         if url is not None:
           break
       except Exception as e:
         print(e)
     else:
       self.logger.warning('SeleniumMiddleware wait failed!!! %s'%(self.browser.current_url))
+      # content = self.browser.page_source
+      # data = content.decode('utf-8')
+      pass
 
 
   def process_request(self, request, spider):
@@ -208,8 +219,9 @@ class SeleniumMiddleware():
       self.innerInit()
 
     try:
+      # print(dir(self.browser))
       self.browser.get(request.url)
-      self.waitLogic(spider)
+      self.waitLogic(spider, request.url)
       return HtmlResponse(url=request.url, body=self.browser.page_source, request=request, encoding='utf-8',
                           status=200)
     except TimeoutException as e:

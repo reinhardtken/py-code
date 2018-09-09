@@ -34,30 +34,41 @@ def today():
 
 
 class SaveMongoDB(object):
+
+  def processPriceChange(self, data):
+    out = None
+    cursor = self.collection.find({'_id': data['_id']})
+    for c in cursor:
+      diff = math.fabs(data['totalPrice'] - c['totalPrice'])
+      if diff > 1:
+        out = {}  # items.PriceTrend()
+        out['houseID'] = data['_id']
+        out['src'] = data['src']
+        out['district'] = data['district']
+        out['subDistrict'] = data['subDistrict']
+        out['square'] = data['square']
+        out['newUnitPrice'] = data['unitPrice']
+        out['newTotalPrice'] = data['totalPrice']
+        out['oldUnitPrice'] = c['unitPrice']
+        out['oldTotalPrice'] = c['totalPrice']
+        out['diffPercent'] = diff / out['oldTotalPrice']
+        if out['newTotalPrice'] > out['oldTotalPrice']:
+          out['trend'] = 1
+        else:
+          out['trend'] = -1
+        out['crawlDate'] = today()
+        iso = out['crawlDate'].isocalendar()
+        out['weekofYear'] = int(iso[0]) * 100 + int(iso[1])
+      break
+
+    return  out
+
   def updateMongoDB(self, data):
     # print('enter updateMongoDB')
     out = None
     try:
       if isinstance(data, items.HouseItem):
-        cursor = self.collection.find({'_id': data['_id']})
-        for c in cursor:
-          diff = math.fabs(data['totalPrice'] - c['totalPrice'])
-          if diff > 1:
-            out = {}#items.PriceTrend()
-            out['houseID'] = data['_id']
-            out['src'] = data['src']
-            out['square'] = data['square']
-            out['newUnitPrice'] = data['unitPrice']
-            out['newTotalPrice'] = data['totalPrice']
-            out['oldUnitPrice'] = c['unitPrice']
-            out['oldTotalPrice'] = c['totalPrice']
-            out['diffPercent'] = diff/out['oldTotalPrice']
-            if out['newTotalPrice'] > out['oldTotalPrice']:
-              out['trend'] = 1
-            else:
-              out['trend'] = -1
-            out['crawlDate'] = today()
-          break
+        out = self.processPriceChange(data)
 
       update_result = self.collection.update_one({'_id': data['_id']},
                                                  {'$set': data}, upsert=True)

@@ -4,7 +4,7 @@ import time
 import datetime
 
 from scrapy.crawler import CrawlerProcess
-# from spiders.egov import EgovSpider
+from scrapy.crawler import CrawlerRunner
 from scrapy.utils.project import get_project_settings
 from apscheduler.schedulers.twisted import TwistedScheduler
 from scrapy.spiderloader import SpiderLoader
@@ -14,8 +14,10 @@ from scrapy.spiderloader import SpiderLoader
 if __name__ == "__main__":
   #https://blog.csdn.net/qq_40755643/article/details/80253395
   #https://segmentfault.com/q/1010000008578604
-  allow = set(["lianjia-wh",
-               "lianjia-tj",
+  allow = set(["zy-esf-cd",
+               "zy-esf-cq",
+
+               # "lianjia-tj",
                     # "lianjia-xm",
                     # "lianjia-hf",
                ])
@@ -38,12 +40,14 @@ if __name__ == "__main__":
 # "lianjia-cj-hf",
     ])
   process = CrawlerProcess(get_project_settings())
+  runner = CrawlerRunner(get_project_settings())
+  # runner.crawl()
   sloader = SpiderLoader(get_project_settings())
   scheduler = TwistedScheduler()
-  hour = 3
+  hour = 22
   for spidername in sloader.list():
     # scheduler.add_job(task, 'cron', minute="*/20")
-    if spidername in allow2:
+    if spidername in allow:
       #https://apscheduler.readthedocs.io/en/latest/modules/triggers/cron.html
       # scheduler.add_job(process.crawl, 'cron', args=[spidername], hour="*/" + str(hour))
       # scheduler.add_job(func=aps_test, args=('定时任务',), trigger='cron', second='*/5')
@@ -51,11 +55,15 @@ if __name__ == "__main__":
       #                   next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=12))
       # scheduler.add_job(func=aps_test, args=('循环任务',), trigger='interval', seconds=3)
       print(spidername)
-      scheduler.add_job(process.crawl, 'cron', args=[spidername], next_run_time=datetime.datetime.now() + datetime.timedelta(hours=3))
-      hour += 2
+      scheduler.add_job(process.crawl, trigger='date', args=[spidername],
+                        run_date=datetime.datetime(2018, 9, 9, hour, 50, 0))
+      # scheduler.add_job(process.crawl, trigger='cron', args=[spidername],
+      #                   year='*', month='*', day=9, week='*', day_of_week='*', hour=hour, minute=20, second=0)
+      # scheduler.add_job(process.crawl, args=[spidername], next_run_time=datetime.datetime.now() + datetime.timedelta(hours=4))
+      hour += 1
 
   scheduler.start()
-  process.start(False)
+  process.start(True)
   try:
     while True:
       time.sleep(2)

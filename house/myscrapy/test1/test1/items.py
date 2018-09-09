@@ -125,19 +125,22 @@ class LianjiaRentHouseDetailDigest(scrapy.Item):
   number = scrapy.Field()
 
 
-class PriceTrend(scrapy.Item):
-  src = scrapy.Field()
-  houseID = scrapy.Field()
-  square = scrapy.Field()
-
-  newUnitPrice = scrapy.Field()
-  newTotalPrice = scrapy.Field()
-
-  oldUnitPrice = scrapy.Field()
-  oldTotalPrice = scrapy.Field()
-  trend = scrapy.Field()
-  diffPercent = scrapy.Field()
-  crawlDate = scrapy.Field()
+# class PriceTrend(scrapy.Item):
+#   src = scrapy.Field()
+#   houseID = scrapy.Field()
+#   square = scrapy.Field()
+#
+#   district = scrapy.Field()
+#   subDistrict = scrapy.Field()
+#
+#   newUnitPrice = scrapy.Field()
+#   newTotalPrice = scrapy.Field()
+#
+#   oldUnitPrice = scrapy.Field()
+#   oldTotalPrice = scrapy.Field()
+#   trend = scrapy.Field()
+#   diffPercent = scrapy.Field()
+#   crawlDate = scrapy.Field()
 
 
 # if __name__ == "__main__":

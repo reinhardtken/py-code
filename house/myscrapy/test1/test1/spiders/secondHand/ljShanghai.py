@@ -28,8 +28,14 @@ def todayString():
   return now.strftime('%Y-%m-%d')
 
 
+def today():
+  now = datetime.datetime.now()
+  now = now.replace(hour=0, minute=0, second=0, microsecond=0)
+  return now
+
+
 class Spider(scrapy.Spider):
-    name = 'lianjia-sh'
+    name = 'lianjia-esf-sh'
     city = '上海'
     src = 'lj'
     allowed_domains = [
@@ -176,6 +182,8 @@ class Spider(scrapy.Spider):
             oneOut['follow'] = followInfo[1].strip()
             if len(followInfo) > 2:
               oneOut['release'] = followInfo[2].strip()
+
+        oneOut['crawlDate'] = today()
 
       except Exception as e:
         print(e)

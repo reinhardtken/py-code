@@ -95,7 +95,7 @@ def test():
   out = []
 
   total = 0
-  cursor = collection.find({'src': 'wiwj', 'city': '长沙'})
+  cursor = collection.find({'src': 'zy', 'city': '深圳'})
   for c in cursor:
     total += c['number']
 
@@ -118,8 +118,139 @@ def createIndex():
   print(out)
 
 
+
+def test():
+  client = MongoClient()
+  db = client['house']
+  collection = db['changsha']
+  out = []
+  cursor = collection.find()
+  for c in cursor:
+    if 'src' not in c:
+      out.append(c)
+
+
+  for data in out:
+    data['src'] = 'lj'
+    try:
+      update_result = collection.update_one({'_id': data['_id']},
+                                                 {'$set': data})
+
+      if update_result.matched_count > 0 and update_result.modified_count > 0:
+        # print('update to Mongo: %s : %s' % (self.dbName, self.collectionName))
+        pass
+
+      elif update_result.upserted_id is not None:
+        # print('insert to Mongo: %s : %s : %s' % (self.dbName, self.collectionName, update_result.upserted_id))
+        pass
+
+    except pymongo.errors.DuplicateKeyError as e:
+      pass
+      # print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
+    except Exception as e:
+      print(e)
+
+
+
+def test(city):
+  client = MongoClient()
+  db = client['house-trend']
+  collection = db[city]
+  out = []
+  cursor = collection.find()
+  for c in cursor:
+    out.append(c)
+
+
+
+  for data in out:
+    date = data['crawlDate']
+    iso = date.isocalendar()
+    data['weekofYear'] = int(iso[0])*100 + int(iso[1])
+    try:
+      update_result = collection.update_one({'_id': data['_id']},
+                                                 {'$set': data})
+
+      if update_result.matched_count > 0 and update_result.modified_count > 0:
+        # print('update to Mongo: %s : %s' % (self.dbName, self.collectionName))
+        pass
+
+      elif update_result.upserted_id is not None:
+        # print('insert to Mongo: %s : %s : %s' % (self.dbName, self.collectionName, update_result.upserted_id))
+        pass
+
+    except pymongo.errors.DuplicateKeyError as e:
+      pass
+      # print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
+    except Exception as e:
+      print(e)
+
+
+def queryCityPriceTrend(city, week=None):
+  client = MongoClient()
+  db = client['house-trend']
+  collection = db[city]
+
+  out = []
+  cursor = None
+  if week is None:
+    cursor = collection.find()
+  else:
+    cursor = collection.find({'weekofYear': week})
+  for c in cursor:
+    out.append(c)
+
+  if len(out):
+    df = pd.DataFrame(out)
+    return df
+
+def genCityPriceTrendDigest(city, week):
+  df = queryCityPriceTrend(city, week)
+  upGroup = df.loc[lambda df: df.trend == 1, :]
+  downGroup = df.loc[lambda df: df.trend == -1, :]
+  upMean = upGroup['diffPercent'].mean()
+  downMean = downGroup['diffPercent'].mean()
+
+  client = MongoClient()
+  db = client['house-trend']
+  collection = db['priceTrend']
+  data = {
+    'city': city,
+    'week': week,
+    'up': len(upGroup),
+    'down': len(downGroup),
+    'upDiff': upMean,
+    'downDiff': downMean,
+  }
+
+  try:
+    update_result = collection.insert_one(data)
+
+  except pymongo.errors.DuplicateKeyError as e:
+    pass
+    # print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
+  except Exception as e:
+    print(e)
+
+  pass
+
+
 if __name__ == '__main__':
-  test()
-  createIndex()
+  citys = [
+    'changsha',
+    'beijing',
+    'shanghai',
+    'shenzhen',
+    'guangzhou',
+    'chengdu',
+    'hangzhou',
+    'nanjing',
+    'wuhan',
+    'chongqing',
+  ]
+  for city in citys:
+    genCityPriceTrendDigest(city, 201836)
+    # test(city)
+  # createIndex()
   # test()
   pass
