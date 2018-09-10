@@ -10,61 +10,46 @@ import numpy as np
 
 
 import items
+import util
 
 
-def String2Number(s):
-  out = np.nan
-  try:
-    out = float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
-  except Exception as e:
-    pass
-
-  return out
-
-
-def todayString():
-  now = datetime.datetime.now()
-  now = now.replace(hour=0, minute=0, second=0, microsecond=0)
-  return now.strftime('%Y-%m-%d')
-
-def today():
-  now = datetime.datetime.now()
-  now = now.replace(hour=0, minute=0, second=0, microsecond=0)
-  return now
 
 
 class Spider(scrapy.Spider):
-    name = 'zy-esf-sz'
-    city = '深圳'
+    name = 'zy-esf-sh'
+    city = '上海'
     src = 'zy'
     allowed_domains = [
-      'sz.centanet.com',
+      'sh.centanet.com',
                        ]
     start_urls = [
-      'https://sz.centanet.com/ershoufang/longgang/',
+      'https://sh.centanet.com/ershoufang/pudongxinqu/',
     ]
-    head = 'https://sz.centanet.com'
+    head = 'https://sh.centanet.com'
 
     nextPageOrder = -1
-    reversed = True
-    useAllPge = True
+    reversed = False
+    # useAllPge = True
     dbName = 'house'
-    collectionName = 'shenzhen'
+    collectionName = 'shanghai'
     xpath = {
-      'districts': '/html/body/div[4]/div/div[1]/div[1]/p[2]/a',
-      'districtName': '/html/body/div[4]/div/div[1]/div[1]/p[2]/span[@class="curr"]/text()',
-      'subDistricts': '/html/body/div[4]/div/div[1]/div[1]/p[3]/span/a',
-      'subDistrictName': '/html/body/div[4]/div/div[1]/div[1]/p[3]/span[@class="curr"]/text()',
-      'districtNumber': '/html/body/div[5]/div/div/p/span/span/text()',
 
-        'lists': '/html/body/div[6]/div/div',
+      'districts': '//*[@id="esfList"]/div[2]/div/div[2]/div/div[2]/div/div[2]/div/div[1]/ul[1]/li/a',
+      'districtName': '//*[@id="esfList"]/div[2]/div/div[2]/div/div[2]/div/div[2]/div/div[1]/ul[1]/li[@class="tap_bg"]/text()',
+      'subDistricts': '//*[@id="esfList"]/div[2]/div/div[2]/div/div[2]/div/div[2]/div/div[2]/ul/li/a',
+      'subDistrictName': '//*[@id="esfList"]/div[2]/div/div[2]/div/div[2]/div/div[2]/div/div[2]/ul/li[@class="tap_bg"]/text()',
+      'districtNumber': '//*[@id="esfList"]/div[3]/div/div[3]/h3/span/text()',
 
-      'nextPageText': '/html/body/div[7]/div/div/div/a[last()-1]/text()',
-      'nextPage': '/html/body/div[7]/div/div/div/a[last()-1]/@href',
-      'allPage': '/html/body/div[7]/div/div/div/a[last()]/@href',
+        'lists': '//*[@id="ShowStyleByTable"]/li',
+
+      'nextPageText': '//*[@id="esfList"]/div[4]/div[2]/div/div/div/div[last()]/a/text()',
+      'nextPage': '//*[@id="esfList"]/div[4]/div[2]/div/div/div/div[last()]/a/@href',
+      'nextPageText2': '//*[@id="esfList"]/div[4]/div[2]/div/div/div/div[last()]/text()',
+      'nextPage2': '//*[@id="esfList"]/div[4]/div[2]/div/div/div/div[last()]/@href',
+      'allPage': '//*[@id="esfList"]/div[4]/div[2]/div/div/div/div[last()-1]/a/@href',
       # 'allPage2': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()-1]/@href',
 
-      'anchor': '/html/body/div[7]/div/div/div/a[last()-1]',
+      'anchor': '//*[@id="esfList"]/div[4]/div[2]/div/div/div/div[last()]/a',
     }
 
     received = set()
@@ -103,29 +88,29 @@ class Spider(scrapy.Spider):
       return out
 
     def nextPagePlusOne(self, response, url):
+      #没有跑过
       np = []
       nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
-      if nextPageText == '>':
+      if nextPageText == '下一页':
         for one in response.xpath(self.xpath['nextPage']).extract():
           np.append(url + one)
-      # else:
-      #   p = response.xpath(self.xpath['allPage'])
-      #   # 框架支持url排重,这里就不排重了
-      #   for one in p:
-      #     np.extend(url + one.xpath('.//@href').extract())
+      else:
+        nextPageText = ''.join(response.xpath(self.xpath['nextPageText2']).extract()).strip()
+        if nextPageText == '下一页':
+          for one in response.xpath(self.xpath['nextPage2']).extract():
+            np.append(url + one)
 
       return np
 
     def nextPageNegativeOne(self, response, url, number):
-      if self.useAllPge:
-        return self.nextPageNegativeOneAllPage(response, url)
-      else:
-        return self.nextPageNegativeOneNumber(response, url, number)
+      # return self.nextPageNegativeOneAllPage(response, url)
+
+      return self.nextPageNegativeOneNumber(response, url, number)
 
     def nextPageNegativeOneNumber(self, response, url, number):
       out = []
       if not np.isnan(number):
-        maxNumber = int(number / 25) + 1
+        maxNumber = int(number / 20) + 1
         if self.reversed:
           for i in range(maxNumber, 1, -1):
             out.append(url + 'g' + str(i))
@@ -139,22 +124,19 @@ class Spider(scrapy.Spider):
 
     def nextPageNegativeOneAllPage(self, response, url):
       np = []
-      maxURL = None
-      maxURL = ''.join(response.xpath(self.xpath['allPage']).extract()).strip()
-      # if len(allPage):
-      #   maxURL = allPage[0].strip()
-
-      if maxURL is '':
-        return []
-
-      tmp = maxURL.split('/')
-      maxNumber = String2Number(tmp[-2]) if tmp[-1] == '' else String2Number(tmp[-1])
-      if self.reversed:
-        for i in range(int(maxNumber), 1, -1):
-          np.append(url + 'g' + str(i))
+      nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
+      if nextPageText == '下一页':
+        p = response.xpath(self.xpath['allPage'])
+        # 框架支持url排重,这里就不排重了
+        for one in p:
+          np.extend(url + one.xpath('.//@href').extract())
       else:
-        for i in range(2, int(maxNumber) + 1):
-          np.append(url + 'g' + str(i))
+        nextPageText = ''.join(response.xpath(self.xpath['nextPageText2']).extract()).strip()
+        if nextPageText == '下一页':
+          p = response.xpath(self.xpath['allPage'])
+          # 框架支持url排重,这里就不排重了
+          for one in p:
+            np.extend(url + one.xpath('.//@href').extract())
 
       return np
 
@@ -171,8 +153,8 @@ class Spider(scrapy.Spider):
       oneOut['src'] = self.src
       oneOut['district'] = district
       oneOut['subDistrict'] = subDistrict
-      oneOut['title'] = ''.join(one.xpath('./div[1]/h4/a/text()').extract()).strip()
-      href = ''.join(one.xpath('./div[1]/h4/a/@href').extract()).strip()
+      oneOut['title'] = ''.join(one.xpath('./div/div[2]/div[1]/a/text()').extract()).strip()
+      href = ''.join(one.xpath('./div/div[2]/div[1]/a/@href').extract()).strip()
       if len(href) > 0:
         id = '-1'
         try:
@@ -182,27 +164,23 @@ class Spider(scrapy.Spider):
         oneOut['_id'] = id
 
       try:
-        totalPrice = String2Number(''.join(one.xpath('./div[2]/p[1]/span/text()').extract()).strip())
+        totalPrice = util.String2Number(''.join(one.xpath('./div/div[3]/h3/span/text()').extract()).strip())
         oneOut['totalPrice'] = totalPrice
-        oneOut['unitPrice'] = String2Number(
-          ''.join(one.xpath('./div[2]/p[2]/text()').extract()).strip())
+        oneOut['unitPrice'] = util.String2Number(
+          ''.join(one.xpath('./div/div[3]/p/text()').extract()).strip())
 
-        oneOut['community'] = ''.join(one.xpath('./div[1]/p[1]/a/text()').extract())
-        # community = community.split(' ')
-        # if len(community) >= 2:
-        #   oneOut['community'] = community[1]
+        oneOut['community'] = ''.join(one.xpath('./div/div[2]/div[2]/a/text()').extract())
 
-        oneOut['houseType'] = ''.join(one.xpath('./div[1]/p[1]/span[2]/text()').extract()).strip()
-        if oneOut['houseType'] == '|':
-          oneOut['houseType'] = ''.join(one.xpath('./div[1]/p[1]/span[3]/text()').extract()).strip()
+        tmp = ''.join(one.xpath('./div/div[2]/div[2]/text()').extract()).strip()
+        tmp2 = tmp.split('|')
+        if len(tmp2) > 0:
+          oneOut['houseType'] = tmp2[0]
+          if len(tmp2) > 1:
+            oneOut['square'] = util.String2Number(tmp2[1])
+            if len(tmp2) > 4:
+              oneOut['level'] = tmp2[3] + '-' + tmp2[4]
 
-        oneOut['square'] = String2Number(''.join(one.xpath('./div[1]/p[1]/span[4]/text()').extract()).strip())
-        if np.isnan(oneOut['square']):
-          oneOut['square'] = String2Number(''.join(one.xpath('./div[1]/p[1]/span[5]/text()').extract()).strip())
-
-        oneOut['level'] = ''.join(one.xpath('./div[1]/p[2]/span[1]/text()').extract()).strip()
-
-        oneOut['crawlDate'] = today()
+        oneOut['crawlDate'] = util.today()
 
       except Exception as e:
         print(e)
@@ -240,14 +218,14 @@ class Spider(scrapy.Spider):
           if len(d):
             subDistrict = d[0]
 
-          number = String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
+          number = util.String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
           n = items.HouseDetailDigest()
           n['city'] = self.city
           n['src'] = self.src
           n['district'] = district
           n['subDistrict'] = subDistrict
           n['number'] = number
-          today = todayString()
+          today = util.todayString()
           try:
             n['_id'] = today + '_' + self.city + '_' + district + '_' + subDistrict
           except Exception as e:
