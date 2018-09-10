@@ -32,15 +32,15 @@ class SpiderSH(spiders.secondHand.wiwjBeijing.Spider):
 
 
 class SpiderCD(spiders.secondHand.wiwjBeijing.Spider):
-  name = 'lianjia-cj-cd'
+  name = 'wiwj-esf-cd'
   city = '成都'
   allowed_domains = [
-    'cd.lianjia.com',
+    'cd.5i5j.com',
   ]
   start_urls = [
-    'https://cd.lianjia.com/chengjiao/jinjiang/',
+    'https://cd.5i5j.com/ershoufang/shuangliuqu/',
   ]
-  head = 'https://cd.lianjia.com'
+  head = 'https://cd.5i5j.com'
 
   collectionName = 'chengdu'
 
