@@ -45,18 +45,18 @@ class SpiderCD(spiders.secondHand.wiwjBeijing.Spider):
   collectionName = 'chengdu'
 
 
-class SpiderCQ(spiders.secondHand.wiwjBeijing.Spider):
-  name = 'lianjia-cj-cq'
-  city = '重庆'
+class SpiderTJ(spiders.secondHand.wiwjBeijing.Spider):
+  name = 'wiwj-esf-tj'
+  city = '天津'
   allowed_domains = [
-    'cq.lianjia.com',
+    'tj.5i5j.com',
   ]
   start_urls = [
-    'https://cq.lianjia.com/chengjiao/jiangbei/',
+    'https://tj.5i5j.com/ershoufang/nankaiqu/',
   ]
-  head = 'https://cq.lianjia.com'
+  head = 'https://tj.5i5j.com'
 
-  collectionName = 'chongqing'
+  collectionName = 'tianjin'
 
 
 class SpiderGZ(spiders.secondHand.wiwjBeijing.Spider):

@@ -130,7 +130,7 @@ class Spider(scrapy.Spider):
         return []
 
       tmp = maxURL.split('/')
-      maxNumber = String2Number(tmp[-2]) if tmp[-1] == '' else String2Number(tmp[-1])
+      maxNumber = util.String2Number(tmp[-2]) if tmp[-1] == '' else util.String2Number(tmp[-1])
       if self.reversed:
         for i in range(int(maxNumber), 1, -1):
           np.append(url + 'g' + str(i))
@@ -164,9 +164,9 @@ class Spider(scrapy.Spider):
         oneOut['_id'] = id
 
       try:
-        totalPrice = String2Number(''.join(one.xpath('./div[2]/p[1]/span/text()').extract()).strip())
+        totalPrice = util.String2Number(''.join(one.xpath('./div[2]/p[1]/span/text()').extract()).strip())
         oneOut['totalPrice'] = totalPrice
-        oneOut['unitPrice'] = String2Number(
+        oneOut['unitPrice'] = util.String2Number(
           ''.join(one.xpath('./div[2]/p[2]/text()').extract()).strip())
 
         oneOut['community'] = ''.join(one.xpath('./div[1]/p[1]/a/text()').extract())
@@ -178,13 +178,13 @@ class Spider(scrapy.Spider):
         if oneOut['houseType'] == '|':
           oneOut['houseType'] = ''.join(one.xpath('./div[1]/p[1]/span[3]/text()').extract()).strip()
 
-        oneOut['square'] = String2Number(''.join(one.xpath('./div[1]/p[1]/span[4]/text()').extract()).strip())
+        oneOut['square'] = util.String2Number(''.join(one.xpath('./div[1]/p[1]/span[4]/text()').extract()).strip())
         if np.isnan(oneOut['square']):
-          oneOut['square'] = String2Number(''.join(one.xpath('./div[1]/p[1]/span[5]/text()').extract()).strip())
+          oneOut['square'] = util.String2Number(''.join(one.xpath('./div[1]/p[1]/span[5]/text()').extract()).strip())
 
         oneOut['level'] = ''.join(one.xpath('./div[1]/p[2]/span[1]/text()').extract()).strip()
 
-        oneOut['crawlDate'] = today()
+        oneOut['crawlDate'] = util.today()
 
       except Exception as e:
         print(e)

@@ -217,10 +217,53 @@ def queryCityPriceTrend(city, src, week=None):
     return df
 
 
+
+def queryDataSize(city, src):
+  client = MongoClient()
+  db = client['house']
+  collection = db[city]
+
+  cursor = collection.find({'src': src}).count()
+  return cursor
+
+
+def genDataSize(city, src):
+  size = queryDataSize(city, src)
+  client = MongoClient()
+  db = client['house']
+  collection = db['houseDataSize']
+  data = {
+    '_id': city + '_' + src,
+    'city': city,
+    'src': src,
+    'number': size,
+  }
+  try:
+    update_result = collection.update_one({'_id': data['_id']},
+                                          {'$set': data}, upsert=True)
+
+    if update_result.matched_count > 0 and update_result.modified_count > 0:
+      # print('update to Mongo: %s : %s' % (self.dbName, self.collectionName))
+      pass
+
+    elif update_result.upserted_id is not None:
+      # print('insert to Mongo: %s : %s : %s' % (self.dbName, self.collectionName, update_result.upserted_id))
+      pass
+
+  except pymongo.errors.DuplicateKeyError as e:
+    pass
+    # print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
+  except Exception as e:
+    print(e)
+
+
+
 if __name__ == '__main__':
   citys = const.CITYS
-  for city in citys:
-    addSrc(city, 'lj')
+  srcs = const.SRCS
+  for src in srcs:
+    for city in citys:
+      genDataSize(city, src)
     pass
     # genCityPriceTrendDigest(city, 201836)
     # test(city)

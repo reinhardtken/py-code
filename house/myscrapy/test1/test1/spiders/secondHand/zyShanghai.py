@@ -29,7 +29,7 @@ class Spider(scrapy.Spider):
 
     nextPageOrder = -1
     reversed = False
-    # useAllPge = True
+    useAllPge = True
     dbName = 'house'
     collectionName = 'shanghai'
     xpath = {
@@ -46,7 +46,7 @@ class Spider(scrapy.Spider):
       'nextPage': '//*[@id="esfList"]/div[4]/div[2]/div/div/div/div[last()]/a/@href',
       'nextPageText2': '//*[@id="esfList"]/div[4]/div[2]/div/div/div/div[last()]/text()',
       'nextPage2': '//*[@id="esfList"]/div[4]/div[2]/div/div/div/div[last()]/@href',
-      'allPage': '//*[@id="esfList"]/div[4]/div[2]/div/div/div/div[last()-1]/a/@href',
+      'allPage': '/html/body/div[3]/div[4]/div[2]/div/div/div/div[2]/ul/li[last()]/a/@href',
       # 'allPage2': '/html/body/div[4]/div[1]/div[8]/div[2]/div/a[last()-1]/@href',
 
       'anchor': '//*[@id="esfList"]/div[4]/div[2]/div/div/div/div[last()]/a',
@@ -103,9 +103,10 @@ class Spider(scrapy.Spider):
       return np
 
     def nextPageNegativeOne(self, response, url, number):
-      # return self.nextPageNegativeOneAllPage(response, url)
-
-      return self.nextPageNegativeOneNumber(response, url, number)
+      if self.useAllPge:
+        return self.nextPageNegativeOneAllPage(response, url)
+      else:
+        return self.nextPageNegativeOneNumber(response, url, number)
 
     def nextPageNegativeOneNumber(self, response, url, number):
       out = []
@@ -124,19 +125,33 @@ class Spider(scrapy.Spider):
 
     def nextPageNegativeOneAllPage(self, response, url):
       np = []
+      maxURL = ''
       nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
       if nextPageText == '下一页':
-        p = response.xpath(self.xpath['allPage'])
-        # 框架支持url排重,这里就不排重了
-        for one in p:
-          np.extend(url + one.xpath('.//@href').extract())
+        a = response.xpath(self.xpath['allPage']).extract()
+        for one in a:
+          maxURL = one
+          break
       else:
         nextPageText = ''.join(response.xpath(self.xpath['nextPageText2']).extract()).strip()
         if nextPageText == '下一页':
-          p = response.xpath(self.xpath['allPage'])
-          # 框架支持url排重,这里就不排重了
-          for one in p:
-            np.extend(url + one.xpath('.//@href').extract())
+          a = response.xpath(self.xpath['allPage']).extract()
+          for one in a:
+            maxURL = one
+            break
+
+      if maxURL is '':
+        return []
+
+      tmp = maxURL.split('/')
+      maxNumber = util.String2Number(tmp[-2]) if tmp[-1] == '' else util.String2Number(tmp[-1])
+      if self.reversed:
+        for i in range(int(maxNumber), 1, -1):
+          np.append(url + 'g' + str(i))
+      else:
+        for i in range(2, int(maxNumber) + 1):
+          np.append(url + 'g' + str(i))
+
 
       return np
 
