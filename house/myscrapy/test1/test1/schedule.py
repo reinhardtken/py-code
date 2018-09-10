@@ -44,7 +44,7 @@ if __name__ == "__main__":
   # runner.crawl()
   sloader = SpiderLoader(get_project_settings())
   scheduler = TwistedScheduler()
-  hour = 22
+  hour = 1
   for spidername in sloader.list():
     # scheduler.add_job(task, 'cron', minute="*/20")
     if spidername in allow:
@@ -56,14 +56,14 @@ if __name__ == "__main__":
       # scheduler.add_job(func=aps_test, args=('循环任务',), trigger='interval', seconds=3)
       print(spidername)
       scheduler.add_job(process.crawl, trigger='date', args=[spidername],
-                        run_date=datetime.datetime(2018, 9, 9, hour, 50, 0))
+                        run_date=datetime.datetime(2018, 9, 10, hour, 0, 0))
       # scheduler.add_job(process.crawl, trigger='cron', args=[spidername],
       #                   year='*', month='*', day=9, week='*', day_of_week='*', hour=hour, minute=20, second=0)
       # scheduler.add_job(process.crawl, args=[spidername], next_run_time=datetime.datetime.now() + datetime.timedelta(hours=4))
       hour += 1
 
   scheduler.start()
-  process.start(True)
+  process.start(False)
   try:
     while True:
       time.sleep(2)
