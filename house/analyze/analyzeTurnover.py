@@ -214,31 +214,39 @@ def diffPriceTrend(df):
 
 
 def analyzeCityPriceTrendDigest(city, src, week):
-  df = query.queryCityPriceTrend(city, src, week)
-  upGroup = df.loc[lambda df: df.trend == 1, :]
-  downGroup = df.loc[lambda df: df.trend == -1, :]
-  upMean = upGroup['diffPercent'].mean()
-  downMean = downGroup['diffPercent'].mean()
-
-  client = MongoClient()
-  db = client['house-trend']
-  collection = db['priceTrend']
-  data = {
-    'city': city,
-    'src': src,
-    'week': week,
-    'up': len(upGroup),
-    'down': len(downGroup),
-    'upDiff': upMean,
-    'downDiff': downMean,
-  }
-
   try:
-    update_result = collection.insert_one(data)
+    df = query.queryCityPriceTrend(city, src, week)
+    if df is None or len(df) == 0:
+      return
 
-  except pymongo.errors.DuplicateKeyError as e:
-    pass
-    # print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
+    upGroup = df.loc[lambda df: df.trend == 1, :]
+    downGroup = df.loc[lambda df: df.trend == -1, :]
+    upMean = upGroup['diffPercent'].mean()
+    downMean = downGroup['diffPercent'].mean()
+
+    client = MongoClient()
+    db = client['house-trend']
+    collection = db['priceTrend']
+    data = {
+      '_id': city + '_' + str(week),
+      'city': city,
+      'src': src,
+      'week': week,
+      'up': len(upGroup),
+      'down': len(downGroup),
+      'upDiff': upMean,
+      'downDiff': downMean,
+    }
+
+    try:
+      update_result = collection.insert_one(data)
+
+    except pymongo.errors.DuplicateKeyError as e:
+      pass
+      # print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
+    except Exception as e:
+      print(e)
+
   except Exception as e:
     print(e)
 
@@ -335,8 +343,9 @@ if __name__ == '__main__':
   citys = const.CITYS
   for src in srcs:
     for city in citys:
-      analyzeCityAvgPriceDigest(city, src)
-      analyzeDistrictAvgPriceDigest(city, src)
+      analyzeCityPriceTrendDigest(city, src, 201837)
+      #analyzeCityAvgPriceDigest(city, src)
+      #analyzeDistrictAvgPriceDigest(city, src)
       pass
 
 

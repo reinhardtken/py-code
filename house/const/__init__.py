@@ -14,7 +14,7 @@ CITYS = [
   'wuhan',
   'xiamen',
   'xian',
-  'zhenzhou',
+  'zhengzhou',
   ]
 
 SRCS = [
