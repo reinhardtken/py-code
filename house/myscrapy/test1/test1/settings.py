@@ -81,6 +81,7 @@ ITEM_PIPELINES = {
   'test1.pipelines.MongoPipelineTurnoverDigest': 304,
 'test1.pipelines.MongoPipelineRentHouse': 305,
 'test1.pipelines.MongoPipelineRentDetailDigest': 306,
+  'test1.pipelines.MongoPipelineRest': 307,
 
 }
 

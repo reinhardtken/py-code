@@ -63,24 +63,28 @@ class SaveMongoDB(object):
 
     return  out
 
-  def updateMongoDB(self, data):
+  def updateMongoDB(self, data, collection=None, dbName=None, collectionName=None):
     # print('enter updateMongoDB')
+    if collection is None:
+      collection =self.collection
+      dbName = self.dbName
+      collectionName = self.collectionName
     out = None
     try:
       if isinstance(data, items.HouseItem):
         out = self.processPriceChange(data)
 
-      update_result = self.collection.update_one({'_id': data['_id']},
+      update_result = collection.update_one({'_id': data['_id']},
                                                  {'$set': data}, upsert=True)
 
       if update_result.matched_count > 0 and update_result.modified_count > 0:
-        print('update to Mongo: %s : %s' % (self.dbName, self.collectionName))
+        print('update to Mongo: %s : %s' % (dbName, collectionName))
 
       elif update_result.upserted_id is not None:
-        print('insert to Mongo: %s : %s : %s' % (self.dbName, self.collectionName, update_result.upserted_id))
+        print('insert to Mongo: %s : %s : %s' % (dbName, collectionName, update_result.upserted_id))
 
     except pymongo.errors.DuplicateKeyError as e:
-      print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (self.dbName, self.collectionName, data['_id']))
+      print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (dbName, collectionName, data['_id']))
     except Exception as e:
       print(e)
     # print('leave updateMongoDB')
@@ -323,6 +327,43 @@ class MongoPipelineRentDetailDigest(SaveMongoDB):
   def process_item(self, item, spider):
     if isinstance(item, items.LianjiaRentHouseDetailDigest):
       self.updateMongoDB(item)
+      raise scrapy.exceptions.DropItem()
+
+    return item
+
+  def close_spider(self, spider):
+    self.client.close()
+
+
+class MongoPipelineRest(SaveMongoDB):
+
+  @classmethod
+  def from_crawler(cls, crawler):
+    # return cls(mongo_uri=crawler.settings.get('MONGO_URI'), mongo_db=crawler.settings.get('MONGO_DB'))
+    return cls()
+
+  def open_spider(self, spider):
+    self.client = pymongo.MongoClient()
+    self.collectionMap = {}
+    self.nameSet = set()
+
+
+  def process_item(self, item, spider):
+    if isinstance(item, items.DBHead):
+      dbName = item['dbName']
+      collectionName = item['collectionName']
+      key = dbName + '_' + collectionName
+      if key in self.nameSet:
+        del item['dbName']
+        del item['collectionName']
+        self.updateMongoDB(item, self.collectionMap[key])
+      else:
+        collection = self.client[dbName][collectionName]
+        self.collectionMap[key] = collection
+        self.nameSet.add(key)
+        del item['dbName']
+        del item['collectionName']
+        self.updateMongoDB(item, collection, dbName, collectionName)
       raise scrapy.exceptions.DropItem()
 
     return item
