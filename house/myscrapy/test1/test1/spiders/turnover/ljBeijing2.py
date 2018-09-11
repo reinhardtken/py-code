@@ -31,6 +31,8 @@ class Spider(scrapy.Spider):
   reversed = True
   dbName = 'house-cj'
   collectionName = 'beijing'
+  #true时，增量crawl，否则全量crawl
+  incrementMode = True
 
   xpath = {
     'districts': '/html/body/div[3]/div[1]/dl[2]/dd/div/div[1]/a',
@@ -42,6 +44,7 @@ class Spider(scrapy.Spider):
     'lists': '/html/body/div[5]/div[1]/ul/li',
 
     'districtNumber': '/html/body/div[5]/div[1]/div[2]/div[1]/span/text()',
+
     'nextPageText': '/html/body/div[5]/div[1]/div[5]/div[2]/div/a[last()]/text()',
     'nextPage': '/html/body/div[5]/div[1]/div[5]/div[2]/div/a[last()]/@href',
     'allPage': '/html/body/div[5]/div[1]/div[5]/div[2]/div/a',
@@ -179,8 +182,8 @@ class Spider(scrapy.Spider):
       yield Request(one, meta={'step': 1, 'url': one})
 
 
-    district = np.nan
-    subDistrict = np.nan
+    district = ''
+    subDistrict = ''
 
 
     if 'step' in response.meta:
@@ -222,7 +225,6 @@ class Spider(scrapy.Spider):
 
 
         if response.meta['step'] == 1:
-          #检查最新收到的数据，如果已经超过最大时间点，就截止，不继续
           nextPage = self.nextPage(response, self.head, response.meta['url'])
           realOut = set(nextPage) - self.received
           for one in realOut:
@@ -255,7 +257,7 @@ class Spider(scrapy.Spider):
       except Exception as e:
         logging.warning("processTurnoverData Exception %s" % (str(e)))
 
-      if item['dealDate'] < self.timeStampStop:
+      if self.incrementMode and item['dealDate'] < self.timeStampStop:
         if response.meta['url'] in self.stopCounerMap:
           self.stopCounerMap[response.meta['url']] += 1
           if self.stopCounerMap[response.meta['url']] > self.stopMax:
