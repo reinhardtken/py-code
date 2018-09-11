@@ -83,18 +83,21 @@ class SpiderHZ(spiders.secondHand.wiwjBeijing.Spider):
   ]
   head = 'https://hz.5i5j.com'
   collectionName = 'hangzhou'
+  xpath = spiders.secondHand.wiwjBeijing.Spider.xpath
+  xpath['nextPageText'] = '/html/body/div[4]/div[1]/div[2]/div[2]/a[1]/text()'
+  xpath['nextPage'] = '/html/body/div[4]/div[1]/div[2]/div[2]/a[1]/@href'
 
 
 class SpiderNJ(spiders.secondHand.wiwjBeijing.Spider):
-  name = 'lianjia-cj-nj'
+  name = 'wiwj-esf-nj'
   city = '南京'
   allowed_domains = [
-    'nj.lianjia.com',
+    'nj.5i5j.com',
   ]
   start_urls = [
-    'https://nj.lianjia.com/chengjiao/gulou/',
+    'https://nj.5i5j.com/ershoufang/jiangningqu/',
   ]
-  head = 'https://nj.lianjia.com'
+  head = 'https://nj.5i5j.com'
 
   collectionName = 'nanjing'
 
@@ -103,15 +106,15 @@ class SpiderNJ(spiders.secondHand.wiwjBeijing.Spider):
 
 
 class SpiderSU(spiders.secondHand.wiwjBeijing.Spider):
-  name = 'lianjia-cj-su'
+  name = 'wiwj-esf-su'
   city = '苏州'
   allowed_domains = [
-    'su.lianjia.com',
+    'sz.5i5j.com',
   ]
   start_urls = [
-    'https://su.lianjia.com/chengjiao/gongyeyuan/',
+    'https://sz.5i5j.com/ershoufang/yuanqu/',
   ]
-  head = 'https://su.lianjia.com'
+  head = 'https://sz.5i5j.com'
 
   collectionName = 'suzhou'
 
@@ -156,6 +159,20 @@ class SpiderXA(spiders.secondHand.wiwjBeijing.Spider):
   head = 'https://xa.lianjia.com'
 
   collectionName = 'xian'
+
+
+
+class SpiderZZ(spiders.secondHand.wiwjBeijing.Spider):
+  name = 'wiwj-esf-zz'
+  city = '郑州'
+  allowed_domains = [
+    'zz.5i5j.com',
+  ]
+  start_urls = [
+    'https://zz.5i5j.com/ershoufang/zhongyuanqu/',
+  ]
+  head = 'https://zz.5i5j.com'
+  collectionName = 'zhengzhou'
 
 
 # class SpiderZZ(spiders.secondHand.wiwjBeijing.Spider):

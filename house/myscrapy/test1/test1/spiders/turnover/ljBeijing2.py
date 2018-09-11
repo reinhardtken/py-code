@@ -3,6 +3,7 @@ import urllib
 import logging
 import re
 import datetime
+import datetime
 
 import scrapy
 from scrapy.http import Request
@@ -10,22 +11,9 @@ import numpy as np
 
 
 import items
+import util
 
 
-def String2Number(s):
-  out = np.nan
-  try:
-    out = float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
-  except Exception as e:
-    pass
-
-  return out
-
-
-def todayString():
-  now = datetime.datetime.now()
-  now = now.replace(hour=0, minute=0, second=0, microsecond=0)
-  return now.strftime('%Y-%m-%d')
 
 
 class Spider(scrapy.Spider):
@@ -39,7 +27,7 @@ class Spider(scrapy.Spider):
     # 'https://bj.lianjia.com/chengjiao/pinggu/'
   ]
   head = 'https://bj.lianjia.com'
-  nextPageOrder = -1
+  nextPageOrder = 1
   reversed = True
   dbName = 'house-cj'
   collectionName = 'beijing'
@@ -64,6 +52,9 @@ class Spider(scrapy.Spider):
   }
 
   received = set()
+  timeStampStop = util.today() - datetime.timedelta(weeks=6)
+  stopMax= 30
+  stopCounerMap = {}
 
   def parseDistricts(self, response):
     out = []
@@ -127,7 +118,7 @@ class Spider(scrapy.Spider):
       return []
 
     tmp = maxURL.split('/')
-    maxNumber = String2Number(tmp[-2]) if tmp[-1] == '' else String2Number(tmp[-1])
+    maxNumber = util.String2Number(tmp[-2]) if tmp[-1] == '' else util.String2Number(tmp[-1])
     if self.reversed:
       for i in range(int(maxNumber), 1, -1):
         np.append(url + 'pg' + str(i))
@@ -159,14 +150,14 @@ class Spider(scrapy.Spider):
       oneOut['_id'] = id
 
     try:
-      oneOut['askPrice'] = String2Number(''.join(one.xpath('./div/div[5]/span[2]/span[1]/text()').extract()).strip())
-      oneOut['dealCycle'] = String2Number(''.join(one.xpath('./div/div[5]/span[2]/span[2]/text()').extract()).strip())
+      oneOut['askPrice'] = util.String2Number(''.join(one.xpath('./div/div[5]/span[2]/span[1]/text()').extract()).strip())
+      oneOut['dealCycle'] = util.String2Number(''.join(one.xpath('./div/div[5]/span[2]/span[2]/text()').extract()).strip())
       if np.isnan(oneOut['askPrice']):
         #https://bj.lianjia.com/chengjiao/pinggu/
-        oneOut['askPrice'] = String2Number(''.join(one.xpath('./div/div[4]/span[2]/span[1]/text()').extract()).strip())
-        oneOut['dealCycle'] = String2Number(''.join(one.xpath('./div/div[4]/span[2]/span[2]/text()').extract()).strip())
+        oneOut['askPrice'] = util.String2Number(''.join(one.xpath('./div/div[4]/span[2]/span[1]/text()').extract()).strip())
+        oneOut['dealCycle'] = util.String2Number(''.join(one.xpath('./div/div[4]/span[2]/span[2]/text()').extract()).strip())
 
-      oneOut['bidPrice'] = String2Number(''.join(one.xpath('./div/div[2]/div[3]/span/text()').extract()).strip())
+      oneOut['bidPrice'] = util.String2Number(''.join(one.xpath('./div/div[2]/div[3]/span/text()').extract()).strip())
       oneOut['dealDate'] = ''.join(one.xpath('./div/div[2]/div[2]/text()').extract()).strip()
 
     except Exception as e:
@@ -203,21 +194,15 @@ class Spider(scrapy.Spider):
         if len(d):
           subDistrict = d[0]
 
-        number = String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
+        number = util.String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
         n = items.LianjiaTurnoverHouseDetailDigest()
         n['city'] = self.city
         n['district'] = district
         n['subDistrict'] = subDistrict
         n['number'] = number
-        n['_id'] = todayString() + '_' + n['city'] + '_' + n['district'] + '_' + n['subDistrict']
+        n['_id'] = util.todayString() + '_' + n['city'] + '_' + n['district'] + '_' + n['subDistrict']
         yield n
 
-        nextPage = self.nextPage(response, self.head, response.meta['url'])
-        realOut = set(nextPage) - self.received
-        for one in realOut:
-          # nextURL = self.head + one
-          print('next url: %s %s %s'%(district, subDistrict, one))
-          yield Request(one, meta={'step': 2, 'district': district, 'subDistrict': subDistrict})
 
       if response.meta['step'] == 2:
         district = response.meta['district']
@@ -227,5 +212,55 @@ class Spider(scrapy.Spider):
         ones = response.xpath(self.xpath['lists'])
 
         for one in ones:
-          oneOut = self.parseOne(one, district, subDistrict)
-          yield oneOut
+          oneOut = self.checkGoon(self.parseOne(one, district, subDistrict), response)
+          if oneOut[0] == 0:
+            continue
+          elif oneOut[0] == -1:
+            return None
+
+          yield oneOut[1]
+
+
+        if response.meta['step'] == 1:
+          #检查最新收到的数据，如果已经超过最大时间点，就截止，不继续
+          nextPage = self.nextPage(response, self.head, response.meta['url'])
+          realOut = set(nextPage) - self.received
+          for one in realOut:
+            # nextURL = self.head + one
+            print('next url: %s %s %s' % (district, subDistrict, one))
+            yield Request(one, meta={'step': 2, 'url': response.meta['url'], 'district': district, 'subDistrict': subDistrict})
+
+  #1 valid data,0,invalid data,-1 stop this district crawl
+  def checkGoon(self, item, response):
+    if np.isnan(item['bidPrice']) or item['bidPrice'] < 10:
+      # 最近一个月成交，缺少具体数据
+      return (0, )
+    else:
+      try:
+        item['diffPricePercent'] = (item['askPrice'] - item['bidPrice']) / item['askPrice']
+        item['dealDate'] = datetime.datetime.strptime(item['dealDate'], '%Y.%m.%d')
+
+        title = item['title']
+        tmp = title.strip().split(' ')
+        item['building'] = None
+        item['houseType'] = None
+        item['square'] = None
+        if len(tmp) > 0:
+          item['building'] = tmp[0]
+          if len(tmp) > 1:
+            item['houseType'] = tmp[1]
+            if len(tmp) > 2:
+              item['square'] = util.String2Number(tmp[2])
+              item['unitPrice'] = item['bidPrice'] / item['square']
+      except Exception as e:
+        logging.warning("processTurnoverData Exception %s" % (str(e)))
+
+      if item['dealDate'] < self.timeStampStop:
+        if response.meta['url'] in self.stopCounerMap:
+          self.stopCounerMap[response.meta['url']] += 1
+          if self.stopCounerMap[response.meta['url']] > self.stopMax:
+            return (-1, )
+        else:
+          self.stopCounerMap[response.meta['url']] = 1
+
+      return (1, item)

@@ -20,12 +20,19 @@ class Spider(scrapy.Spider):
 
     src = 'zy'
     allowed_domains = [
-      'sz.centanet.com',
+      'centanet.com',
                        ]
     start_urls = [
       'https://sz.centanet.com/ershoufang',
+      'https://tj.centanet.com/ershoufang',
+      'https://nj.centanet.com/ershoufang',
+      'https://gz.centanet.com/ershoufang',
+      'https://cq.centanet.com/ershoufang',
+      'https://cd.centanet.com/ershoufang',
+      'https://cs.centanet.com/ershoufang',
+      'https://bj.centanet.com/ershoufang',
     ]
-    head = 'https://sz.centanet.com'
+    head = '.centanet.com'
 
 
     dbName = 'house'
@@ -61,7 +68,8 @@ class Spider(scrapy.Spider):
             # out.append(url)
             pass
           else:
-            out.append(self.head + url)
+            finalURL = 'https://' + response.url.split('//')[1][:2] + self.head + url
+            out.append(finalURL)
 
       return out
 
@@ -105,8 +113,8 @@ class Spider(scrapy.Spider):
         updown = self.parseUpDown(response)
         if updown is not None:
           n = items.ZYHousePriceTrend()
-          n['dbName'] = 'house'
-          n['collectionName'] = 'zyPriceTrend'
+          n['dbName'] = self.dbName
+          n['collectionName'] = self.collectionName
           n['city'] = city
           n['src'] = self.src
           n['district'] = district

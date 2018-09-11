@@ -39,17 +39,7 @@ class Spider(scrapy.Spider):
       'https://bj.5i5j.com/ershoufang/chaoyangqu/',
     ]
     head = 'https://bj.5i5j.com'
-#     headers = {
-#       'Accept	': 'text/html,application/xhtml+xm…plication/xml;q=0.9,*/*;q=0.8',
-# 'Accept-Encoding': 'gzip, deflate, br',
-# 'Accept-Language': 'en-GB,en;q=0.5',
-# 'Cache-Control'	: 'max-age=0',
-# 'Connection': 'keep-alive',
-# 'Cookie': '_Jo0OQK=6640C382031687852E9DC5…a86ed341d64b267ec6=1536342041',
-# 'DNT': '1',
-# 'Host': 'bj.5i5j.com',
-# 'Upgrade-Insecure-Requests': '1',
-#     }
+
     nextPageOrder = -1
     reversed = False
     dbName = 'house'
@@ -136,7 +126,7 @@ class Spider(scrapy.Spider):
 
 
     def nextPage(self, response, url1, url2, number):
-      if self.nextPageOrder == -1:
+      if self.nextPageOrder == -1 and not np.isnan(number):
         return self.nextPageNegativeOne(response, url2, number)
       else:
         return self.nextPagePlusOne(response, url1)
