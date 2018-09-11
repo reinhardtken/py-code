@@ -70,3 +70,16 @@ class SpiderCQ(spiders.secondHand.zyShenzhen2.Spider):
   ]
   head = 'https://cq.centanet.com'
   collectionName = 'chongqing'
+
+
+class SpiderWH(spiders.secondHand.zyShenzhen2.Spider):
+  name = 'zy-esf-wh'
+  city = '武汉'
+  allowed_domains = [
+    'wh.centanet.com',
+  ]
+  start_urls = [
+    'https://wh.centanet.com/ershoufang/',
+  ]
+  head = 'https://wh.centanet.com'
+  collectionName = 'wuhan'
