@@ -228,7 +228,7 @@ def analyzeCityPriceTrendDigest(city, src, week):
     db = client['house-trend']
     collection = db['priceTrend']
     data = {
-      '_id': city + '_' + str(week),
+      '_id': city + '_' + src + '_' + str(week),
       'city': city,
       'src': src,
       'week': week,
@@ -340,10 +340,11 @@ def analyzeDistrictAvgPriceDigest(city, src):
 # this project
 if __name__ == '__main__':
   # srcs = const.SRCS
-  # citys = const.CITYS
-  # for src in srcs:
-  #   for city in citys:
-  #     analyzeCityPriceTrendDigest(city, src, 201837)
+  srcs = ['wiwj']
+  citys = const.CITYS
+  for src in srcs:
+    for city in citys:
+      analyzeCityPriceTrendDigest(city, src, 201838)
   #     #analyzeCityAvgPriceDigest(city, src)
   #     #analyzeDistrictAvgPriceDigest(city, src)
   #     pass
@@ -353,14 +354,14 @@ if __name__ == '__main__':
 
   # # city = 'shanghai'
   # # districts = ['浦东', '静安', '黄浦', '徐汇']
-  city = 'beijing'
-  districts = ['海淀', '朝阳', '东城', '西城']
+  #city = 'beijing'
+  #districts = ['海淀', '朝阳', '东城', '西城']
   # # city = 'changsha'
   # # districts = ['开福', '雨花', '芙蓉', '岳麓', '天心']
   # # city = 'shenzhen'
   # # districts = ['南山区', '福田区', '宝安区', '罗湖区']
-  # city = 'langfang'
-  # districts = ['廊坊', ]
+  city = 'langfang'
+  districts = ['廊坊', ]
   #
   #
   now = datetime.datetime.now()
@@ -369,8 +370,8 @@ if __name__ == '__main__':
   #
   for district in districts:
     df = query.queryTurnOverData(city, district, (thisYear, august))
-    # unitPriceTrend(df)
-    dealNumberTrend(df)
+    unitPriceTrend(df)
+    #dealNumberTrend(df)
   #   # dealCycleTrend(df)
   #   # diffPriceTrend(df)
   # pass

@@ -198,8 +198,8 @@ class Spider(scrapy.Spider):
           yield Request(one, meta={'step': 1, 'url': one})
 
 
-      district = np.nan
-      subDistrict = np.nan
+      district = ''
+      subDistrict = ''
 
 
       if 'step' in response.meta:

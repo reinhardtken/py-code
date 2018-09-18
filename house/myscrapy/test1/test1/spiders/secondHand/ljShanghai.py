@@ -10,7 +10,7 @@ import numpy as np
 
 
 import items
-
+import util
 
 
 
@@ -106,10 +106,11 @@ class Spider(scrapy.Spider):
         if len(tmp):
           maxURL = tmp[0].strip()
 
-      tmp = maxURL.split('/')
-      maxNumber = String2Number(tmp[-2]) if tmp[-1] == '' else String2Number(tmp[-1])
-      for i in range(2, int(maxNumber) + 1):
-        np.append(url + 'pg' + str(i))
+      if maxURL is not None:
+        tmp = maxURL.split('/')
+        maxNumber = util.String2Number(tmp[-2]) if tmp[-1] == '' else util.String2Number(tmp[-1])
+        for i in range(2, int(maxNumber) + 1):
+          np.append(url + 'pg' + str(i))
 
       return np
 
@@ -128,15 +129,15 @@ class Spider(scrapy.Spider):
       oneOut['title'] = ''.join(one.xpath('.//div[1]/div[1]/a/text()').extract()).strip()
       oneOut['_id'] = ''.join(one.xpath('.//div[1]/div[1]/a/@data-housecode').extract()).strip()
       try:
-        unitPrice = String2Number(''.join(one.xpath('.//div[1]/div[6]/div[2]/span/text()').extract()).strip())
+        unitPrice = util.String2Number(''.join(one.xpath('.//div[1]/div[6]/div[2]/span/text()').extract()).strip())
         if not np.isnan(unitPrice):
           oneOut['unitPrice'] = unitPrice
-          oneOut['totalPrice'] = String2Number(
+          oneOut['totalPrice'] = util.String2Number(
             ''.join(one.xpath('.//div[1]/div[6]/div[1]/span/text()').extract()).strip())
         else:
           #https://sh.lianjia.com/ershoufang/changning/pg96/
-          oneOut['unitPrice'] = String2Number(''.join(one.xpath('.//div[1]/div[7]/div[2]/span/text()').extract()).strip())
-          oneOut['totalPrice'] = String2Number(
+          oneOut['unitPrice'] = util.String2Number(''.join(one.xpath('.//div[1]/div[7]/div[2]/span/text()').extract()).strip())
+          oneOut['totalPrice'] = util.String2Number(
             ''.join(one.xpath('.//div[1]/div[7]/div[1]/span/text()').extract()).strip())
 
         oneOut['community'] = ''.join(one.xpath('.//div[1]/div[2]/div/a/text()').extract())
@@ -145,7 +146,7 @@ class Spider(scrapy.Spider):
         if len(houseInfo) > 1:
           oneOut['houseType'] = houseInfo[1].strip()
           if len(houseInfo) > 2:
-            oneOut['square'] = String2Number(houseInfo[2].strip())
+            oneOut['square'] = util.String2Number(houseInfo[2].strip())
 
         oneOut['area'] = ''.join(one.xpath('.//div[1]/div[3]/div/a/text()').extract())
         positionInfo = ''.join(one.xpath('.//div[1]/div[3]/div/text()').extract())
@@ -164,7 +165,7 @@ class Spider(scrapy.Spider):
             if len(followInfo) > 2:
               oneOut['release'] = followInfo[2].strip()
 
-        oneOut['crawlDate'] = today()
+        oneOut['crawlDate'] = util.today()
 
       except Exception as e:
         print(e)
@@ -200,14 +201,14 @@ class Spider(scrapy.Spider):
           if len(d):
             subDistrict = d[0]
 
-          number = String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
+          number = util.String2Number(''.join(response.xpath(self.xpath['districtNumber']).extract()).strip())
           n = items.HouseDetailDigest()
           n['city'] = self.city
           n['src'] = self.src
           n['district'] = district
           n['subDistrict'] = subDistrict
           n['number'] = number
-          n['_id'] = todayString() + '_' + n['city'] + '_' + n['district'] + '_' + n['subDistrict']
+          n['_id'] = util.todayString() + '_' + n['city'] + '_' + n['district'] + '_' + n['subDistrict']
           yield n
 
           nextPage = self.nextPage(response, self.head, response.meta['url'])

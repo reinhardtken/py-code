@@ -100,7 +100,10 @@ class Spider(scrapy.Spider):
       p = response.xpath(self.xpath['allPage'])
       # 框架支持url排重,这里就不排重了
       for one in p:
-        np.append(url + one.xpath('.//@href').extract())
+        if isinstance(one, list):
+          np.append(url + one[0].xpath('.//@href').extract())
+        else:
+          np.append(url + one.xpath('.//@href').extract())
 
     return np
 
