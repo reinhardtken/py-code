@@ -2,7 +2,7 @@
 
 # sys
 import json
-
+import datetime
 # thirdpart
 import pandas as pd
 import numpy as np
@@ -170,16 +170,47 @@ def filterOut(df):
   forecastNext = np.nan
   notNull = df[ADJUST_NAME['ForecastQuarterProfit']].notnull()
   out = df.loc[notNull, :].head(1)
+
   if len(out.index):
-    r = util.performancePreviewRange()
+    # 11月1日-4月30：上一年4季
+    # 如果是11月15号，有今年四季度的每股收益，则当季是明年一季度。否则，是今年四季度
+    # 如果是2月15号，有去年四季度每股收益，则当季是今年一季度，否则是去年四季度
+    # 5月1-8月30：二季
+    # 9月1-10月30：三季
     try:
+      now = datetime.datetime.now()
+      nowDay = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+      lastNovember = now.replace(year=now.year-1, month=11, day=1, hour=0, minute=0, second=0, microsecond=0)
+      nowMay = now.replace(month=5, day=1, hour=0, minute=0, second=0, microsecond=0)
+      nowAugust = now.replace(month=8, day=31, hour=0, minute=0, second=0, microsecond=0)
+      nowOctober = now.replace(month=10, day=30, hour=0, minute=0, second=0, microsecond=0)
+
+      if (nowDay - lastNovember).total_seconds() >= 0 and (nowDay - nowMay).total_seconds() < 0:
+        if nowDay.month <= 4:
+          #看去年四季度是否存在
+          fq = now.replace(year=now.year-1, month=12, day=31, hour=0, minute=0, second=0, microsecond=0)
+          tmp = df.loc[fq, KEY_NAME['jbmgsy']]
+          if np.isnan(tmp):
+            r = [util.getFourthQuarter(fq), util.getFirstQuarter(nowDay)]
+          else:
+            r = [util.getFirstQuarter(nowDay), util.getSecondQuarter(nowDay)]
+        else:
+          #此时四季度收益必然不存在
+          r = [util.getFourthQuarter(nowDay), util.getFirstQuarter(nextXQ(nowDay, 1))]
+      elif (nowDay - nowMay).total_seconds() >= 0 and (nowDay - nowAugust).total_seconds() < 0:
+        r = [util.getSecondQuarter(nowDay), util.getThirdQuarter(nowDay)]
+      elif (nowDay - nowAugust).total_seconds() >= 0 and (nowDay - nowOctober).total_seconds() < 0:
+        r = [util.getThirdQuarter(nowDay), util.getFourthQuarter(nowDay)]
+
+
       forecastNow = df.loc[r[0], const.YJYG_KEYWORD.KEY_NAME['increasel']]
       forecastNext = df.loc[r[1], const.YJYG_KEYWORD.KEY_NAME['increasel']]
     except KeyError as e:
       print(e)
     pass
 
-  notNull = df[KEY_NAME['jbmgsy']].notnull()
+  notNull = df[ADJUST_NAME['ForecastProfit']].notnull()
   out = df.loc[notNull, :].head(1)
   out[ADJUST_NAME['ForecastNow']] = forecastNow
   out[ADJUST_NAME['ForecastNext']] = forecastNext
@@ -215,7 +246,7 @@ def changeColumns(df):
 def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   print('calcOne %s'%(code))
   s = stock.Stock(code)
-  s.load(cwsj=True, yjyg=['2018-09-30', '2018-06-30', '2018-03-31'])
+  s.load(cwsj=True, yjyg=['2019-03-31', '2018-12-31', '2018-09-30', '2018-06-30', '2018-03-31'])
   if benchmark:
     s.loadBenchmark(file='/home/ken/workspace/tmp/out-adjust-' + code + '.xlsx')
   df = s.data
@@ -265,15 +296,13 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
 
   return dfOut
 
-
-if __name__ == '__main__':
+def runAll():
   import query.query_hs300
 
   stockList = [
     (query.query_hs300.queryCodeList(), '/home/ken/workspace/tmp/out-hs300.xls'),
     (const.STOCK_LIST, '/home/ken/workspace/tmp/out-all.xls'),
   ]
-
 
   for s in stockList:
     onedf = pd.DataFrame()
@@ -294,4 +323,35 @@ if __name__ == '__main__':
 
     onedf.to_excel(s[1], index=False)
 
+def test000651():
+  import query.query_hs300
+
+  stockList = [
+    (['000651'], '/home/ken/workspace/tmp/out-000651.xls'),
+  ]
+
+  for s in stockList:
+    onedf = pd.DataFrame()
+    for one in s[0]:
+      # if one == '603516':
+      #   pass
+      tmp = calcOne(one)
+      tmp2 = filterOut(tmp)
+      tmp3 = changeColumns(tmp2)
+
+      tmp.to_excel('/home/ken/workspace/tmp/000651-1.xls')
+      tmp2.to_excel('/home/ken/workspace/tmp/000651-2.xls')
+      tmp3.to_excel('/home/ken/workspace/tmp/000651-3.xls')
+      if len(onedf.index) == 0:
+        onedf = tmp3
+      else:
+        onedf = onedf.append(tmp3)
+
+    onedf.to_excel(s[1], index=False)
+
+
+
+if __name__ == '__main__':
+  #test000651()
+  runAll()
   pass
