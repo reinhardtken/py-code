@@ -190,7 +190,11 @@ def filterOut(df):
         if nowDay.month <= 4:
           #看去年四季度是否存在
           fq = now.replace(year=now.year-1, month=12, day=31, hour=0, minute=0, second=0, microsecond=0)
-          tmp = df.loc[fq, KEY_NAME['jbmgsy']]
+          try:
+            tmp = np.nan
+            tmp = df.loc[fq, KEY_NAME['jbmgsy']]
+          except KeyError as e:
+            pass
           if np.isnan(tmp):
             r = [util.getFourthQuarter(fq), util.getFirstQuarter(nowDay)]
           else:
@@ -323,11 +327,11 @@ def runAll():
 
     onedf.to_excel(s[1], index=False)
 
-def test000651():
+def testOne(code):
   import query.query_hs300
 
   stockList = [
-    (['000651'], '/home/ken/workspace/tmp/out-000651.xls'),
+    ([code], '/home/ken/workspace/tmp/out-' + code + '.xls'),
   ]
 
   for s in stockList:
@@ -339,9 +343,9 @@ def test000651():
       tmp2 = filterOut(tmp)
       tmp3 = changeColumns(tmp2)
 
-      tmp.to_excel('/home/ken/workspace/tmp/000651-1.xls')
-      tmp2.to_excel('/home/ken/workspace/tmp/000651-2.xls')
-      tmp3.to_excel('/home/ken/workspace/tmp/000651-3.xls')
+      tmp.to_excel('/home/ken/workspace/tmp/' + code + '-1.xls')
+      tmp2.to_excel('/home/ken/workspace/tmp/' + code + '-2.xls')
+      tmp3.to_excel('/home/ken/workspace/tmp/' + code + '-3.xls')
       if len(onedf.index) == 0:
         onedf = tmp3
       else:
@@ -352,6 +356,6 @@ def test000651():
 
 
 if __name__ == '__main__':
-  #test000651()
+  testOne('601958')
   runAll()
   pass
