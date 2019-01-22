@@ -58,85 +58,15 @@ def prepareResult(data):
   return df
 
 
-# def test(code):
-#   baseData = query_cwsj.QueryTop(-1, code)
-#   adjustData = query_adjust_cwsj.QueryTop(-1, code)
-#   print(baseData)
-#
-#   if adjustData is None:
-#     adjustData = prepareResult(baseData)
-#   print(adjustData)
-#   # tmp = datetime.datetime.strptime('2018-03-31', '%Y-%m-%d')
-#   # tmp2 = datetime.datetime.strptime('2018-03-30', '%Y-%m-%d')
-#   # tmp3 = datetime.datetime.strptime('2017-03-31', '%Y-%m-%d')
-#   # # re = baseData.index.isin([tmp, tmp2, tmp3])
-#   # # print(re)
-#   # # print(baseData[re])
-#   # re = None
-#   # try:
-#   #     re = baseData.loc[tmp2]
-#   # except Exception as e:
-#   #     print(e)
-#
-#   # oneLoop = loop.AdjustLoop()
-#   # oneLoop.addOP(GenQuarterProfit())
-#   # oneLoop.addOP(GenQuarterProfitRatio())
-#   # oneLoop.addOP(GenQuarterForecastGrowthRate())
-#   # oneLoop.addOP(GenPerShareProfitForecast2())
-#   # df = oneLoop.loop(baseData)
-#   # df = oneLoop.genResult(df)
-#   # print(df)
-#
-#   util.saveMongoDB(df, util.genKeyDateFunc(KN['date']), 'stock-adjust', 'cwsj-' + code)
-#
-
-
-# def test2(code):
-#   # df = mock.mock000725()
-#   # s = stock.Stock('002415')
-#   # s.load(file='/home/ken/workspace/tmp/im_out-adjust-000725(12).xlsx')
-#   # df = s.data
-#
-#   s = stock.Stock('002415')
-#   s.load(cwsj=None, yjyg=['2018-09-30', '2018-06-30', '2018-03-31'])
-#   s.loadBenchmark(file='/home/ken/workspace/tmp/out-adjust-002415.xlsx')
-#   df = s.data
-#   # df = df.loc[:, [KN['date'], KN['zgb'], KN['jbmgsy']]]
-#   bdf = s.benchmark_data
-#   df.to_excel('/home/ken/workspace/tmp/base-002415.xls')
-#
-#   oneLoop = loop.AdjustLoop()
-#   oneLoop.addOP(forecastProfit.GenForecastProfit())
-#   oneLoop.addOP(quarterProfit.GenQuarterProfit())
-#   oneLoop.addOP(quarterProfitRatio.GenQuarterProfitRatio())
-#   oneLoop.addOP(forecastQuarterProfit.GenForecastProfit())
-#   oneLoop.addOP(lastYearProfit.GenLastYearProfit())
-#   oneLoop.addOP(forecastMidGrowthRate.GenForecastMidGrowthRate())
-#   oneLoop.addOP(forecastFinalGrowthRate.GenForecastFinalGrowthRate())
-#   oneLoop.addOP(peMinMax.GenPEMinMax())
-#   oneLoop.addOP(forecastPerShareProfit.GenForecastPerShareProfit())
-#   oneLoop.addOP(valueMinMax.GenValueMinMax())
-#   c = oneLoop.columns
-#   # df = oneLoop.loop(df)
-#   # oneLoop.columns.extend([KEY_NAME['jbmgsy'], ADJUST_NAME['zgb'], const.YJYG_KEYWORD.KEY_NAME['forecastl']])
-#   # column = oneLoop.columns
-#   # re = df.loc[:, column]
-#   # re.to_excel('/home/ken/workspace/tmp/out-002415.xls')
-#   oneLoop.verify(df, bdf)
-
 
 
 def test(saveDB=True, saveFile=False, benchmark=False):
   s = stock.Stock('000725')
   mock = {
-    'file': '/home/ken/workspace/tmp/im_out-adjust-000725(12).xlsx',
+    'file': setting.PATH + 'im_out-adjust-000725(12).xlsx',
     'zgb': 33862290000,
   }
   s.load(mock=mock)
-  # s = stock.Stock(code)
-  # s.load(cwsj=True, yjyg=['2018-09-30', '2018-06-30', '2018-03-31'])
-  # if benchmark:
-  #   s.loadBenchmark(file='/home/ken/workspace/tmp/out-adjust-' + code + '.xlsx')
   df = s.data
   # df = df.loc[:, [KN['date'], KN['zgb'], KN['jbmgsy']]]
   bdf =df.copy()
@@ -178,36 +108,36 @@ def filterOut(df):
     # 5月1-8月30：二季
     # 9月1-10月30：三季
     try:
-      now = datetime.datetime.now()
-      nowDay = now.replace(hour=0, minute=0, second=0, microsecond=0)
+      # now = datetime.datetime.now()
+      # nowDay = now.replace(hour=0, minute=0, second=0, microsecond=0)
+      #
+      # lastNovember = now.replace(year=now.year-1, month=11, day=1, hour=0, minute=0, second=0, microsecond=0)
+      # nowMay = now.replace(month=5, day=1, hour=0, minute=0, second=0, microsecond=0)
+      # nowAugust = now.replace(month=8, day=31, hour=0, minute=0, second=0, microsecond=0)
+      # nowOctober = now.replace(month=10, day=30, hour=0, minute=0, second=0, microsecond=0)
+      #
+      # if (nowDay - lastNovember).total_seconds() >= 0 and (nowDay - nowMay).total_seconds() < 0:
+      #   if nowDay.month <= 4:
+      #     #看去年四季度是否存在
+      #     fq = now.replace(year=now.year-1, month=12, day=31, hour=0, minute=0, second=0, microsecond=0)
+      #     try:
+      #       tmp = np.nan
+      #       tmp = df.loc[fq, KEY_NAME['jbmgsy']]
+      #     except KeyError as e:
+      #       pass
+      #     if np.isnan(tmp):
+      #       r = [util.getFourthQuarter(fq), util.getFirstQuarter(nowDay)]
+      #     else:
+      #       r = [util.getFirstQuarter(nowDay), util.getSecondQuarter(nowDay)]
+      #   else:
+      #     #此时四季度收益必然不存在
+      #     r = [util.getFourthQuarter(nowDay), util.getFirstQuarter(nextXQ(nowDay, 1))]
+      # elif (nowDay - nowMay).total_seconds() >= 0 and (nowDay - nowAugust).total_seconds() < 0:
+      #   r = [util.getSecondQuarter(nowDay), util.getThirdQuarter(nowDay)]
+      # elif (nowDay - nowAugust).total_seconds() >= 0 and (nowDay - nowOctober).total_seconds() < 0:
+      #   r = [util.getThirdQuarter(nowDay), util.getFourthQuarter(nowDay)]
 
-      lastNovember = now.replace(year=now.year-1, month=11, day=1, hour=0, minute=0, second=0, microsecond=0)
-      nowMay = now.replace(month=5, day=1, hour=0, minute=0, second=0, microsecond=0)
-      nowAugust = now.replace(month=8, day=31, hour=0, minute=0, second=0, microsecond=0)
-      nowOctober = now.replace(month=10, day=30, hour=0, minute=0, second=0, microsecond=0)
-
-      if (nowDay - lastNovember).total_seconds() >= 0 and (nowDay - nowMay).total_seconds() < 0:
-        if nowDay.month <= 4:
-          #看去年四季度是否存在
-          fq = now.replace(year=now.year-1, month=12, day=31, hour=0, minute=0, second=0, microsecond=0)
-          try:
-            tmp = np.nan
-            tmp = df.loc[fq, KEY_NAME['jbmgsy']]
-          except KeyError as e:
-            pass
-          if np.isnan(tmp):
-            r = [util.getFourthQuarter(fq), util.getFirstQuarter(nowDay)]
-          else:
-            r = [util.getFirstQuarter(nowDay), util.getSecondQuarter(nowDay)]
-        else:
-          #此时四季度收益必然不存在
-          r = [util.getFourthQuarter(nowDay), util.getFirstQuarter(nextXQ(nowDay, 1))]
-      elif (nowDay - nowMay).total_seconds() >= 0 and (nowDay - nowAugust).total_seconds() < 0:
-        r = [util.getSecondQuarter(nowDay), util.getThirdQuarter(nowDay)]
-      elif (nowDay - nowAugust).total_seconds() >= 0 and (nowDay - nowOctober).total_seconds() < 0:
-        r = [util.getThirdQuarter(nowDay), util.getFourthQuarter(nowDay)]
-
-
+      r = util.performancePreviewRange()
       forecastNow = df.loc[r[0], const.YJYG_KEYWORD.KEY_NAME['increasel']]
       forecastNext = df.loc[r[1], const.YJYG_KEYWORD.KEY_NAME['increasel']]
     except KeyError as e:
@@ -252,11 +182,11 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   s = stock.Stock(code)
   s.load(cwsj=True, yjyg=['2019-03-31', '2018-12-31', '2018-09-30', '2018-06-30', '2018-03-31'])
   if benchmark:
-    s.loadBenchmark(file='/home/ken/workspace/tmp/out-adjust-' + code + '.xlsx')
+    s.loadBenchmark(file=setting.PATH + 'out-adjust-' + code + '.xlsx')
   df = s.data
   # df = df.loc[:, [KN['date'], KN['zgb'], KN['jbmgsy']]]
   bdf = s.benchmark_data
-  # df.to_excel('/home/ken/workspace/tmp/stock.xls')
+
 
   oneLoop = loop.AdjustLoop()
   oneLoop.addOP(marketValue.GenMarketValue(s))
@@ -276,12 +206,7 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   oneLoop.addOP(forecastPE.GenForecastPE(s))
   oneLoop.addOP(valueMinMax.GenValueMinMax(s))
   oneLoop.addOP(distanceMinMax.GenDistanceMinMax(s))
-  # c = oneLoop.columns
-  # df = oneLoop.loop(df)
-  # oneLoop.columns.extend([KEY_NAME['jbmgsy'], ADJUST_NAME['zgb'], const.YJYG_KEYWORD.KEY_NAME['forecastl']])
-  # column = oneLoop.columns
-  # re = df.loc[:, column]
-  # re.to_excel('/home/ken/workspace/tmp/out-002415.xls')
+
   dfOut = None
   if benchmark:
     dfOut = oneLoop.verify(df, bdf)
@@ -296,7 +221,7 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
     util.saveMongoDB(dfOut, util.genKeyDateFunc(const.MONGODB_ID), 'stock-out', 'cwsj-' + code)
 
   if saveFile:
-    dfOut.to_excel('/home/ken/workspace/tmp/out-' + code + '.xls')
+    dfOut.to_excel(setting.PATH + 'out-' + code + '.xls')
 
   return dfOut
 
@@ -304,8 +229,8 @@ def runAll():
   import query.query_hs300
 
   stockList = [
-    (query.query_hs300.queryCodeList(), '/home/ken/workspace/tmp/out-hs300.xls'),
-    (const.STOCK_LIST, '/home/ken/workspace/tmp/out-all.xls'),
+    (query.query_hs300.queryCodeList(), setting.PATH + '/out-hs300.xls'),
+    (const.STOCK_LIST, setting.PATH + '/out-all.xls'),
   ]
 
   for s in stockList:
@@ -316,10 +241,6 @@ def runAll():
       tmp = calcOne(one)
       tmp2 = filterOut(tmp)
       tmp3 = changeColumns(tmp2)
-      # if one == '000786':
-      #   tmp.to_excel('/home/ken/workspace/tmp/000786-1.xls')
-      #   tmp2.to_excel('/home/ken/workspace/tmp/000786-2.xls')
-      #   tmp3.to_excel('/home/ken/workspace/tmp/000786-3.xls')
       if len(onedf.index) == 0:
         onedf = tmp3
       else:
@@ -331,7 +252,7 @@ def testOne(code):
   import query.query_hs300
 
   stockList = [
-    ([code], '/home/ken/workspace/tmp/out-' + code + '.xls'),
+    ([code], setting.PATH + '/out-' + code + '.xls'),
   ]
 
   for s in stockList:
@@ -343,9 +264,9 @@ def testOne(code):
       tmp2 = filterOut(tmp)
       tmp3 = changeColumns(tmp2)
 
-      tmp.to_excel('/home/ken/workspace/tmp/' + code + '-1.xls')
-      tmp2.to_excel('/home/ken/workspace/tmp/' + code + '-2.xls')
-      tmp3.to_excel('/home/ken/workspace/tmp/' + code + '-3.xls')
+      tmp.to_excel(setting.PATH + code + '-1.xls')
+      tmp2.to_excel(setting.PATH + code + '-2.xls')
+      tmp3.to_excel(setting.PATH + code + '-3.xls')
       if len(onedf.index) == 0:
         onedf = tmp3
       else:

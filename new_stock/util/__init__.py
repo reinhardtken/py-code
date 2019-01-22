@@ -139,26 +139,26 @@ def nowQuarter():
     return now.replace(month=12, day=31, hour=0, minute=0, second=0, microsecond=0)
 
 
-# def performancePreviewRange():
-#   # 11月1日-4月30：上一年4季
-#   # 如果是11月15号，有今年四季度的每股收益，则当季是明年一季度。否则，是今年四季度
-#   # 如果是2月15号，有去年四季度每股收益，则当季是今年一季度，否则是去年四季度
-#   # 5月1-8月30：二季
-#   # 9月1-10月30：三季
-#
-#   now = datetime.datetime.now()
-#   nowDay = now.replace(hour=0, minute=0, second=0, microsecond=0)
-#   first = now.replace(month=4, day=30, hour=0, minute=0, second=0, microsecond=0)
-#   second = now.replace(month=8, day=31, hour=0, minute=0, second=0, microsecond=0)
-#   third = now.replace(month=10, day=31, hour=0, minute=0, second=0, microsecond=0)
-#   if (now - first).total_seconds() < 0:
-#     return [getFirstQuarter(nowDay), getSecondQuarter(nowDay)]
-#   elif (now -second).total_seconds() < 0:
-#     return [getSecondQuarter(nowDay), getThirdQuarter(nowDay)]
-#   elif (now - third).total_seconds() < 0:
-#     return [getThirdQuarter(nowDay), getFourthQuarter(nowDay)]
-#   else:
-#     return [getFourthQuarter(nowDay), getFirstQuarter(nextYear(nowDay))]
+def performancePreviewRange():
+  # 11月1日-4月30：上一年4季
+  # 如果是11月15号，有今年四季度的每股收益，则当季是明年一季度。否则，是今年四季度
+  # 如果是2月15号，有去年四季度每股收益，则当季是今年一季度，否则是去年四季度
+  # 5月1-8月30：二季
+  # 9月1-10月30：三季
+
+  now = datetime.datetime.now()
+  nowDay = now.replace(hour=0, minute=0, second=0, microsecond=0)
+  first = now.replace(month=4, day=30, hour=0, minute=0, second=0, microsecond=0)
+  second = now.replace(month=8, day=31, hour=0, minute=0, second=0, microsecond=0)
+  third = now.replace(month=10, day=31, hour=0, minute=0, second=0, microsecond=0)
+  if (now - first).total_seconds() < 0:
+    return [getFirstQuarter(nowDay), getSecondQuarter(nowDay)]
+  elif (now -second).total_seconds() < 0:
+    return [getSecondQuarter(nowDay), getThirdQuarter(nowDay)]
+  elif (now - third).total_seconds() < 0:
+    return [getThirdQuarter(nowDay), getFourthQuarter(nowDay)]
+  else:
+    return [getFourthQuarter(nowDay), getFirstQuarter(nextYear(nowDay))]
 
 
 

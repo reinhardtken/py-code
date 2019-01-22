@@ -3,6 +3,9 @@ import const
 import sys
 
 
+#TO wang:改这里，写你的路径
+PATH = r'/home/ken/workspace/tmp/'
+
 def currentStockList():
   hs300 = query.query_hs300.queryCodeList()
   chose = const.STOCK_LIST

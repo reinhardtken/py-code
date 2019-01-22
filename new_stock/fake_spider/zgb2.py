@@ -201,6 +201,12 @@ class Handler(spider.FakeSpider):
 
 
 
+def run():
+  gpfh = Handler()
+  gpfh.on_start()
+  gpfh.run()
+
+
 if __name__ == '__main__':
   gpfh = Handler()
   gpfh.on_start()
