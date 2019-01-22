@@ -4,7 +4,7 @@ import sys
 
 
 #TO wang:改这里，写你的路径
-PATH = r'/home/ken/workspace/tmp/'
+PATH = r'd:/stock_python/out/'
 
 def currentStockList():
   hs300 = query.query_hs300.queryCodeList()

@@ -99,7 +99,7 @@ def filterOut(df):
   forecastNow = np.nan
   forecastNext = np.nan
   notNull = df[ADJUST_NAME['ForecastQuarterProfit']].notnull()
-  out = df.loc[notNull, :].head(1)
+  out = df.loc[notNull, :].head(2)
 
   if len(out.index):
     # 11月1日-4月30：上一年4季
@@ -107,6 +107,7 @@ def filterOut(df):
     # 如果是2月15号，有去年四季度每股收益，则当季是今年一季度，否则是去年四季度
     # 5月1-8月30：二季
     # 9月1-10月30：三季
+    r = util.performancePreviewRange()
     try:
       # now = datetime.datetime.now()
       # nowDay = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -137,14 +138,14 @@ def filterOut(df):
       # elif (nowDay - nowAugust).total_seconds() >= 0 and (nowDay - nowOctober).total_seconds() < 0:
       #   r = [util.getThirdQuarter(nowDay), util.getFourthQuarter(nowDay)]
 
-      r = util.performancePreviewRange()
+
       forecastNow = df.loc[r[0], const.YJYG_KEYWORD.KEY_NAME['increasel']]
       forecastNext = df.loc[r[1], const.YJYG_KEYWORD.KEY_NAME['increasel']]
     except KeyError as e:
       print(e)
     pass
 
-  notNull = df[ADJUST_NAME['ForecastProfit']].notnull()
+  notNull = df[KEY_NAME['jbmgsy']].notnull()
   out = df.loc[notNull, :].head(1)
   out[ADJUST_NAME['ForecastNow']] = forecastNow
   out[ADJUST_NAME['ForecastNext']] = forecastNext
@@ -263,10 +264,10 @@ def testOne(code):
       tmp = calcOne(one)
       tmp2 = filterOut(tmp)
       tmp3 = changeColumns(tmp2)
-
-      tmp.to_excel(setting.PATH + code + '-1.xls')
-      tmp2.to_excel(setting.PATH + code + '-2.xls')
-      tmp3.to_excel(setting.PATH + code + '-3.xls')
+      # if one == '000651':
+        # tmp.to_excel('d:/stock_python/out/000651-1.xls')
+        # tmp2.to_excel('d:/stock_python/out/000651-2.xls')
+        # tmp3.to_excel('d:/stock_python/out/000651-3.xls')
       if len(onedf.index) == 0:
         onedf = tmp3
       else:

@@ -152,7 +152,7 @@ def performancePreviewRange():
   second = now.replace(month=8, day=31, hour=0, minute=0, second=0, microsecond=0)
   third = now.replace(month=10, day=31, hour=0, minute=0, second=0, microsecond=0)
   if (now - first).total_seconds() < 0:
-    return [getFirstQuarter(nowDay), getSecondQuarter(nowDay)]
+    return [priorQuarter(getFirstQuarter(nowDay)), getFirstQuarter(nowDay)]
   elif (now -second).total_seconds() < 0:
     return [getSecondQuarter(nowDay), getThirdQuarter(nowDay)]
   elif (now - third).total_seconds() < 0:
