@@ -35,7 +35,6 @@ import adjust.cwsj.forecastPE as forecastPE
 import adjust.cwsj.distanceMinMax as distanceMinMax
 import setting
 
-
 priorXQ = util.priorXQuarter
 priorQ = util.priorQuarter
 nextXQ = util.nextXQuarter
@@ -229,10 +228,7 @@ def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
 def runAll():
   import query.query_hs300
 
-  stockList = [
-    (query.query_hs300.queryCodeList(), setting.PATH + '/out-hs300.xls'),
-    (const.STOCK_LIST, setting.PATH + '/out-all.xls'),
-  ]
+  stockList = setting.stock_list
 
   for s in stockList:
     onedf = pd.DataFrame()
@@ -247,6 +243,7 @@ def runAll():
       else:
         onedf = onedf.append(tmp3)
 
+    onedf = onedf.sort_values(by="下限距离", ascending=True)
     onedf.to_excel(s[1], index=False)
 
 def testOne(code):
@@ -272,7 +269,6 @@ def testOne(code):
         onedf = tmp3
       else:
         onedf = onedf.append(tmp3)
-
     onedf.to_excel(s[1], index=False)
 
 

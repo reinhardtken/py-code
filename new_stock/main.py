@@ -37,11 +37,11 @@ if __name__ == '__main__':
   import fake_spider.zgb2
   import adjust.cwsj_manager
 
-  #fake_spider.tushare.kData.run()
-  #fake_spider.yjyg.run()
-  #fake_spider.cwsj.run()
-  #fake_spider.gpfh.run()
-  #fake_spider.m012.run()
-  #fake_spider.zgb2.run()
+  fake_spider.tushare.kData.run()
+  fake_spider.yjyg.run()
+  fake_spider.cwsj.run()
+  fake_spider.gpfh.run()
+  fake_spider.m012.run()
+  fake_spider.zgb2.run()
   adjust.cwsj_manager.runAll()
 
