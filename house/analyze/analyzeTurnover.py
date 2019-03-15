@@ -28,7 +28,9 @@ def drawUnitPriceTrend(df, district):
   mpl.rcParams['axes.unicode_minus'] = False
   grouped = df.groupby('houseSize')
   for k, v in grouped:
-    x = v['month'].values.tolist()
+    tmp = v['month']
+    tmp2 = tmp.tolist()
+    x = tmp2#v['month'].values.tolist()
     y = v['price'].values.tolist()
     plt.plot(x, y, label=k)
 
@@ -37,7 +39,7 @@ def drawUnitPriceTrend(df, district):
   # plt.gca().xaxis.set_major_locator(DayLocator(interval=90))
   # 设置X轴的时间显示格式
   # plt.gca().xaxis.set_major_formatter(DateFormatter('%Y-%m'))
-  # ax.xaxis.set_major_formatter(DateFormatter('%Y-%m'))
+  ax.xaxis.set_major_formatter(DateFormatter('%Y-%m'))
   # 自动旋转X轴的刻度，适应坐标轴
   plt.gcf().autofmt_xdate()
   plt.grid(True)
@@ -67,7 +69,7 @@ def drawDealNumberTrend(df, district):
   # plt.gca().xaxis.set_major_locator(DayLocator(interval=90))
   # 设置X轴的时间显示格式
   # plt.gca().xaxis.set_major_formatter(DateFormatter('%Y-%m'))
-  # ax.xaxis.set_major_formatter(DateFormatter('%Y-%m'))
+  ax.xaxis.set_major_formatter(DateFormatter('%Y-%m'))
   # 自动旋转X轴的刻度，适应坐标轴
   plt.gcf().autofmt_xdate()
   plt.grid(True)
@@ -86,7 +88,8 @@ def drawTrend(df, district, by, xKey, yKey):
 
   grouped = df.groupby(by)
   for k, v in grouped:
-    x = v[xKey].values.tolist()
+    # x = v[xKey].values.tolist()
+    x = v[xKey].tolist()
     y = v[yKey].values.tolist()
     plt.plot(x, y, label=k)
 
@@ -98,6 +101,7 @@ def drawTrend(df, district, by, xKey, yKey):
   # plt.gca().xaxis.set_major_formatter(DateFormatter('%Y-%m'))
   # ax.xaxis.set_major_formatter(DateFormatter('%Y-%m'))
   # 自动旋转X轴的刻度，适应坐标轴
+  ax.xaxis.set_major_formatter(DateFormatter('%Y-%m'))
   plt.gcf().autofmt_xdate()
   plt.grid(True)
   plt.legend(bbox_to_anchor=(1.0, 0.9))
@@ -107,7 +111,10 @@ def drawTrend(df, district, by, xKey, yKey):
 
 
 def calcSize(x):
-  size = int(x)
+  if np.isnan(x):
+    size = 35
+  else:
+    size = int(x)
   if size < 40:
     return '<40平'
   elif size >= 40 and size < 60:
@@ -124,8 +131,8 @@ def calcSize(x):
     return '>=140平'
 
 def toYearMonth(x):
-  return x.strftime('%Y-%m')
-  # return x.replace(day=0, hour=0, minute=0, second=0, microsecond=0)
+  #return x.strftime('%Y-%m')
+  return x.replace(day=15, hour=0, minute=0, second=0, microsecond=0)
 
 
 def unitPriceTrend(df):
@@ -136,7 +143,8 @@ def unitPriceTrend(df):
   for k, v in g:
     # g2 = v.groupby(lambda x : x['dealDate'].month)
     # g2 = v.groupby('dealDate').apply(func)
-    v['month'] = v['dealDate'].map(toYearMonth)
+    v.loc[:, 'month'] = v['dealDate'].map(toYearMonth)
+    #v.sort_values("month", inplace=True)
     g2 = v.groupby('month')
     for k2, v2 in g2:
       # print(k2)
@@ -170,8 +178,7 @@ def dealNumberTrend(df):
   # outDf.set_index('month', inplace=True)
   # outDf.plot(x='month', y='price')
   # plt.show()
-  drawDealNumberTrend(outDf, district)
-
+  drawTrend(outDf, district, 'houseSize', 'month', 'number')
 
 def dealCycleTrend(df):
   out = []
@@ -192,6 +199,71 @@ def dealCycleTrend(df):
   # outDf.plot(x='month', y='price')
   # plt.show()
   drawTrend(outDf, district, 'houseSize', 'month', 'dealCycle')
+
+
+
+def calcPrice(x):
+  if np.isnan(x):
+    price = 0
+  else:
+    price = int(x)
+
+  if price < 400:
+    return '<400'
+  elif price >= 400 and price < 500:
+    return '400-500'
+  elif price >= 500 and price < 600:
+    return '500-600'
+  elif price >= 600 and price < 700:
+    return '600-700'
+  elif price >= 700 and price < 900:
+    return '700-900'
+  elif price >= 900 and price < 1100:
+    return '900-1100'
+  else:
+    return '>1100'
+
+def dealCycleByPriceTrend(df):
+  out = []
+
+  df['totalPrice'] = df['bidPrice'].map(calcPrice)
+  g = df.groupby('totalPrice')
+  for k, v in g:
+    v['month'] = v['dealDate'].map(toYearMonth)
+    g2 = v.groupby('month')
+    for k2, v2 in g2:
+      # print(k2)
+      # print(v2)
+      dealCycle = v2['dealCycle'].mean()
+      out.append({'month': k2, 'dealCycle': dealCycle, 'totalPrice': k})
+
+  outDf = pd.DataFrame(out)
+  # outDf.set_index('month', inplace=True)
+  # outDf.plot(x='month', y='price')
+  # plt.show()
+  drawTrend(outDf, district, 'totalPrice', 'month', 'dealCycle')
+
+
+
+def dealNumberPriceTrend(df):
+  out = []
+
+  df['totalPrice'] = df['bidPrice'].map(calcPrice)
+  g = df.groupby('totalPrice')
+  for k, v in g:
+    v['month'] = v['dealDate'].map(toYearMonth)
+    g2 = v.groupby('month')
+    for k2, v2 in g2:
+      # print(k2)
+      # print(v2)
+      number = len(v2)
+      out.append({'month': k2, 'number': number, 'totalPrice': k})
+
+  outDf = pd.DataFrame(out)
+  # outDf.set_index('month', inplace=True)
+  # outDf.plot(x='month', y='price')
+  # plt.show()
+  drawTrend(outDf, district, 'totalPrice', 'month', 'number')
 
 
 def diffPriceTrend(df):
@@ -340,38 +412,39 @@ def analyzeDistrictAvgPriceDigest(city, src):
 # this project
 if __name__ == '__main__':
   # srcs = const.SRCS
-  srcs = ['wiwj']
+  srcs = ['lj']
   citys = const.CITYS
   for src in srcs:
-    for city in citys:
-      analyzeCityPriceTrendDigest(city, src, 201838)
+   for city in citys:
+    #analyzeCityPriceTrendDigest(city, src, 201909)
   #     #analyzeCityAvgPriceDigest(city, src)
   #     #analyzeDistrictAvgPriceDigest(city, src)
-  #     pass
+    pass
 
 
 
 
-  # # city = 'shanghai'
-  # # districts = ['浦东', '静安', '黄浦', '徐汇']
-  #city = 'beijing'
-  #districts = ['海淀', '朝阳', '东城', '西城']
-  # # city = 'changsha'
-  # # districts = ['开福', '雨花', '芙蓉', '岳麓', '天心']
-  # # city = 'shenzhen'
-  # # districts = ['南山区', '福田区', '宝安区', '罗湖区']
-  city = 'langfang'
-  districts = ['廊坊', ]
+  # city = 'shanghai'
+  # districts = ['浦东', '静安', '黄浦', '徐汇']
+  city = 'beijing'
+  districts = ['海淀', '朝阳', '东城', '西城']
+  # city = 'changsha'
+  # districts = ['开福', '雨花', '芙蓉', '岳麓', '天心']
+  # city = 'shenzhen'
+  # districts = ['南山区', '福田区', '宝安区', '罗湖区']
+  #city = 'langfang'
+  #districts = ['廊坊', ]
   #
   #
   now = datetime.datetime.now()
-  thisYear = now.replace(year=2015, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-  august = now.replace(month=8, day=1, hour=0, minute=0, second=0, microsecond=0)
+  thisYear = now.replace(year=2017, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+  august = now.replace(month=12, day=1, hour=0, minute=0, second=0, microsecond=0)
   #
   for district in districts:
     df = query.queryTurnOverData(city, district, (thisYear, august))
-    unitPriceTrend(df)
+    #unitPriceTrend(df)
     #dealNumberTrend(df)
-  #   # dealCycleTrend(df)
-  #   # diffPriceTrend(df)
+    #dealCycleByPriceTrend(df)
+    dealNumberPriceTrend(df)
+    # diffPriceTrend(df)
   # pass

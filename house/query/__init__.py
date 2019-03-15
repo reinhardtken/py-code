@@ -83,6 +83,43 @@ def queryTurnOverData(city, district, timeRange):
     return df
 
 
+
+def queryBuildTurnOverData(building, timeRange):
+  client = MongoClient()
+  db = client['house-cj']
+  collection = db['beijing-lsq']
+
+  out = []
+
+  cursor = collection.find({'title': building, 'dealDate': {'$gte': timeRange[0], '$lt': timeRange[1]}, 'bidPrice': {'$gt': 100} }).sort('dealDate', pymongo.DESCENDING)
+  # cursor = collection.find(
+  #   { 'dealDate': {'$gte': timeRange[0], '$lt': timeRange[1]}, }).sort(
+  #   'dealDate', pymongo.DESCENDING)
+  for c in cursor:
+    out.append(c)
+
+  if len(out):
+    df = pd.DataFrame(out)
+    return df
+
+
+
+def queryReleaseData(city, src):
+  #db.getCollection('beijing').find({'src': 'lj', 'release' : {"$ne":"", "$exists": true } }).sort({"_id" : -1})
+  client = MongoClient()
+  db = client['house']
+  collection = db[city]
+
+  out = []
+
+  cursor = collection.find({'src': src, 'release': {"$ne": "", "$exists": True}})
+  for c in cursor:
+    out.append(c)
+
+  if len(out):
+    df = pd.DataFrame(out)
+    return df
+
 def querySecondHandData(city, src):
   client = MongoClient()
   db = client['house']

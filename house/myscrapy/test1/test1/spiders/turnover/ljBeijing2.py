@@ -55,13 +55,12 @@ class Spider(scrapy.Spider):
   }
 
   received = set()
-  timeStampStop = util.today() - datetime.timedelta(weeks=6)
+  timeStampStop = util.today() - datetime.timedelta(weeks=8)
   stopMax= 30
   stopCounerMap = {}
 
   def parseDistricts(self, response):
     out = []
-
     ones = response.xpath(self.xpath['districts'])
     for one in ones:
       urls = one.xpath('.//@href').extract()
@@ -77,7 +76,6 @@ class Spider(scrapy.Spider):
 
   def parseSubDistricts(self, response):
     out = []
-
     ones = response.xpath(self.xpath['subDistricts'])
     for one in ones:
       urls = one.xpath('.//@href').extract()
@@ -90,6 +88,7 @@ class Spider(scrapy.Spider):
 
     return out
 
+
   def nextPagePlusOne(self, response, url):
     np = []
     nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
@@ -100,10 +99,11 @@ class Spider(scrapy.Spider):
       p = response.xpath(self.xpath['allPage'])
       # 框架支持url排重,这里就不排重了
       for one in p:
-        if isinstance(one, list):
-          np.append(url + one[0].xpath('.//@href').extract())
+        k = one.xpath('.//@href').extract()
+        if isinstance(k, list):
+          np.append(url + k[0])
         else:
-          np.append(url + one.xpath('.//@href').extract())
+          np.append(url + k)
 
     return np
 
@@ -267,5 +267,7 @@ class Spider(scrapy.Spider):
             return (-1, )
         else:
           self.stopCounerMap[response.meta['url']] = 1
+      else:
+        pass
 
       return (1, item)
