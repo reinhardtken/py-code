@@ -29,14 +29,19 @@ def test():
 
 
 if __name__ == '__main__':
-  test()
-  # from fake_spider import cwsj
-  # gpfh = cwsj.Handler()
-  # gpfh.on_start()
-  # gpfh.run()
+  import fake_spider.yjyg
+  import fake_spider.tushare.kData
+  import fake_spider.cwsj
+  import fake_spider.gpfh
+  import fake_spider.m012
+  import fake_spider.zgb2
+  import adjust.cwsj_manager
 
-  ###########################################
-  from adjust import cwsj
+  fake_spider.tushare.kData.run()
+  fake_spider.yjyg.run()
+  fake_spider.cwsj.run()
+  fake_spider.gpfh.run()
+  fake_spider.m012.run()
+  fake_spider.zgb2.run()
+  adjust.cwsj_manager.runAll()
 
-  print(dir(cwsj))
-  cwsj.test()

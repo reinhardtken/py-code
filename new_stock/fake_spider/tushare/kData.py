@@ -62,7 +62,11 @@ def saveDB(data: pd.DataFrame, code, handler=None):
   # util.everydayChange(re, 'gpfh')
 
 
-
+def run():
+  STOCK_LIST = setting.currentStockList()
+  for one in STOCK_LIST:
+    re = getKData(one)
+    saveDB(re, one)
 
 if __name__ == '__main__':
   STOCK_LIST = setting.currentStockList()

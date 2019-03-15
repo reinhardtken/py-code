@@ -2,6 +2,8 @@
 # -*- encoding: utf-8 -*-
 
 
+import re
+
 def genchangeKeyFunc(newKey):
   def changeKey(k, v):
     if k in newKey:
@@ -84,6 +86,30 @@ def dealwithData(data, itemList):
   return out
 
 
+def yjyg_unescape(mapping, s):
+  # [{"code": "&#xE426;", "value": 1}, {"code": "&#xECD9;", "value": 2}, {"code": "&#xE891;", "value": 3},
+  #  {"code": "&#xECE9;", "value": 4}, {"code": "&#xEBED;", "value": 5}, {"code": "&#xE7A3;", "value": 6},
+  #  {"code": "&#xE73F;", "value": 7}, {"code": "&#xF78F;", "value": 8}, {"code": "&#xE375;", "value": 9},
+  #  {"code": "&#xF2F8;", "value": 0}]
+  mapped = {}
+  for one in mapping:
+    mapped[one['code']] = one['value']
+
+  if '&' not in s:
+    return s
+
+  def replaceEntities(s):
+    s = s.groups()[0]
+    try:
+      if s[0] == "&" and s[1] == '#' and s[2] in ['x', 'X'] and s[-1] == ';':
+        if s in mapped:
+          return str(mapped[s])
+    except Exception as e:
+      print(e)
+      return s
+
+
+  return re.sub(r"(&#?[xX]?(?:[0-9a-fA-F]+|\w{1,8});)", replaceEntities, s)
 
 # def readList():
 #   import xlrd

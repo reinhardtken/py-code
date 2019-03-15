@@ -31,6 +31,10 @@ class FakeSpider():
     self.__task_list = []
     self.project_name = 'FakeSpider'
 
+
+  def param(self):
+    return None
+
   def crawl(self, url, **kwargs):
     if isinstance(url, str):
       self.__task_list.append((url, kwargs))
@@ -57,6 +61,7 @@ class FakeSpider():
         callback = None
         save = {}
         header = None
+        param = None
         url = task[0]
         fetch_js = False
         if task[1].get('callback'):
@@ -67,6 +72,8 @@ class FakeSpider():
           save = task[1].get('save')
         if task[1].get('fetch_type'):
           fetch_js = True
+        if task[1].get('param'):
+          param = task[1].get('param')
 
         response = Response()
         response.url = url
@@ -74,7 +81,7 @@ class FakeSpider():
         r = None
         if fetch_js == False:
           try:
-            r = s.get(url, headers=header, timeout=10)
+            r = s.get(url, headers=header, timeout=10, params=param)
             if r.status_code == 200:
               try:
                 response.ok = True
@@ -117,4 +124,4 @@ class FakeSpider():
 
   #########################################################################
   def on_start(self):
-    self.crawl(self.url(), headers=self.header(), callback=self.processFirstPage)
+    self.crawl(self.url(), headers=self.header(), param=self.param(), callback=self.processFirstPage)
