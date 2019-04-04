@@ -12,16 +12,6 @@ yjyg_list = ['2019-06-30',
              '2018-12-31',
              '2018-09-30']
 
-#stock_list for cwsj_manager
-stock_list = [(query.query_hs300.queryCodeList(), PATH + '/out-hs300.xlsx'),
-              (get_list.get_portfolio(), PATH + '/out-portfolio.xlsx'),
-              (get_list.get_zz500(), PATH + '/out-zz500.xlsx'),
-              (get_list.get_zxbz(), PATH + '/out-zxbz.xlsx'),
-              (get_list.get_cybz(), PATH + '/out-cybz.xlsx'),
-              (get_list.get_AI(), PATH + '/out-AI.xlsx'),
-              (get_list.get_guangdong(), PATH + '/out-guangdong.xlsx'),
-              (get_list.get_medicine(), PATH + '/out-medicine.xlsx')]
-
 def currentStockList():
   hs300 = query.query_hs300.queryCodeList()
   chose = get_list.get_portfolio()
@@ -48,6 +38,17 @@ def currentStockList():
   one.update(eight)
   out = list(one)
   return out
+
+#stock_list for cwsj_manager
+stock_list = [(currentStockList(), PATH + '/out-all.xlsx'),
+              (query.query_hs300.queryCodeList(), PATH + '/out-hs300.xlsx'),
+              (get_list.get_portfolio(), PATH + '/out-portfolio.xlsx'),
+              (get_list.get_zz500(), PATH + '/out-zz500.xlsx'),
+              (get_list.get_zxbz(), PATH + '/out-zxbz.xlsx'),
+              (get_list.get_cybz(), PATH + '/out-cybz.xlsx'),
+              (get_list.get_AI(), PATH + '/out-AI.xlsx'),
+              (get_list.get_guangdong(), PATH + '/out-guangdong.xlsx'),
+              (get_list.get_medicine(), PATH + '/out-medicine.xlsx')]
 
 def currentOS():
   if sys.platform == 'linux':
