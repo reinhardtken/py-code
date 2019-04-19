@@ -21,6 +21,7 @@ def currentStockList():
   AI = get_list.get_AI()
   guangdong = get_list.get_guangdong()
   medicine = get_list.get_medicine()
+  all = get_list.get_all()
   one = set(chose)
   two = set(hs300)
   three = set(zz500)
@@ -29,6 +30,7 @@ def currentStockList():
   six = set(AI)
   seven = set(guangdong)
   eight = set(medicine)
+  nine = set(all)
   one.update(two)
   one.update(three)
   one.update(four)
@@ -36,6 +38,7 @@ def currentStockList():
   one.update(six)
   one.update(seven)
   one.update(eight)
+  one.update(nine)
   out = list(one)
   return out
 
@@ -48,7 +51,8 @@ stock_list = [(currentStockList(), PATH + '/out-all.xlsx'),
               (get_list.get_cybz(), PATH + '/out-cybz.xlsx'),
               (get_list.get_AI(), PATH + '/out-AI.xlsx'),
               (get_list.get_guangdong(), PATH + '/out-guangdong.xlsx'),
-              (get_list.get_medicine(), PATH + '/out-medicine.xlsx')]
+              (get_list.get_medicine(), PATH + '/out-medicine.xlsx'),
+              (get_list.get_all(), PATH + '/out-all.xlsx')]
 
 def currentOS():
   if sys.platform == 'linux':
