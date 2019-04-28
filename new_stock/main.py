@@ -34,7 +34,7 @@ if __name__ == '__main__':
   import fake_spider.cwsj
   import fake_spider.gpfh
   import fake_spider.m012
-  import fake_spider.zgb2
+  import fake_spider.zgb3
   import adjust.cwsj_manager
 
   fake_spider.tushare.kData.run()
@@ -42,6 +42,6 @@ if __name__ == '__main__':
   fake_spider.cwsj.run()
   fake_spider.gpfh.run()
   fake_spider.m012.run()
-  fake_spider.zgb2.run()
+  fake_spider.zgb3.run()
   adjust.cwsj_manager.runAll()
 

@@ -42,6 +42,24 @@ def get_zxbz():
     con = list['代码'].apply(str)
     return con
 
+def get_AI():
+    list = pd.read_excel(setting.list_path + 'AI.xlsx',
+                         converters={u'代码': str}, index_col=False)
+    con = list['代码'].apply(str)
+    return con
+
+def get_guangdong():
+    list = pd.read_excel(setting.list_path + 'guangdong.xlsx',
+                         converters={u'代码': str}, index_col=False)
+    con = list['代码'].apply(str)
+    return con
+
+def get_medicine():
+    list = pd.read_excel(setting.list_path + 'medicine.xlsx',
+                         converters={u'代码': str}, index_col=False)
+    con = list['代码'].apply(str)
+    return con
+
 if __name__ == '__main__':
     test = get_ts_cybz()
     print(test)
