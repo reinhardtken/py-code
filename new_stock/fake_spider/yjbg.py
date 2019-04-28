@@ -187,16 +187,6 @@ class Handler(spider.FakeSpider):
   def processDetailPage(self, json, code):
     if json:
 
-      total = json.get('pages')
-      # if innerTask.getTotalNumber == False:
-      #   innerTask.getTotalNumber = True
-      #   if total >= 2:
-      #     save = innerTask.dump()
-      #     for i in range(2, total + 1):
-      #       self.crawl(innerTask.genUrl(i), headers=self.header2(), param=innerTask.genParams(i, innerTask._date),
-      #                  callback=self.processSecondPage,
-      #                  save=save)
-
       items = json.get('data')
       mapping = json.get('font')['FontMapping']
       return self.parse_page(items, mapping)
@@ -208,7 +198,6 @@ class Handler(spider.FakeSpider):
     try:
       tmp = []
       for item in json:
-        # 20190119数据格式变动
         item['roeweighted'] = util.utils.yjyg_unescape(mapping, item['roeweighted'])
         item['totaloperatereve'] = util.utils.yjyg_unescape(mapping, item['totaloperatereve'])
         item['xsmll'] = util.utils.yjyg_unescape(mapping, item['xsmll'])
@@ -223,6 +212,8 @@ class Handler(spider.FakeSpider):
         item['sjlhz'] = util.utils.yjyg_unescape(mapping, item['sjlhz'])
         item['bps'] = util.utils.yjyg_unescape(mapping, item['bps'])
         item['mgjyxjje'] = util.utils.yjyg_unescape(mapping, item['mgjyxjje'])
+        item['assigndscrpt'] = util.utils.yjyg_unescape(mapping, item['assigndscrpt'])
+        item['gxl'] = util.utils.yjyg_unescape(mapping, item['gxl'])
 
 
 
