@@ -172,7 +172,7 @@ class YJYG_KEYWORD:
   }
 #########################################################
 class YJBG_KEYWORD:
-  ID_NAME = 'reportdate'
+  ID_NAME = '季度'
   DB_NAME = 'stock'
   COLLECTION_HEAD = 'yjbg-'
   KEY_NAME = {
@@ -200,7 +200,7 @@ class YJBG_KEYWORD:
 
 #########################################################
 class ZCFZ_KEYWORD:
-  ID_NAME = 'reportdate'
+  ID_NAME = '季度'
   DB_NAME = 'stock'
   COLLECTION_HEAD = 'zcfz-'
   KEY_NAME = {
@@ -292,7 +292,7 @@ class ZCFZ_KEYWORD:
 
 #########################################################
 class LRB_KEYWORD:
-  ID_NAME = 'reportdate'
+  ID_NAME = '季度'
   DB_NAME = 'stock'
   COLLECTION_HEAD = 'lrb-'
   KEY_NAME = {
@@ -364,7 +364,7 @@ class LRB_KEYWORD:
 
 #########################################################
 class XJLL_KEYWORD:
-  ID_NAME = 'reportdate'
+  ID_NAME = '季度'
   DB_NAME = 'stock'
   COLLECTION_HEAD = 'xjll-'
   KEY_NAME = {
@@ -433,6 +433,32 @@ class XJLL_KEYWORD:
 "premiumrec_zb":"-",
 "indemnitypay":"-",
 "indemnitypay_zb":"-"}
+
+
+#########################################################
+#由原始数据生成的数据放在这里
+class EXTRA_KEYWORD:
+  ID_NAME = '季度'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'extra-'
+  KEY_NAME = {
+    'yszkzzl_srzzl': '应收账款增长率/收入增长率',
+    'chzzl_srzzl': '存货增长率/收入增长率',
+    'jyhdcsdxjllje_yysr': '经营活动产生的现金流量净额/营业收入',
+    'jyhdcsdxjllje_zgb': '每股经营现金流量',
+  }
+
+  NEED_TO_NUMBER = {
+
+
+  }
+
+  DATA_SUB = {
+
+  }
+
+  NEED_TO_DECODE = {
+    }
 #########################################################
 
 class GPFH_KEYWORD:

@@ -220,7 +220,7 @@ class Handler(spider.FakeSpider):
         one_stock = util.utils.dealwithData(item, util.utils.threeOP(DATA_SUB,
                                                                      NEED_TO_NUMBER, KEY_NAME))
 
-        one_stock[MONGODB_ID] = item.get(ID_NAME)
+        one_stock[MONGODB_ID] = one_stock[ID_NAME]
 
         #下面两个都是百分数
         if isinstance(one_stock[KEY_NAME['roeweighted']], float):
