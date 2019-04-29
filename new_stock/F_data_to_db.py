@@ -9,4 +9,4 @@ if __name__ == '__main__':
     fake_spider.lrb.run()
     fake_spider.zcfz.run()
     fake_spider.xjll.run()
-    fake_spider.extra.run()
+    #fake_spider.extra.run()
