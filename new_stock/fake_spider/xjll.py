@@ -34,7 +34,7 @@ KEY_NAME = const.XJLL_KEYWORD.KEY_NAME
 NEED_TO_NUMBER = const.XJLL_KEYWORD.NEED_TO_NUMBER
 DATA_SUB = const.XJLL_KEYWORD.DATA_SUB
 NEED_TO_DECODE = const.XJLL_KEYWORD.NEED_TO_DECODE
-STOCK_LIST = setting.currentStockList()
+STOCK_LIST = setting.f_data_stocklist()
 # STOCK_LIST = ['000636']
 
 KEY = 'var XbnsgnRv'

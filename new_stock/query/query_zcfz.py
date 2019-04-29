@@ -18,8 +18,9 @@ if __name__ == '__main__':
 import util
 import util.utils
 import const
+import setting
 
-STOCK_LIST = const.STOCK_LIST
+STOCK_LIST = setting.f_data_stocklist()
 KEY_NAME = const.ZCFZ_KEYWORD.KEY_NAME
 
 
