@@ -459,6 +459,27 @@ class EXTRA_KEYWORD:
 
   NEED_TO_DECODE = {
     }
+
+#########################################################
+class YYSJ_KEYWORD:
+  ID_NAME = '季度'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'yysj-'
+  KEY_NAME = {
+
+  }
+
+  NEED_TO_NUMBER = {
+
+
+  }
+
+  DATA_SUB = {
+
+  }
+
+  NEED_TO_DECODE = {
+    }
 #########################################################
 
 class GPFH_KEYWORD:

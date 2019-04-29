@@ -38,6 +38,7 @@ import query.query_xjll
 
 
 MONGODB_ID = const.MONGODB_ID
+ID_NAME = const.EXTRA_KEYWORD.ID_NAME
 DB_NAME = const.EXTRA_KEYWORD.DB_NAME
 COLLECTION_HEAD = const.EXTRA_KEYWORD.COLLECTION_HEAD
 
@@ -56,12 +57,12 @@ class Handler:
 
 
 
-  def saveDB(self, data: pd.DataFrame, key):
-    def callback(result):
-      self.send_message(self.project_name, result, key + '_' + result[MONGODB_ID])
-
-    util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, COLLECTION_HEAD + key, callback)
-    # util.updateMongoDB(data, util.genKeyIDFunc(key), DB_NAME, COLLECTION_NAME, False, callback)
+  # def saveDB(self, data: pd.DataFrame, key):
+  #   def callback(result):
+  #     self.send_message(self.project_name, result, key + '_' + result[MONGODB_ID])
+  #
+  #   util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, COLLECTION_HEAD + key, callback)
+  #   # util.updateMongoDB(data, util.genKeyIDFunc(key), DB_NAME, COLLECTION_NAME, False, callback)
 
 
   def run(self):
@@ -97,6 +98,7 @@ class Handler:
       df5 = df4.join(df3, how='outer')
       df5['zgb'] = zgb
       df5.dropna()
+      # df5[MONGODB_ID] = df5.index.values
       print(df5)
 
       for date, row in df5.iterrows():
@@ -138,14 +140,14 @@ class Handler:
                         const.EXTRA_KEYWORD.KEY_NAME['chzzl_srzzl'],
                         const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr'],
                         const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_zgb']] ]
-      df5[const.MONGODB_ID] = df5.index.values
+      # df5[const.MONGODB_ID] = df5.index.values
       print(df5)
       self.saveDB(df5, code)
 
 
 
   def saveDB(self, data: pd.DataFrame, key):
-    util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, COLLECTION_HEAD + key, None)
+    util.saveMongoDB(data, util.genKeyDateFunc(MONGODB_ID), DB_NAME, COLLECTION_HEAD + key, None)
 
 
 def run():
