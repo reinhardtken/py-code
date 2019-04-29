@@ -41,7 +41,7 @@ MONGODB_ID = const.MONGODB_ID
 DB_NAME = const.EXTRA_KEYWORD.DB_NAME
 COLLECTION_HEAD = const.EXTRA_KEYWORD.COLLECTION_HEAD
 
-STOCK_LIST = setting.currentStockList()
+STOCK_LIST = setting.f_data_stocklist()
 # STOCK_LIST = ['000636']
 
 

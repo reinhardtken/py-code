@@ -12,6 +12,12 @@ yjyg_list = ['2019-06-30',
              '2018-12-31',
              '2018-09-30']
 
+#fanancial report data stock list
+def f_data_stocklist():
+    out = get_list.get_portfolio()
+    return out
+
+
 def currentStockList():
   hs300 = query.query_hs300.queryCodeList()
   chose = get_list.get_portfolio()
@@ -51,8 +57,7 @@ stock_list = [(currentStockList(), PATH + '/out-all.xlsx'),
               (get_list.get_cybz(), PATH + '/out-cybz.xlsx'),
               (get_list.get_AI(), PATH + '/out-AI.xlsx'),
               (get_list.get_guangdong(), PATH + '/out-guangdong.xlsx'),
-              (get_list.get_medicine(), PATH + '/out-medicine.xlsx'),
-              (get_list.get_all(), PATH + '/out-all.xlsx')]
+              (get_list.get_medicine(), PATH + '/out-medicine.xlsx')]
 
 def currentOS():
   if sys.platform == 'linux':

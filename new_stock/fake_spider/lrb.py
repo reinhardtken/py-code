@@ -34,7 +34,7 @@ KEY_NAME = const.LRB_KEYWORD.KEY_NAME
 NEED_TO_NUMBER = const.LRB_KEYWORD.NEED_TO_NUMBER
 DATA_SUB = const.LRB_KEYWORD.DATA_SUB
 NEED_TO_DECODE = const.LRB_KEYWORD.NEED_TO_DECODE
-STOCK_LIST = setting.currentStockList()
+STOCK_LIST = setting.f_data_stocklist()
 # STOCK_LIST = ['000636']
 
 KEY = 'var XbnsgnRv'
