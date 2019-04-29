@@ -49,6 +49,13 @@ def QueryTop(top, code):
   return df
 
 
+def dropAll():
+  client = MongoClient()
+  db = client['stock']
+  for one in STOCK_LIST:
+    collection = db['yjbg-' + one]
+    collection.drop()
+
 
 if __name__ == '__main__':
   pass
