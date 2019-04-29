@@ -442,6 +442,7 @@ class EXTRA_KEYWORD:
   DB_NAME = 'stock'
   COLLECTION_HEAD = 'extra-'
   KEY_NAME = {
+    "reportdate": "季度",
     'yszkzzl_srzzl': '应收账款增长率/收入增长率',
     'chzzl_srzzl': '存货增长率/收入增长率',
     'jyhdcsdxjllje_yysr': '经营活动产生的现金流量净额/营业收入',
@@ -454,7 +455,7 @@ class EXTRA_KEYWORD:
   }
 
   DATA_SUB = {
-
+    "reportdate": "季度",
   }
 
   NEED_TO_DECODE = {
@@ -466,7 +467,7 @@ class YYSJ_KEYWORD:
   DB_NAME = 'stock'
   COLLECTION_HEAD = 'yysj-'
   KEY_NAME = {
-
+    "reportdate": "季度",
   }
 
   NEED_TO_NUMBER = {
@@ -475,7 +476,7 @@ class YYSJ_KEYWORD:
   }
 
   DATA_SUB = {
-
+    "reportdate": "季度",
   }
 
   NEED_TO_DECODE = {
