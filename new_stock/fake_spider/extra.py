@@ -99,18 +99,40 @@ class Handler:
       df5.dropna()
       print(df5)
 
-      # zcfz.'应收账款增长率/lrb.收入增长率'
-      df5[const.EXTRA_KEYWORD.KEY_NAME['yszkzzl_srzzl']] = df5[const.ZCFZ_KEYWORD.KEY_NAME['accountrec_tb']] / \
-                                                           df5[const.LRB_KEYWORD.KEY_NAME['tystz']]
-      # zcfz.存货增长率/lrb.收入增长率
-      df5[const.EXTRA_KEYWORD.KEY_NAME['chzzl_srzzl']] = df5[const.ZCFZ_KEYWORD.KEY_NAME['inventory_tb']] / \
-                                                           df5[const.LRB_KEYWORD.KEY_NAME['tystz']]
-      # xjll.经营活动产生的现金流量净额/yjbg.营业收入
-      df5[const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr']] = df5[const.XJLL_KEYWORD.KEY_NAME['netoperatecashflow']] / \
-                                                         df5[const.YJBG_KEYWORD.KEY_NAME['totaloperatereve']]
-      # xjll.每股经营现金流量/stock_list.总股本
-      df5[const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_zgb']] = df5[const.XJLL_KEYWORD.KEY_NAME['netoperatecashflow']] / \
-                                                                zgb
+      for date, row in df5.iterrows():
+        try:
+          # zcfz.'应收账款增长率/lrb.收入增长率'
+          if isinstance(row[const.ZCFZ_KEYWORD.KEY_NAME['accountrec_tb']], float) and \
+              isinstance(row[const.LRB_KEYWORD.KEY_NAME['tystz']], float):
+            df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['yszkzzl_srzzl']] = row[const.ZCFZ_KEYWORD.KEY_NAME['accountrec_tb']] / \
+                                                                 row[const.LRB_KEYWORD.KEY_NAME['tystz']]
+
+          # zcfz.存货增长率/lrb.收入增长率
+          if isinstance(row[const.ZCFZ_KEYWORD.KEY_NAME['inventory_tb']], float) and \
+              isinstance(row[const.LRB_KEYWORD.KEY_NAME['tystz']], float):
+            df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['chzzl_srzzl']] = row[const.ZCFZ_KEYWORD.KEY_NAME['inventory_tb']] / \
+                                                               row[const.LRB_KEYWORD.KEY_NAME['tystz']]
+          # xjll.经营活动产生的现金流量净额/yjbg.营业收入
+          if isinstance(row[const.XJLL_KEYWORD.KEY_NAME['netoperatecashflow']], float) and \
+              isinstance(row[const.YJBG_KEYWORD.KEY_NAME['totaloperatereve']], float):
+            df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr']] = row[const.XJLL_KEYWORD.KEY_NAME[
+              'netoperatecashflow']] / row[const.YJBG_KEYWORD.KEY_NAME[
+                                                                        'totaloperatereve']]
+          # xjll.每股经营现金流量/stock_list.总股本
+          if isinstance(row[const.XJLL_KEYWORD.KEY_NAME['netoperatecashflow']], float) and \
+              isinstance(zgb, float):
+            df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_zgb']] = row[const.XJLL_KEYWORD.KEY_NAME[
+              'netoperatecashflow']] / zgb
+
+        except KeyError as e:
+          print(e)
+        except TypeError as e:
+          print(e)
+
+
+
+
+
 
       df5 = df5.loc[:, [const.EXTRA_KEYWORD.KEY_NAME['yszkzzl_srzzl'],
                         const.EXTRA_KEYWORD.KEY_NAME['chzzl_srzzl'],
