@@ -21,7 +21,7 @@ import const
 import setting
 
 STOCK_LIST = setting.f_data_stocklist()
-KEY_NAME = const.EXTRA_KEYWORD
+KEY_NAME = const.EXTRA_KEYWORD.KEY_NAME
 
 
 def QueryTop(top, code):
