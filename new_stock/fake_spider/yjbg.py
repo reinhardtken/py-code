@@ -9,6 +9,7 @@ import json
 import time
 # thirdpart
 import pandas as pd
+import numpy as np
 from requests.models import RequestEncodingMixin
 encode_params = RequestEncodingMixin._encode_params
 #from HTMLParser import HTMLParser
@@ -229,7 +230,10 @@ class Handler(spider.FakeSpider):
           one_stock[KEY_NAME['xsmll']] /= 100
         #计算销售净利率
         if isinstance(one_stock[KEY_NAME['parentnetprofit']], float) and isinstance(one_stock[KEY_NAME['totaloperatereve']], float):
-          one_stock[KEY_NAME['xsjll']] = one_stock[KEY_NAME['parentnetprofit']] / one_stock[KEY_NAME['totaloperatereve']]
+          try:
+            one_stock[KEY_NAME['xsjll']] = one_stock[KEY_NAME['parentnetprofit']] / one_stock[KEY_NAME['totaloperatereve']]
+          except:
+            one_stock[KEY_NAME['xsjll']] = np.nan
 
         series = pd.Series(one_stock)
         tmp.append(series)

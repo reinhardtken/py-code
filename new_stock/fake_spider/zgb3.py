@@ -30,7 +30,7 @@ MONGODB_ID = const.MONGODB_ID
 DB_NAME = TS.BASICS.DB_NAME
 COLLECTION_NAME = TS.BASICS.COLLECTION_NAME
 
-STOCK_LIST = setting.currentStockList()
+STOCK_LIST = setting.f_data_stocklist()
 
 jsonCallBack = 'jsonpCallback24417'
 
