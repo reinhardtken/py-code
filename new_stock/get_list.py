@@ -60,6 +60,12 @@ def get_medicine():
     con = list['代码'].apply(str)
     return con
 
+def get_trade():
+    list = pd.read_excel(setting.list_path + 'trade.xlsx',
+                         converters={u'代码': str}, index_col=False)
+    con = list['代码'].apply(str)
+    return con
+
 if __name__ == '__main__':
     test = get_ts_cybz()
     print(test)

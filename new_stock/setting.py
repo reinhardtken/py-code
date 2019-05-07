@@ -12,11 +12,6 @@ yjyg_list = ['2019-06-30',
              '2018-12-31',
              '2018-09-30']
 
-#fanancial report data stock list
-def f_data_stocklist():
-    out = get_list.get_portfolio()
-    return out
-
 
 def currentStockList():
   hs300 = query.query_hs300.queryCodeList()
@@ -47,6 +42,11 @@ def currentStockList():
   one.update(nine)
   out = list(one)
   return out
+
+#fanancial report data stock list
+def f_data_stocklist():
+    out = get_list.get_portfolio()
+    return out
 
 #stock_list for cwsj_manager
 stock_list = [(currentStockList(), PATH + '/out-all.xlsx'),

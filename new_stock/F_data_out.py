@@ -14,15 +14,15 @@ def run():
     out = pd.DataFrame()
     out_remix = pd.DataFrame()
     forecast_date = pd.DataFrame()
+    forecast_date_remix = pd.DataFrame()
     for s in stock_list:
         data_yjbg = query.query_yjbg.QueryTop(0, s)
         data_zcfz = query.query_zcfz.QueryTop(0, s)
         data_lrb = query.query_lrb.QueryTop(0, s)
         data_extra = query.query_extra.QueryTop(0, s)
         data_yysj = query.query_yysj.QueryTop(0, s)
-        list = query.query_stock_list.queryOne(s)
-        data_yysj['代码'] = s
-        data_yysj['名称'] = list['名称']
+        data_yysj['代码'] = data_yjbg['代码']
+        data_yysj['名称'] = data_yjbg['名称']
 
         print(data_yysj)
         select_yjbg = data_yjbg[["代码", "名称", "_id", "净资产收益率", "销售毛利率",
@@ -70,10 +70,17 @@ def run():
     out_remix['经营活动产生的现金流量净额/营业收入'] = \
         out['经营活动产生的现金流量净额/营业收入']
     out_remix['每股经营现金流量'] = out['每股经营现金流量']
-
     df = pd.DataFrame(out_remix)
-    df.to_excel(setting.PATH + 'F_data_portfolio.xlsx', index=False)
-    forecast_date.to_excel(setting.PATH + 'forecast_date.xlsx', index=False)
+    df.to_excel(setting.PATH + 'F_data_out.xlsx', index=False)
+
+    forecast_date_remix['代码'] = forecast_date['代码']
+    forecast_date_remix['名称'] = forecast_date['名称']
+    forecast_date_remix['报告期'] = forecast_date['_id']
+    forecast_date_remix['首次预约时间'] = forecast_date['首次预约时间']
+    forecast_date_remix['一次变更日期'] = forecast_date['一次变更日期']
+    forecast_date_remix['二次变更日期'] = forecast_date['二次变更日期']
+    forecast_date_remix['三次变更日期'] = forecast_date['三次变更日期']
+    forecast_date_remix.to_excel(setting.PATH + 'forecast_date.xlsx', index=False)
 
 if __name__ == '__main__':
     run()

@@ -9,6 +9,7 @@ import json
 import random
 import time
 # thirdpart
+import numpy as np
 import pandas as pd
 from requests.models import RequestEncodingMixin
 
@@ -117,9 +118,11 @@ class Handler:
           # xjll.经营活动产生的现金流量净额/yjbg.营业收入
           if isinstance(row[const.XJLL_KEYWORD.KEY_NAME['netoperatecashflow']], float) and \
               isinstance(row[const.YJBG_KEYWORD.KEY_NAME['totaloperatereve']], float):
-            df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr']] = row[const.XJLL_KEYWORD.KEY_NAME[
-              'netoperatecashflow']] / row[const.YJBG_KEYWORD.KEY_NAME[
-                                                                        'totaloperatereve']]
+            try:
+              df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr']] = row[const.XJLL_KEYWORD.KEY_NAME[
+              'netoperatecashflow']] / row[const.YJBG_KEYWORD.KEY_NAME['totaloperatereve']]
+            except:
+              df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr']] = np.nan
           # xjll.每股经营现金流量/stock_list.总股本
           if isinstance(row[const.XJLL_KEYWORD.KEY_NAME['netoperatecashflow']], float) and \
               isinstance(zgb, float):
