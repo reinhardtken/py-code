@@ -125,7 +125,7 @@ class Handler:
               df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr']] = np.nan
           # xjll.每股经营现金流量/stock_list.总股本
           if isinstance(row[const.XJLL_KEYWORD.KEY_NAME['netoperatecashflow']], float) and \
-              isinstance(zgb, float):
+              isinstance(zgb, (float, int)):
             df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_zgb']] = row[const.XJLL_KEYWORD.KEY_NAME[
               'netoperatecashflow']] / zgb
 

@@ -31,6 +31,7 @@ def test():
 if __name__ == '__main__':
   import fake_spider.yjyg
   import fake_spider.tushare.kData
+  import fake_spider.tushare.stockList
   import fake_spider.cwsj
   import fake_spider.gpfh
   import fake_spider.m012
@@ -38,6 +39,8 @@ if __name__ == '__main__':
   import adjust.cwsj_manager
 
   fake_spider.tushare.kData.run()
+  #use it to create stockList when the first time and mongodb is empty
+  #fake_spider.tushare.stockList.saveDB(fake_spider.tushare.stockList.getBasics())
   fake_spider.yjyg.run()
   fake_spider.cwsj.run()
   fake_spider.gpfh.run()

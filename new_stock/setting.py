@@ -45,6 +45,7 @@ def currentStockList():
 
 #fanancial report data stock list
 def f_data_stocklist():
+    #return ['600585']
     out = get_list.get_portfolio()
     return out
 
