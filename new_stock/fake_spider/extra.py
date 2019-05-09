@@ -106,13 +106,13 @@ class Handler:
         try:
           # zcfz.'应收账款增长率/lrb.收入增长率'
           if isinstance(row[const.ZCFZ_KEYWORD.KEY_NAME['accountrec_tb']], float) and \
-              isinstance(row[const.LRB_KEYWORD.KEY_NAME['tystz']], float):
+              isinstance(row[const.LRB_KEYWORD.KEY_NAME['tystz']], float) and row[const.LRB_KEYWORD.KEY_NAME['tystz']] != 0:
             df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['yszkzzl_srzzl']] = row[const.ZCFZ_KEYWORD.KEY_NAME['accountrec_tb']] / \
                                                                  row[const.LRB_KEYWORD.KEY_NAME['tystz']]
 
           # zcfz.存货增长率/lrb.收入增长率
           if isinstance(row[const.ZCFZ_KEYWORD.KEY_NAME['inventory_tb']], float) and \
-              isinstance(row[const.LRB_KEYWORD.KEY_NAME['tystz']], float):
+              isinstance(row[const.LRB_KEYWORD.KEY_NAME['tystz']], float) and row[const.LRB_KEYWORD.KEY_NAME['tystz']] != 0:
             df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['chzzl_srzzl']] = row[const.ZCFZ_KEYWORD.KEY_NAME['inventory_tb']] / \
                                                                row[const.LRB_KEYWORD.KEY_NAME['tystz']]
           # xjll.经营活动产生的现金流量净额/yjbg.营业收入

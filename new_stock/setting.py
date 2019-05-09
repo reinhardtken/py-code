@@ -47,6 +47,7 @@ def currentStockList():
 def f_data_stocklist():
     #return ['600585']
     out = get_list.get_portfolio()
+    #out = currentStockList()
     return out
 
 #stock_list for cwsj_manager
