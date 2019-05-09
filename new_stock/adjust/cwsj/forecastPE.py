@@ -20,6 +20,7 @@ import util.utils
 import const
 import query.query_stock_list as query
 import adjust.loop as loop
+import numpy as np
 
 
 
@@ -48,9 +49,12 @@ class GenForecastPE(loop.AdjustOPSimpleColumnCheck):
 
   def op(self, data):
     for date, row in data.iterrows():
-      try:
-        data.loc[date, self.key] = self.stock.lastPrice / row[ADJUST_NAME['ForecastPerShareProfit']]
-      except KeyError as e:
-        print(e)
-      except TypeError as e:
-        print(e)
+      if row[ADJUST_NAME['ForecastPerShareProfit']] != 0:
+        try:
+          data.loc[date, self.key] = self.stock.lastPrice / row[ADJUST_NAME['ForecastPerShareProfit']]
+        except KeyError as e:
+          print(e)
+        except TypeError as e:
+          print(e)
+      else:
+        data.loc[date, self.key] = np.nan

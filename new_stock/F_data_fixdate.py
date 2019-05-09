@@ -9,7 +9,7 @@ import query.query_extra
 import query.query_yysj
 import query.query_stock_list
 
-date_input = '2016-12-31'
+date_input = '2018-12-31'
 def run(date_input):
     date = date_input
     stock_list = setting.f_data_stocklist()

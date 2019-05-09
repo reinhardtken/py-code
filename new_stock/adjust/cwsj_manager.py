@@ -243,7 +243,7 @@ def runAll():
       else:
         onedf = onedf.append(tmp3)
 
-    onedf = onedf.sort_values(by="下限距离", ascending=True)
+    #onedf = onedf.sort_values(by="下限距离", ascending=True)
     onedf.to_excel(s[1], index=False)
 
 def testOne(code):
