@@ -74,7 +74,8 @@ class Handler:
       df = query.query_lrb.QueryTop(-1, code)
       df2 = query.query_zcfz.QueryTop(-1, code)
       df = df.loc[:, [const.LRB_KEYWORD.KEY_NAME['tystz'], ] ]
-      df2 = df2.loc[:, [const.ZCFZ_KEYWORD.KEY_NAME['accountrec_tb'], const.ZCFZ_KEYWORD.KEY_NAME['inventory_tb']] ]
+      if const.ZCFZ_KEYWORD.KEY_NAME['accountrec_tb'] in df2 and const.ZCFZ_KEYWORD.KEY_NAME['inventory_tb'] in df2:
+        df2 = df2.loc[:, [const.ZCFZ_KEYWORD.KEY_NAME['accountrec_tb'], const.ZCFZ_KEYWORD.KEY_NAME['inventory_tb']] ]
 
       #join是为了对齐index，怕存在index不齐的情况
       df3 = df2.join(df, how='outer')
@@ -138,11 +139,14 @@ class Handler:
 
 
 
-
-      df5 = df5.loc[:, [const.EXTRA_KEYWORD.KEY_NAME['yszkzzl_srzzl'],
-                        const.EXTRA_KEYWORD.KEY_NAME['chzzl_srzzl'],
-                        const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr'],
-                        const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_zgb']] ]
+      if const.EXTRA_KEYWORD.KEY_NAME['yszkzzl_srzzl'] in df5 \
+        and const.EXTRA_KEYWORD.KEY_NAME['chzzl_srzzl'] in df5 \
+        and const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr'] in df5\
+        and const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_zgb'] in df5:
+        df5 = df5.loc[:, [const.EXTRA_KEYWORD.KEY_NAME['yszkzzl_srzzl'],
+                          const.EXTRA_KEYWORD.KEY_NAME['chzzl_srzzl'],
+                          const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr'],
+                          const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_zgb']] ]
       # df5[const.MONGODB_ID] = df5.index.values
       print(df5)
       self.saveDB(df5, code)

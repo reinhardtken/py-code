@@ -23,18 +23,24 @@ def run():
         data_yysj = query.query_yysj.QueryTop(0, s)
 
         print(data_yysj)
-        select_yjbg = data_yjbg[["代码", "名称", "_id", "净资产收益率", "销售毛利率",
-                       "销售净利率"]]
-        select_zcfz = data_zcfz[['_id', '资产负债率', '应收账款增长率',
+
+        select_yjbg = data_yjbg[["代码", "名称", "_id", "净资产收益率",
+                                     "销售毛利率", "销售净利率"]]
+        if '应收账款增长率'in data_zcfz and '存货增长率' in data_zcfz:
+            select_zcfz = data_zcfz[['_id', '资产负债率', '应收账款增长率',
                                  '存货增长率']]
         if '应收账款/总资产' in data_zcfz:
             select_zcfz['应收账款/总资产'] = data_zcfz['应收账款/总资产']
         if '存货/总资产' in data_zcfz:
             select_zcfz['存货/总资产'] = data_zcfz['存货/总资产']
         select_lrb = data_lrb[['_id',
-                               '归属母公司股东的净利润同比增长率(扣除非经常性损益)',
-                               '营业收入增长率']]
-        select_extra = data_extra[['_id', '应收账款增长率/收入增长率',
+                        '归属母公司股东的净利润同比增长率(扣除非经常性损益)',
+                        '营业收入增长率']]
+        if '应收账款增长率/收入增长率' in data_extra and \
+            '存货增长率/收入增长率' in data_extra and \
+            '经营活动产生的现金流量净额/营业收入' in data_extra and \
+            '每股经营现金流量' in data_extra:
+            select_extra = data_extra[['_id', '应收账款增长率/收入增长率',
                                    '存货增长率/收入增长率',
                                    '经营活动产生的现金流量净额/营业收入',
                                    '每股经营现金流量']]
@@ -73,7 +79,8 @@ def run():
     out_remix['每股经营现金流量'] = out['每股经营现金流量']
     out_remix['预约披露时间'] = out['首次预约时间']
     df = pd.DataFrame(out_remix)
-    df.to_excel(setting.PATH + 'F_data_out.xlsx', index=False)
+    df.to_excel(setting.PATH + 'F_data_' + setting.F_data_stock_list_name +
+                '.xlsx', index=False)
 
     forecast_date_remix['代码'] = forecast_date['代码']
     forecast_date_remix['名称'] = forecast_date['名称']
@@ -82,7 +89,8 @@ def run():
     forecast_date_remix['一次变更日期'] = forecast_date['一次变更日期']
     forecast_date_remix['二次变更日期'] = forecast_date['二次变更日期']
     forecast_date_remix['三次变更日期'] = forecast_date['三次变更日期']
-    forecast_date_remix.to_excel(setting.PATH + 'forecast_date.xlsx', index=False)
+    forecast_date_remix.to_excel(setting.PATH + 'forecast_date_' +
+            setting.F_data_stock_list_name + '.xlsx', index=False)
 
 if __name__ == '__main__':
     run()

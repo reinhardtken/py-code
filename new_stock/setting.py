@@ -44,8 +44,10 @@ def currentStockList():
   return out
 
 #fanancial report data stock list
+F_data_stock_list_name = 'porfolio'
 def f_data_stocklist():
     #return ['600585']
+    #out = query.query_hs300.queryCodeList()
     out = get_list.get_portfolio()
     #out = currentStockList()
     return out
