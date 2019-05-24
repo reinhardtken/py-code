@@ -48,9 +48,10 @@ class GenForecastProfit(loop.AdjustOPSimpleColumnCheck):
 
   def op(self, data):
     for date, row in data.iterrows():
-      try:
-        data.loc[date, self.key] = row[ADJUST_NAME['forecastl']] / self.stock.zgb
-      except KeyError as e:
-        print(e)
-      except TypeError as e:
-        print(e)
+      if self.stock.zgb != 0:
+        try:
+          data.loc[date, self.key] = row[ADJUST_NAME['forecastl']] / self.stock.zgb
+        except KeyError as e:
+          print(e)
+        except TypeError as e:
+          print(e)

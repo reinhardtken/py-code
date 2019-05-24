@@ -39,14 +39,16 @@ if __name__ == '__main__':
   import fake_spider.zgb3
   import adjust.cwsj_manager
 
-  #fake_spider.tushare.kData.run()
+
   #use it to create stockList and hs300 when the first time and mongodb is empty
   #fake_spider.tushare.stockList.saveDB(fake_spider.tushare.stockList.getBasics())
   #fake_spider.tushare.hs300.saveDB(fake_spider.tushare.hs300.getHS300())
-  #fake_spider.yjyg.run()
-  #fake_spider.cwsj.run()
-  #fake_spider.gpfh.run()
-  #fake_spider.m012.run()
+
+  fake_spider.tushare.kData.run()
+  fake_spider.yjyg.run()
+  fake_spider.cwsj.run()
+  fake_spider.gpfh.run()
+  fake_spider.m012.run()
   fake_spider.zgb3.run()
-  #adjust.cwsj_manager.runAll()
+  adjust.cwsj_manager.runAll()
 
