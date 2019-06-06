@@ -9,9 +9,9 @@ import query.query_extra
 import query.query_yysj
 import query.query_stock_list
 
-stock_list_name = 'hs300'
-date_input = '2017-12-31'
-stock_list_input = query.query_hs300.queryCodeList()
+date_input = '2018-12-31'
+stock_list_name = setting.F_data_stock_list_name
+stock_list_input = setting.f_data_stocklist()
 
 def run(stock_list_name, date_input, stock_list_input):
     date = date_input
@@ -32,7 +32,7 @@ def run(stock_list_name, date_input, stock_list_input):
         print(data_yysj)
         select_yjbg = data_yjbg.loc[data_yjbg['_id'] == date,
                                     ["代码", "名称", "_id", "净资产收益率",
-                                     "销售毛利率", "销售净利率"]]
+                                     "销售毛利率", "销售净利率", "assigndscrpt"]]
         if '应收账款增长率' in data_zcfz and '存货增长率' in data_zcfz:
             select_zcfz = data_zcfz.loc[data_zcfz['_id'] == date, ['_id',
                                     '资产负债率', '应收账款增长率', '存货增长率']]
@@ -80,6 +80,7 @@ def run(stock_list_name, date_input, stock_list_input):
     out_remix['经营活动产生的现金流量净额/营业收入'] = \
         out['经营活动产生的现金流量净额/营业收入']
     out_remix['每股经营现金流量'] = out['每股经营现金流量']
+    out_remix['利润分配'] = out['assigndscrpt']
 
     df = pd.DataFrame(out_remix)
     df.to_excel(setting.PATH + date + '_' + stock_list_name + '.xlsx', index=False)

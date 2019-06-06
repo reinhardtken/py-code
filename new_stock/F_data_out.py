@@ -25,7 +25,7 @@ def run():
         print(data_yysj)
 
         select_yjbg = data_yjbg[["代码", "名称", "_id", "净资产收益率",
-                                     "销售毛利率", "销售净利率"]]
+                                     "销售毛利率", "销售净利率", "assigndscrpt"]]
         if '应收账款增长率'in data_zcfz and '存货增长率' in data_zcfz:
             select_zcfz = data_zcfz[['_id', '资产负债率', '应收账款增长率',
                                  '存货增长率']]
@@ -77,6 +77,7 @@ def run():
     out_remix['经营活动产生的现金流量净额/营业收入'] = \
         out['经营活动产生的现金流量净额/营业收入']
     out_remix['每股经营现金流量'] = out['每股经营现金流量']
+    out_remix['利润分配'] = out['assigndscrpt']
     out_remix['预约披露时间'] = out['首次预约时间']
     df = pd.DataFrame(out_remix)
     df.to_excel(setting.PATH + 'F_data_' + setting.F_data_stock_list_name +
