@@ -77,8 +77,8 @@ def run():
     out_remix['经营活动产生的现金流量净额/营业收入'] = \
         out['经营活动产生的现金流量净额/营业收入']
     out_remix['每股经营现金流量'] = out['每股经营现金流量']
-    out_remix['利润分配'] = out['assigndscrpt']
     out_remix['预约披露时间'] = out['首次预约时间']
+    out_remix['利润分配'] = out['assigndscrpt']
     df = pd.DataFrame(out_remix)
     df.to_excel(setting.PATH + 'F_data_' + setting.F_data_stock_list_name +
                 '.xlsx', index=False)
