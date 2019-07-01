@@ -48,8 +48,9 @@ def run():
         select = pd.merge(select, select_lrb , on='_id')
         select = pd.merge(select, select_extra, on='_id')
         select = pd.merge(select, data_yysj, on='_id')
-        data_yysj['代码'] = data_yjbg['代码']
-        data_yysj['名称'] = data_yjbg['名称']
+        data_yysj['代码'] = s
+        name = query.query_stock_list.queryOne(s)['名称']
+        data_yysj['名称'] = name
         if len(forecast_date.index) == 0:
             forecast_date = data_yysj
         else:

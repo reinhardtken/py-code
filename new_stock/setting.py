@@ -7,10 +7,8 @@ import get_list
 #out pathh and list path
 PATH = r'd:/stock_python/out/'
 list_path = r'd:/stock_python/list/'
-yjyg_list = ['2019-06-30',
-             '2019-03-31',
-             '2018-12-31',
-             '2018-09-30']
+yjyg_list = ['2019-09-30',
+             '2019-06-30']
 
 
 def currentStockList():
@@ -44,11 +42,12 @@ def currentStockList():
   return out
 
 #fanancial report data stock list
-F_data_stock_list_name = 'porfolio'
+F_data_stock_list_name = 'portfolio'
 def f_data_stocklist():
-    #return ['600585']
+    #return ['002753']
     #out = query.query_hs300.queryCodeList()
     out = get_list.get_portfolio()
+    #out = get_list.get_all()
     #out = currentStockList()
     return out
 
