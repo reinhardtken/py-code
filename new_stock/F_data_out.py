@@ -22,8 +22,6 @@ def run():
         data_extra = query.query_extra.QueryTop(0, s)
         data_yysj = query.query_yysj.QueryTop(0, s)
 
-        print(data_yysj)
-
         select_yjbg = data_yjbg[["代码", "名称", "_id", "净资产收益率",
                                      "销售毛利率", "销售净利率", "assigndscrpt"]]
         if '应收账款增长率'in data_zcfz and '存货增长率' in data_zcfz:
@@ -47,7 +45,6 @@ def run():
         select = pd.merge(select_yjbg, select_zcfz, on='_id')
         select = pd.merge(select, select_lrb , on='_id')
         select = pd.merge(select, select_extra, on='_id')
-        select = pd.merge(select, data_yysj, on='_id')
         data_yysj['代码'] = s
         name = query.query_stock_list.queryOne(s)['名称']
         data_yysj['名称'] = name
@@ -78,7 +75,6 @@ def run():
     out_remix['经营活动产生的现金流量净额/营业收入'] = \
         out['经营活动产生的现金流量净额/营业收入']
     out_remix['每股经营现金流量'] = out['每股经营现金流量']
-    out_remix['预约披露时间'] = out['首次预约时间']
     out_remix['利润分配'] = out['assigndscrpt']
     df = pd.DataFrame(out_remix)
     df.to_excel(setting.PATH + 'F_data_' + setting.F_data_stock_list_name +
