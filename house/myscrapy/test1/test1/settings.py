@@ -112,10 +112,12 @@ def nowString():
   now = now.replace(microsecond=0)
   return now.strftime('%Y-%m-%d-%H-%M-%S')
 #self setting
-filename = '/home/ken/workspace/tmp/log/' + nowString() + '.log'
+# filename = '/home/ken/workspace/tmp/log/' + nowString() + '.log'
+filename = 'C:/workspace/tmp/' + nowString() + '.log'
 # LOG_FILE = filename
 LOG_LEVEL= 'WARNING'
-CHROME_DRIVER_PATH = r'/home/ken/prog/chromedriver_linux64/chromedriver'
+# CHROME_DRIVER_PATH = r'/home/ken/prog/chromedriver_linux64/chrom/edriver'
+CHROME_DRIVER_PATH = r'C:/prog/chromedriver_win32/chromedriver.exe'
 PHANTOMJS_PATH = r'/home/ken/prog/phantomjs-2.1.1-linux-x86_64/bin/phantomjs'
 SELENIUM_TIMEOUT = 20
 PHANTOMJS_SERVICE_ARGS = ['--load-images=false', '--disk-cache=true']
