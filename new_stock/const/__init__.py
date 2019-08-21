@@ -170,7 +170,318 @@ class YJYG_KEYWORD:
     'enddate': '截止日期',
     'ndate': '公告日期',
   }
+#########################################################
+class YJBG_KEYWORD:
+  ID_NAME = '季度'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'yjbg-'
+  KEY_NAME = {
+    "reportdate": "季度",
+    'scode': '代码',
+    'sname': '名称',
+    'roeweighted': '净资产收益率',
+    'totaloperatereve': '营业收入(元)',
+    'xsmll': '销售毛利率',
+    'parentnetprofit': '净利润(元)',
+    'xsjll': '销售净利率',
 
+  }
+
+  NEED_TO_NUMBER = {
+    'roeweighted': '净资产收益率',
+    'totaloperatereve': '营业收入(元)',
+    'xsmll': '销售毛利率',
+    'parentnetprofit': '净利润(元)',
+  }
+
+  DATA_SUB = {
+    "reportdate": "季度",
+  }
+
+#########################################################
+class ZCFZ_KEYWORD:
+  ID_NAME = '季度'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'zcfz-'
+  KEY_NAME = {
+    "reportdate": "季度",
+    'scode': '代码',
+    'sname': '名称',
+    'zcfzl': '资产负债率',
+    'inventory': '存货(元)',
+    'accountrec': '应收账款(元)',
+    'sumasset': '总资产(元)',
+    'accountrec_sumasset': '应收账款/总资产',
+    'inventory_sumasset': '存货/总资产',
+    'accountrec_tb': '应收账款增长率',
+    'inventory_tb': '存货增长率',
+  }
+
+  NEED_TO_NUMBER = {
+    'zcfzl': '资产负债率',
+    'inventory': '存货(元)',
+    'accountrec': '应收账款(元)',
+    'sumasset': '总资产(元)',
+    'accountrec_tb': '应收账款增长率',
+    'inventory_tb': '存货增长率',
+
+  }
+
+  DATA_SUB = {
+    "reportdate": "季度",
+  }
+
+  NEED_TO_DECODE = {
+    #"scode":"000636",
+# "hycode":"016022",
+# "companycode":"10000969",
+# "sname":"风华高科",
+# "publishname":"电子元件",
+# "mkt":"szzb",
+# "reporttimetypecode":"003",
+# "combinetypecode":"001",
+# "dataajusttype":"2",
+# "noticedate":"2019-04-25T00:00:00",
+# "reportdate":"2019-03-31T00:00:00",
+# "eutime":"2019-04-24T20:35:43",
+"sumasset":"&#xECD9;&#xECE9;&#xF137;&#xECE9;&#xE375;&#xE0D4;&#xF05A;&#xE0D4;&#xECEA;&#xEE3A;.&#xECEA;&#xE375;",
+"fixedasset":"&#xECEA;&#xF05A;&#xF78F;&#xECD9;&#xF78F;&#xF05A;&#xECD9;&#xF05A;&#xEE3A;&#xECD9;.&#xE0D4;&#xE375;",
+"monetaryfund":"&#xF05A;&#xECEA;&#xF05A;&#xF05A;&#xE0D4;&#xF137;&#xE375;&#xF137;&#xECD9;&#xF05A;.&#xECE9;&#xE0D4;",
+"monetaryfund_tb":"&#xF05A;.&#xF05A;&#xE0D4;&#xE793;&#xE375;&#xE793;&#xE375;&#xF137;&#xECEA;&#xECE9;&#xF78F;&#xF05A;&#xF78F;&#xF05A;&#xF05A;",
+"accountrec":"&#xECD9;&#xE375;&#xF05A;&#xEE3A;&#xECD9;&#xF78F;&#xEE3A;&#xF137;&#xF78F;.&#xF05A;&#xE793;",
+"accountrec_tb":"-&#xF78F;.&#xF05A;&#xEE3A;&#xECEA;&#xE0D4;&#xF137;&#xECE9;&#xF78F;&#xECD9;&#xF137;&#xECEA;&#xF137;&#xECE9;&#xF05A;",
+"inventory":"&#xF137;&#xF137;&#xE375;&#xECD9;&#xF05A;&#xEE3A;&#xE793;&#xE0D4;&#xF05A;.&#xF05A;&#xE375;",
+"inventory_tb":"-&#xF78F;.&#xECEA;&#xF78F;&#xE375;&#xF137;&#xE793;&#xE375;&#xECD9;&#xE793;&#xE375;&#xECEA;&#xECEA;&#xF78F;&#xEE3A;&#xE793;&#xECEA;",
+"sumliab":"&#xF05A;&#xF05A;&#xF05A;&#xE793;&#xE375;&#xECD9;&#xE375;&#xF78F;&#xE793;&#xE375;.&#xECE9;&#xE0D4;",
+"accountpay":"-",
+"accountpay_tb":"-",
+"advancereceive":"&#xECEA;&#xECEA;&#xE375;&#xEE3A;&#xECD9;&#xECE9;&#xEE3A;&#xE0D4;.&#xF05A;&#xECD9;",
+"advancereceive_tb":"-&#xF78F;.&#xECEA;&#xF05A;&#xEE3A;&#xF78F;&#xF137;&#xECD9;&#xF78F;&#xECE9;&#xE375;&#xEE3A;&#xF78F;&#xEE3A;&#xE793;&#xEE3A;&#xECE9;",
+"sumshequity":"&#xEE3A;&#xE375;&#xE793;&#xEE3A;&#xF78F;&#xECEA;&#xF137;&#xECE9;&#xECE9;&#xE375;.&#xE793;&#xECE9;",
+"sumshequity_tb":"&#xF78F;.&#xECEA;&#xECEA;&#xECEA;&#xECD9;&#xE0D4;&#xE793;&#xE0D4;&#xECEA;&#xEE3A;&#xE793;&#xECE9;&#xECE9;&#xF05A;&#xE375;&#xF05A;",
+"tsatz":"&#xF78F;.&#xF05A;&#xECEA;&#xF78F;&#xE793;&#xE0D4;&#xE793;",
+"tdetz":"-&#xF78F;.&#xECEA;&#xF05A;&#xECD9;&#xE0D4;&#xECD9;",
+"ld":"&#xF78F;.&#xF78F;&#xE793;&#xE793;&#xEE3A;&#xECEA;&#xECD9;&#xF78F;&#xE375;",
+"zcfzl":"&#xF78F;.&#xF05A;&#xECD9;&#xECEA;&#xECD9;&#xECEA;&#xECEA;&#xF137;&#xF78F;&#xECE9;&#xEE3A;",
+"cashanddepositcbank":"-",
+"cashanddepositcbank_tb":"-",
+"loanadvances":"-",
+"loanadvances_tb":"-",
+"saleablefasset":"-",
+"saleablefasset_tb":"-",
+"borrowfromcbank":"-",
+"borrowfromcbank_tb":"-",
+"acceptdeposit":"-",
+"acceptdeposit_tb":"-",
+"sellbuybackfasset":"-",
+"sellbuybackfasset_tb":"-",
+"settlementprovision":"-",
+"settlementprovision_tb":"-",
+"borrowfund":"-",
+"borrowfund_tb":"-",
+"agenttradesecurity":"-",
+"agenttradesecurity_tb":"-",
+"premiumrec":"-",
+"premiumrec_tb":"-",
+"stborrow":"-",
+"stborrow_tb":"-",
+"premiumadvance":"-",
+"premiumadvance_tb":"-"
+                    }
+
+
+#########################################################
+class LRB_KEYWORD:
+  ID_NAME = '季度'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'lrb-'
+  KEY_NAME = {
+    "reportdate": "季度",
+    'scode': '代码',
+    'sname': '名称',
+    'sjlktz': '归属母公司股东的净利润同比增长率(扣除非经常性损益)',
+    'tystz': '营业收入增长率',
+
+  }
+
+  NEED_TO_NUMBER = {
+    'sjlktz': '归属母公司股东的净利润同比增长率(扣除非经常性损益)',
+    'tystz': '营业收入增长率',
+
+  }
+
+  DATA_SUB = {
+    "reportdate": "季度",
+  }
+
+  NEED_TO_DECODE = {
+
+# "scode":"000636",
+# "hycode":"016022",
+# "companycode":"10000969",
+# "sname":"风华高科",
+# "publishname":"电子元件",
+# "reporttimetypecode":"003",
+# "combinetypecode":"001",
+# "dataajusttype":"2",
+# "mkt":"szzb",
+# "noticedate":"2019-04-25T00:00:00",
+# "reportdate":"2019-03-31T00:00:00",
+# "eutime":"2019/4/24 20:35:49",
+"parentnetprofit":"&#xEBED;&#xF275;&#xECEA;&#xEBED;&#xEBED;&#xE375;&#xE375;&#xF275;&#xF275;.&#xECE9;&#xF275;",
+"totaloperatereve":"&#xECE9;&#xF275;&#xE793;&#xE793;&#xF275;&#xECEA;&#xEBC0;&#xE7A3;&#xEBC0;.&#xF275;&#xEBED;",
+"totaloperateexp":"&#xF2FF;&#xECE9;&#xE793;&#xE793;&#xE268;&#xE793;&#xE7A3;&#xEBC0;&#xEBC0;.&#xE268;&#xE268;",
+"totaloperateexp_tb":"-&#xE375;.&#xE375;&#xE7A3;&#xE268;&#xE793;&#xECEA;&#xECE9;&#xE375;&#xECEA;&#xECE9;&#xEBED;&#xEBC0;&#xE375;&#xE7A3;&#xECE9;&#xEBED;&#xE7A3;",
+"operateexp":"&#xF275;&#xECE9;&#xF275;&#xEBC0;&#xE375;&#xEBC0;&#xE375;&#xECEA;&#xE7A3;.&#xF2FF;&#xF2FF;",
+"operateexp_tb":"-&#xE375;.&#xE375;&#xE375;&#xEBED;&#xECEA;&#xE793;&#xE375;&#xE7A3;&#xEBC0;&#xF2FF;&#xE793;&#xEBC0;&#xE375;&#xECE9;&#xE268;&#xECE9;&#xE268;",
+"saleexp":"&#xEBED;&#xF2FF;&#xECEA;&#xECEA;&#xECEA;&#xE375;&#xE375;&#xE268;.&#xE375;&#xF2FF;",
+"manageexp":"&#xF275;&#xE793;&#xEBC0;&#xE268;&#xE793;&#xF2FF;&#xEBED;&#xF275;.&#xEBED;&#xECEA;",
+"financeexp":"&#xE793;&#xECEA;&#xF275;&#xECEA;&#xE268;&#xE268;&#xEBED;.&#xE793;&#xEBC0;",
+"operateprofit":"&#xEBED;&#xECE9;&#xECE9;&#xEBED;&#xF275;&#xEBED;&#xECEA;&#xECEA;&#xEBC0;.&#xE793;&#xF275;",
+"sumprofit":"&#xEBED;&#xECE9;&#xECE9;&#xEBED;&#xECE9;&#xF275;&#xE793;&#xF275;&#xE375;.&#xEBED;&#xF275;",
+"incometax":"&#xE793;&#xE268;&#xECE9;&#xF275;&#xE7A3;&#xECEA;&#xE375;&#xE793;.&#xECEA;&#xEBED;",
+"operatereve":"-",
+"intnreve":"-",
+"intnreve_tb":"-",
+"commnreve":"-",
+"commnreve_tb":"-",
+"operatetax":"&#xECE9;&#xEBED;&#xE7A3;&#xEBC0;&#xECEA;&#xE375;&#xF275;.&#xE268;&#xEBC0;",
+"operatemanageexp":"-",
+"commreve_commexp":"-",
+"intreve_intexp":"-",
+"premiumearned":"-",
+"premiumearned_tb":"-",
+"investincome":"-",
+"surrenderpremium":"-",
+"indemnityexp":"-",
+"tystz":"&#xE375;.&#xE375;&#xEBED;&#xEBED;&#xE268;&#xEBC0;&#xF275;","yltz":"&#xE375;.&#xE7A3;&#xE7A3;&#xECE9;&#xEBED;&#xECEA;&#xE7A3;",
+"sjltz":"&#xE375;.&#xE7A3;&#xF275;&#xEBED;&#xE375;&#xECEA;",
+"kcfjcxsyjlr":"&#xEBED;&#xEBC0;&#xEBED;&#xF275;&#xE793;&#xF275;&#xECE9;&#xECEA;&#xEBC0;.&#xECEA;&#xECE9;",
+"sjlktz":"&#xE375;.&#xE793;&#xE268;&#xF2FF;&#xE268;&#xF275;&#xEBED;&#xE793;&#xE7A3;&#xE793;&#xEBC0;",
+"yyzc":"&#xF275;&#xECE9;&#xF275;&#xEBC0;&#xE375;&#xEBC0;&#xE375;&#xECEA;&#xE7A3;.&#xF2FF;&#xF2FF;"
+  }
+
+
+#########################################################
+class XJLL_KEYWORD:
+  ID_NAME = '季度'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'xjll-'
+  KEY_NAME = {
+    "reportdate": "季度",
+    'scode': '代码',
+    'sname': '名称',
+    'netoperatecashflow': '经营性现金流量净额',
+
+
+  }
+
+  NEED_TO_NUMBER = {
+    'netoperatecashflow': '经营性现金流量净额',
+
+  }
+
+  DATA_SUB = {
+    "reportdate": "季度",
+  }
+
+  NEED_TO_DECODE = {
+    # "scode":"000636",
+# "hycode":"016022",
+# "companycode":"10000969",
+# "sname":"风华高科",
+# "publishname":"电子元件",
+#     "reporttimetypecode":"003",
+# "combinetypecode":"001",
+# "dataajusttype":"2",
+# "mkt":"szzb",
+# "noticedate":"2019-04-25T00:00:00",
+# "reportdate":"2019-03-31T00:00:00",
+# "eutime":"2019/4/24 20:36:09",
+"nideposit":"-",
+"nideposit_zb":"-",
+"netoperatecashflow":"&#xE712;&#xECD9;&#xE5C1;&#xE8BC;&#xEA5D;&#xF78F;&#xF05A;&#xF275;&#xE7A3;.&#xE5C1;&#xE712;",
+"netoperatecashflow_zb":"&#xE8BC;.&#xE7A3;&#xE5C1;&#xE8BC;&#xE7A3;&#xE712;&#xF275;&#xF137;&#xE8BC;&#xF275;&#xF137;&#xE7A3;&#xF78F;&#xEA5D;&#xF05A;",
+"salegoodsservicerec":"&#xF05A;&#xE712;&#xF275;&#xE8BC;&#xE712;&#xE712;&#xE5C1;&#xF05A;&#xE8BC;.&#xECD9;&#xF275;",
+"salegoodsservicerec_zb":"&#xECD9;&#xE712;.&#xF05A;&#xF275;&#xF137;&#xECD9;&#xF78F;&#xE5C1;&#xF05A;&#xE5C1;&#xF05A;&#xE8BC;&#xF275;&#xEA5D;&#xE8BC;",
+"employeepay":"&#xE5C1;&#xECD9;&#xE5C1;&#xF05A;&#xF78F;&#xEA5D;&#xF05A;&#xE8BC;&#xE5C1;.&#xE7A3;&#xE5C1;",
+"employeepay_zb":"&#xE712;&#xE712;.&#xE712;&#xE712;&#xE712;&#xE712;&#xECD9;&#xEA5D;&#xF05A;&#xE712;&#xE5C1;&#xF275;&#xF137;&#xF78F;&#xEA5D;",
+"netinvcashflow":"-&#xE8BC;&#xECD9;&#xF275;&#xE8BC;&#xE712;&#xF05A;&#xF78F;&#xEA5D;.&#xE7A3;&#xE8BC;",
+"netinvcashflow_zb":"-&#xE5C1;.&#xF05A;&#xE8BC;&#xE5C1;&#xF137;&#xECD9;&#xE712;&#xE712;&#xE5C1;&#xF275;&#xF137;&#xEA5D;&#xE5C1;&#xE7A3;&#xF137;",
+"invincomerec":"&#xEA5D;&#xE7A3;&#xF275;&#xEA5D;&#xF137;&#xF05A;&#xE5C1;.&#xF05A;&#xE5C1;",
+"invincomerec_zb":"&#xF78F;.&#xF137;&#xF05A;&#xE5C1;&#xF137;&#xF05A;&#xF137;&#xE712;&#xF78F;&#xE712;&#xECD9;&#xE5C1;&#xF78F;&#xECD9;&#xF78F;&#xE8BC;",
+"buyfilassetpay":"&#xF275;&#xEA5D;&#xF275;&#xF78F;&#xF137;&#xE712;&#xE8BC;&#xF137;.&#xEA5D;&#xECD9;",
+"buyfilassetpay_zb":"&#xF137;.&#xE8BC;&#xF78F;&#xF78F;&#xF78F;&#xECD9;&#xE5C1;&#xECD9;&#xF137;&#xE8BC;&#xF275;&#xE712;&#xF78F;&#xF137;&#xEA5D;",
+"netfinacashflow":"-&#xE7A3;&#xE5C1;&#xEA5D;&#xF05A;&#xECD9;&#xF137;&#xF275;&#xF78F;.&#xE5C1;&#xF05A;",
+"netfinacashflow_zb":"-&#xE5C1;.&#xECD9;&#xE712;&#xF05A;&#xECD9;&#xF05A;&#xE7A3;&#xEA5D;&#xECD9;&#xE5C1;&#xE7A3;&#xE7A3;&#xEA5D;&#xECD9;",
+"nicashequi":"&#xE5C1;&#xE712;&#xEA5D;&#xE8BC;&#xE712;&#xF275;&#xF137;&#xE5C1;.&#xE5C1;&#xE7A3;",
+"nicashequi_tb":"-&#xF78F;.&#xE8BC;&#xE8BC;&#xE8BC;&#xF78F;&#xE8BC;&#xE712;&#xE7A3;&#xE7A3;&#xF275;&#xF05A;&#xF275;&#xE712;&#xF05A;&#xE5C1;&#xF05A;",
+"niclientdeposit":"-",
+"niclientdeposit_zb":"-",
+"niloanadvances":"-",
+"niloanadvances_zb":"-",
+"intandcommrec":"-",
+"intandcommrec_zb":"-",
+"agentuwsecurityrec":"-",
+"invpay":"&#xE7A3;&#xE712;&#xECD9;&#xECD9;&#xF05A;&#xF137;&#xECD9;&#xE712;&#xF78F;.&#xE7A3;&#xE5C1;",
+"invpay_zb":"&#xE5C1;&#xF137;.&#xE7A3;&#xF137;&#xF137;&#xF05A;&#xF275;&#xE5C1;&#xF275;&#xE5C1;&#xE8BC;&#xE5C1;&#xECD9;&#xE8BC;&#xF137;",
+"cashequibeginning":"&#xE712;&#xE712;&#xE7A3;&#xF05A;&#xE5C1;&#xE712;&#xF05A;&#xF275;&#xF78F;&#xE712;.&#xEA5D;&#xF275;",
+"cashequibeginning_zb":"&#xE7A3;&#xF137;.&#xF78F;&#xE5C1;&#xE7A3;&#xF78F;&#xE8BC;&#xE712;&#xF275;&#xE5C1;&#xF78F;&#xF137;&#xECD9;&#xF05A;&#xF137;",
+"cashequiending":"&#xE712;&#xE712;&#xEA5D;&#xE712;&#xF78F;&#xEA5D;&#xE712;&#xECD9;&#xF137;&#xECD9;.&#xE712;&#xE5C1;",
+"cashequiending_zb":"&#xE7A3;&#xECD9;.&#xF78F;&#xE5C1;&#xE7A3;&#xF78F;&#xE8BC;&#xE712;&#xF275;&#xE5C1;&#xF78F;&#xF137;&#xECD9;&#xF05A;&#xF137;",
+"premiumrec":"-",
+"premiumrec_zb":"-",
+"indemnitypay":"-",
+"indemnitypay_zb":"-"}
+
+
+#########################################################
+#由原始数据生成的数据放在这里
+class EXTRA_KEYWORD:
+  ID_NAME = '季度'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'extra-'
+  KEY_NAME = {
+    "reportdate": "季度",
+    'yszkzzl_srzzl': '应收账款增长率/收入增长率',
+    'chzzl_srzzl': '存货增长率/收入增长率',
+    'jyhdcsdxjllje_yysr': '经营活动产生的现金流量净额/营业收入',
+    'jyhdcsdxjllje_zgb': '每股经营现金流量',
+  }
+
+  NEED_TO_NUMBER = {
+
+
+  }
+
+  DATA_SUB = {
+    "reportdate": "季度",
+  }
+
+  NEED_TO_DECODE = {
+    }
+
+#########################################################
+class YYSJ_KEYWORD:
+  ID_NAME = '季度'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'yysj-'
+  KEY_NAME = {
+    "reportdate": "季度",
+  }
+
+  NEED_TO_NUMBER = {
+
+
+  }
+
+  DATA_SUB = {
+    "reportdate": "季度",
+  }
+
+  NEED_TO_DECODE = {
+    }
+#########################################################
 
 class GPFH_KEYWORD:
   ID_NAME = 'Code'

@@ -180,7 +180,7 @@ def changeColumns(df):
 def calcOne(code, saveDB=True, saveFile=False, benchmark=False):
   print('calcOne %s'%(code))
   s = stock.Stock(code)
-  s.load(cwsj=True, yjyg=['2019-03-31', '2018-12-31', '2018-09-30', '2018-06-30', '2018-03-31'])
+  s.load(cwsj=True, yjyg=setting.yjyg_list)
   if benchmark:
     s.loadBenchmark(file=setting.PATH + 'out-adjust-' + code + '.xlsx')
   df = s.data
@@ -243,7 +243,7 @@ def runAll():
       else:
         onedf = onedf.append(tmp3)
 
-    onedf = onedf.sort_values(by="下限距离", ascending=True)
+    #onedf = onedf.sort_values(by="下限距离", ascending=True)
     onedf.to_excel(s[1], index=False)
 
 def testOne(code):

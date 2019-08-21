@@ -138,6 +138,7 @@ class ZYHousePriceTrend(DBHead):
   percent = scrapy.Field()
 
 
+
 class LianjiaHouseAllInfoItem(scrapy.Item):
   # https://dianpu.lianjia.com/1000000020119665
   # https://bj.lianjia.com/chengjiao/101102573287.html
@@ -159,3 +160,50 @@ class LianjiaHouseAllInfoItem(scrapy.Item):
   building = scrapy.Field()
   houseType = scrapy.Field()
   square = scrapy.Field()
+
+#小区信息
+  class BlockItem(scrapy.Item):
+    # define the fields for your item here like:
+    # name = scrapy.Field()
+    name = scrapy.Field()  # //*[@id="sem_card"]/div/div[1]/div[1]/div/a[1]
+    block = scrapy.Field()  # //*[@id="sem_card"]/div/div[1]/div[1]/div/span
+    
+    price = scrapy.Field()#//*[@id="sem_card"]/div/div[1]/div[2]/div[1]/a
+    sellCounter = scrapy.Field()#//*[@id="sem_card"]/div/div[1]/div[2]/div[2]/div[2]
+    traded = scrapy.Field()#//*[@id="sem_card"]/div/div[1]/div[2]/div[3]/a
+    lookCounter = scrapy.Field()#//*[@id="sem_card"]/div/div[1]/div[2]/div[4]/div[2]
+    crawlDate = scrapy.Field()
+
+#房屋详细信息
+  class HouseItem2(scrapy.Item):
+    # define the fields for your item here like:
+    # name = scrapy.Field()
+    name = scrapy.Field()#//*[@id="sem_card"]/div/div[1]/div[1]/div/a[1]
+    
+    title = scrapy.Field()
+    _id = scrapy.Field()
+    district = scrapy.Field()
+    subDistrict = scrapy.Field()
+    # building = scrapy.Field()
+    layout = scrapy.Field()
+    unitPrice = scrapy.Field()
+    totalPrice = scrapy.Field()
+  
+    # houseInfo = scrapy.Field()
+    community = scrapy.Field()
+    houseType = scrapy.Field()
+    square = scrapy.Field()
+  
+    # positionInfo = scrapy.Field()
+    level = scrapy.Field()
+    structure = scrapy.Field()
+    area = scrapy.Field()
+  
+    # followInfo = scrapy.Field()
+    attention = scrapy.Field()
+    follow = scrapy.Field()
+    release = scrapy.Field()
+  
+    crawlDate = scrapy.Field()
+    pass
+

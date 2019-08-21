@@ -95,6 +95,11 @@ def yjyg_unescape(mapping, s):
   for one in mapping:
     mapped[one['code']] = one['value']
 
+  #'nideposit': 1880107000000.0
+  #工商银行的这个字段没有加密。。。
+  if isinstance(s, float):
+    return s
+
   if '&' not in s:
     return s
 

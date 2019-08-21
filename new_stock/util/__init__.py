@@ -234,9 +234,14 @@ def everydayChange(result, crawl):
 
 def genKeyDateFunc(k):
   def keyDateFunc(v, d):
-    out = {k: v.strftime('%Y-%m-%d')}
-    if const.COMMON_ID not in d:
-      out[const.COMMON_ID] = v.strftime('%Y-%m-%d')
+    if isinstance(v, str):
+      out = {k: v}
+      if const.COMMON_ID not in d:
+        out[const.COMMON_ID] = v
+    else:
+      out = {k: v.strftime('%Y-%m-%d')}
+      if const.COMMON_ID not in d:
+        out[const.COMMON_ID] = v.strftime('%Y-%m-%d')
 
     return out
 
