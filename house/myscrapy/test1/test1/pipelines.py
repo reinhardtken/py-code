@@ -116,8 +116,12 @@ class MongoPipeline(SaveMongoDB):
   def choseProcessor(self, name):
     if name.find('-cj-') != -1:
       return self.processTurnoverData
+    elif name.find('-building') != -1:
+      return self.ProcessSecondhandBlockData
     elif name.find('-esf-') != -1:
       return self.processSecondhandData
+
+
 
   def processTurnoverData(self, item):
       self.updateMongoDB(item)
@@ -126,6 +130,10 @@ class MongoPipeline(SaveMongoDB):
     out = self.updateMongoDB(item)
     if out is not None:
       self.processPriceTrendItem(out)
+
+
+  def ProcessSecondhandBlockData(self, item):
+      self.updateMongoDB(item)
 
 
   def processPriceTrendItem(self, data):
@@ -140,7 +148,8 @@ class MongoPipeline(SaveMongoDB):
 
 
   def process_item(self, item, spider):
-    if isinstance(item, items.HouseItem) or isinstance(item, items.LianjiaTurnoverHouseItem):
+    if isinstance(item, items.HouseItem) or isinstance(item, items.LianjiaTurnoverHouseItem) \
+        or isinstance(item, items.HouseItem2):
       self.processor(item)
       raise scrapy.exceptions.DropItem()
 

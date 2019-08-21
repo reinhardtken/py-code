@@ -34,6 +34,21 @@ def String2Number(s):
 
 
 
+
+
+
+def ExtractString(response, path):
+  re = response.xpath(path).extract()
+  if isinstance(re, list) and len(re):
+    return re[0]
+  else:
+    return re
+
+
+def ExtractNumber(response, path):
+  return String2Number(ExtractString(response, path))
+
+
 def todayString():
   now = datetime.datetime.now()
   now = now.replace(hour=0, minute=0, second=0, microsecond=0)

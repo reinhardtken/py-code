@@ -3,6 +3,8 @@ import urllib
 import logging
 import re
 import datetime
+import base64
+import urllib
 
 import scrapy
 from scrapy.http import Request
@@ -12,7 +14,7 @@ import numpy as np
 print("run lianjia-esf-building")
 #########################################################
 import sys
-sys.path.append(r'C:\workspace\code\self\github\py-code\house\')
+# sys.path.append(r'C:\workspace\code\self\github\py-code\house\')
 #########################################################
 import items
 import util
@@ -26,19 +28,21 @@ class Spider(scrapy.Spider):
       'bj.lianjia.com',
                        ]
     start_urls = [
-      'https://bj.lianjia.com/ershoufang/rs龙泽苑西区/',
+      # 'https://bj.lianjia.com/ershoufang/rs龙泽苑西区/',
+      'https://bj.lianjia.com/ershoufang/rs%E6%97%97%E8%83%9C%E5%AE%B6%E5%9B%AD/'
     ]
     head = 'https://bj.lianjia.com'
-    nextPageOrder = -1
-    dbName = 'house-building'
+    # nextPageOrder = 1
+    dbName = 'house-block'
     collectionName = 'beijing'
     xpath = {
-      'name': '//*[@id="sem_card"]/div/div[1]/div[1]/div/a[1]',
-      'block': '//*[@id="sem_card"]/div/div[1]/div[1]/div/span',
-      'price': '//*[@id="sem_card"]/div/div[1]/div[2]/div[1]/a',
-      'sellCounter': '//*[@id="sem_card"]/div/div[1]/div[2]/div[2]/div[2]',
-      'traded': '//*[@id="sem_card"]/div/div[1]/div[2]/div[3]/a',
-      'lookCounter': '//*[@id="sem_card"]/div/div[1]/div[2]/div[4]/div[2]',
+
+      'name': '/html/body/div[4]/div[1]/div[5]/div/div[1]/div[1]/div/a[1]/text()',
+      'block': '/html/body/div[4]/div[1]/div[5]/div/div[1]/div[1]/div/span/text()',
+      'price': '/html/body/div[4]/div[1]/div[5]/div/div[1]/div[2]/div[1]/a/text()',
+      'sellCounter': '/html/body/div[4]/div[1]/div[5]/div/div[1]/div[2]/div[2]/div[2]/text()',
+      'traded': '/html/body/div[4]/div[1]/div[5]/div/div[1]/div[2]/div[3]/a/text()',
+      'lookCounter': '/html/body/div[4]/div[1]/div[5]/div/div[1]/div[2]/div[4]/div[2]/text()',
 
         'lists': '/html/body/div[4]/div[1]/ul/li',
 
@@ -54,12 +58,16 @@ class Spider(scrapy.Spider):
 
     def parseBlock(self, response):
       oneOut = items.BlockItem()
-      oneOut['name'] = ones = response.xpath(self.xpath['name']).extract()
-      oneOut['block'] = ones = response.xpath(self.xpath['block']).extract()
-      oneOut['price'] = ones = response.xpath(self.xpath['price']).extract()
-      oneOut['sellCounter'] = ones = response.xpath(self.xpath['sellCounter']).extract()
-      oneOut['traded'] = ones = response.xpath(self.xpath['traded']).extract()
-      oneOut['lookCounter'] = ones = response.xpath(self.xpath['lookCounter']).extract()
+      try:
+        oneOut['name'] = util.ExtractString(response, self.xpath['name'])
+        oneOut['block'] = util.ExtractString(response, self.xpath['block'])
+        oneOut['price'] = util.ExtractNumber(response, self.xpath['price'])
+        oneOut['sellCounter'] = util.ExtractNumber(response, self.xpath['sellCounter'])
+        oneOut['traded'] = util.ExtractNumber(response, self.xpath['traded'])
+        oneOut['lookCounter'] = util.ExtractNumber(response, self.xpath['lookCounter'])
+      except Exception as e:
+        print(e)
+      oneOut['crawlDate'] = util.today()
       return oneOut
 
 
@@ -88,81 +96,64 @@ class Spider(scrapy.Spider):
         p = response.xpath(self.xpath['allPage'])
         # 框架支持url排重,这里就不排重了
         for one in p:
-          np.append(url + one.xpath('.//@href').extract())
+          #原始url 最后多一个/，导致无法匹配
+          np.append(url + urllib.parse.quote(util.ExtractString(one, './/@href')) + '/')
 
       return np
 
-    def nextPageNegativeOne(self, response, url):
-      np = []
-      maxURL = None
-      nextPageText = ''.join(response.xpath(self.xpath['nextPageText']).extract()).strip()
-      if nextPageText == '下一页':
-        tmp = response.xpath(self.xpath['allPage2']).extract()
-        if len(tmp):
-          maxURL = tmp[0].strip()
-      else:
-        tmp = response.xpath(self.xpath['nextPage']).extract()
-        if len(tmp):
-          maxURL = tmp[0].strip()
-
-      if maxURL is not None:
-        tmp = maxURL.split('/')
-        maxNumber = util.String2Number(tmp[-2]) if tmp[-1] == '' else util.String2Number(tmp[-1])
-        for i in range(2, int(maxNumber) + 1):
-          np.append(url + 'pg' + str(i))
-
-      return np
 
     def nextPage(self, response, url1, url2):
-      if self.nextPageOrder == -1:
-        return self.nextPageNegativeOne(response, url2)
-      else:
-        return self.nextPagePlusOne(response, url1)
+      out = self.nextPagePlusOne(response, url1)
+      # out2 = []
+      # for one in out:
+      #   #out2.append(str(base64.b64encode(one.encode('utf-8')), 'utf-8'))
+      #   out2.append(urllib.parse.quote(one))
+
+      return out
 
 
-    def parseOne(self, one, district, subDistrict):
-      oneOut = items.HouseItem()
+    def parseOne(self, one, block, housecode):
+      oneOut = items.HouseItem2()
       oneOut['src'] = self.src
-      oneOut['district'] = district
-      oneOut['subDistrict'] = subDistrict
-      oneOut['title'] = ''.join(one.xpath('.//div[1]/div[1]/a/text()').extract()).strip()
-      oneOut['_id'] = ''.join(one.xpath('.//div[1]/div[1]/a/@data-housecode').extract()).strip()
+
       try:
-        unitPrice = util.String2Number(''.join(one.xpath('.//div[1]/div[6]/div[2]/span/text()').extract()).strip())
-        if not np.isnan(unitPrice):
-          oneOut['unitPrice'] = unitPrice
-          oneOut['totalPrice'] = util.String2Number(
-            ''.join(one.xpath('.//div[1]/div[6]/div[1]/span/text()').extract()).strip())
-        else:
-          #https://sh.lianjia.com/ershoufang/changning/pg96/
-          oneOut['unitPrice'] = util.String2Number(''.join(one.xpath('.//div[1]/div[7]/div[2]/span/text()').extract()).strip())
-          oneOut['totalPrice'] = util.String2Number(
-            ''.join(one.xpath('.//div[1]/div[7]/div[1]/span/text()').extract()).strip())
+        #/html/body/div[3]/div/div/div[1]/h1
+        oneOut['title'] = util.ExtractString(one, '/html/body/div[3]/div/div/div[1]/h1/text()')
+        # 这个是链家编号+crawldate
+        oneOut['_id'] = housecode#util.ExtractString(one, '/html/body/div[5]/div[2]/div[6]/div[4]/span[2]')
+        # 这个是真实的链家编号
+        oneOut['houseID'] = oneOut['_id']
 
-        oneOut['community'] = ''.join(one.xpath('.//div[1]/div[2]/div/a/text()').extract())
-        houseInfo = ''.join(one.xpath('.//div[1]/div[2]/div/text()').extract())
-        houseInfo = houseInfo.split('|')
-        if len(houseInfo) > 1:
-          oneOut['houseType'] = houseInfo[1].strip()
-          if len(houseInfo) > 2:
-            oneOut['square'] = util.String2Number(houseInfo[2].strip())
+        oneOut['_id'] += '_' + util.todayString()
 
-        oneOut['area'] = ''.join(one.xpath('.//div[1]/div[3]/div/a/text()').extract())
-        positionInfo = ''.join(one.xpath('.//div[1]/div[3]/div/text()').extract())
-        positionInfo = positionInfo.split(')')
-        if len(positionInfo) > 0:
-          oneOut['level'] = positionInfo[0].strip() + ')'
-          if len(positionInfo) > 1:
-            oneOut['structure'] = positionInfo[1].strip()
+        oneOut['unitPrice'] = util.ExtractNumber(one, '/html/body/div[5]/div[2]/div[4]/div[1]/div[1]/span')
+        oneOut['totalPrice'] = util.ExtractNumber(one, '/html/body/div[5]/div[2]/div[4]/span[1]')
 
-        followInfo = ''.join(one.xpath('.//div[1]/div[4]/text()').extract())
-        followInfo = followInfo.split('/')
-        if len(followInfo) > 0:
-          oneOut['attention'] = followInfo[0].strip()
-          if len(followInfo) > 1:
-            oneOut['follow'] = followInfo[1].strip()
-            if len(followInfo) > 2:
-              oneOut['release'] = followInfo[2].strip()
+        oneOut['community'] = block
+        oneOut['houseType'] = util.ExtractString(one, '/html/body/div[5]/div[2]/div[5]/div[1]/div[1]/text()')#
+        oneOut['square'] = util.ExtractNumber(one, '/html/body/div[5]/div[2]/div[5]/div[3]/div[1]')
+
+        oneOut['level'] = util.ExtractString(one, '/html/body/div[5]/div[2]/div[5]/div[1]/div[2]/text()')
+        oneOut['structure'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[1]/div[2]/ul/li[1]/text()')
+
+        oneOut['thb'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[1]/div[2]/ul/li[10]/text()')
+        oneOut['lx'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[1]/div[2]/ul/li[6]/text()')
+
+        oneOut['heating'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[1]/div[2]/ul/li[11]/text()')
+        oneOut['property'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[1]/div[2]/ul/li[13]/text()')
+
+        oneOut['attention'] = util.ExtractNumber(one, '//*[@id="favCount"]')
+        oneOut['follow'] = util.ExtractNumber(one, '//*[@id="cartCount"]')
+        oneOut['release'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[2]/div[2]/ul/li[1]/span[2]/text()')
+        oneOut['lastTrade'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[2]/div[2]/ul/li[3]/span[2]/text()')
+        oneOut['years'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[2]/div[2]/ul/li[5]/span[2]/text()')
+        oneOut['mortgage'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[2]/div[2]/ul/li[7]/span[2]/text()').strip()
+
+        #/html/body/div[7]/div[1]/div[1]/div/div/div[2]/div[2]/ul/li[6]/span[2]
+        oneOut['ownership'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[2]/div[2]/ul/li[2]/span[2]/text()')
+        oneOut['use'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[2]/div[2]/ul/li[4]/span[2]/text()')
+        oneOut['propertyRight'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[2]/div[2]/ul/li[6]/span[2]/text()')
+        oneOut['book'] = util.ExtractString(one, '/html/body/div[7]/div[1]/div[1]/div/div/div[2]/div[2]/ul/li[8]/span[2]/text()')
 
         oneOut['crawlDate'] = util.today()
 
@@ -170,6 +161,9 @@ class Spider(scrapy.Spider):
         print(e)
         logging.warning("parseOne Exception %s"%(str(e)))
       return oneOut
+
+
+
 
     def parse(self, response):
       self.received.add(response.url)
@@ -184,22 +178,34 @@ class Spider(scrapy.Spider):
       # for one in realOut:
       #   yield Request(one, meta={'step': 1, 'url': one})
 
-
-
-      #本小区摘要信息
-      block = self.parseBlock(response)
-      #所有同级页面
-      nextPage = self.nextPage(response, self.head, response.meta['url'])
-      realOut = set(nextPage) - self.received
-      for one in realOut:
-        # nextURL = self.head + one
-        # print('next url: %s %s %s' % (district, subDistrict, one))
-        yield Request(one, meta={'step': 2, 'block': block['name']})
-
+      blockName = None
+      if 'block' not in response.meta:
+        #本小区摘要信息
+        block = self.parseBlock(response)
+        blockName = block['name']
+        # yield block
+        #所有同级页面
+        nextPage = self.nextPage(response, self.head, None)
+        realOut = set(nextPage) - self.received
+        for one in realOut:
+          #这个是一共多少页
+          yield Request(one, meta={'step': 2, 'block': block['name']})
+      else:
+        blockName = response.meta['block']
 
       ones = response.xpath(self.xpath['lists'])
       for one in ones:
-        oneOut = self.parseOne(one, block['name'])
+        # 这个是每页多少条
+        try:
+          url = util.ExtractString(one, './/div[1]/div[1]/a/@href')
+          housecode = util.ExtractString(one, './/div[1]/div[1]/a/@data-housecode')
+          yield Request(url, meta={'step': 3, 'block': blockName, 'hc': housecode})
+        except Exception as e:
+          print(e)
+
+
+      if 'step' in response.meta and response.meta['step'] ==3:
+        oneOut = self.parseOne(response, blockName, response.meta['hc'])
         if len(oneOut['_id']):
           yield oneOut
           
