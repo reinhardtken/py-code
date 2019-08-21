@@ -28,30 +28,30 @@ cmdList = [
 # "scrapy crawl wiwj-esf-hz",
 # 'scrapy crawl lianjia-esf-sh'
 # 'scrapy crawl lianjia-esf-cs'
-  'scrapy crawl lianjia-esf-bj'
+  'scrapy crawl lianjia-esf-cs'
 ]
 
-for one in cmdList:
-  try:
-    cmdline.execute(one.split())
-    print(one)
-  except Exception as e:
-    print(e)
-cmdline.execute("scrapy crawl lianjia2 -s CLOSESPIDER_ITEMCOUNT=5".split())
-
-
-# def run(param):
+# for one in cmdList:
 #   try:
-#     cmd = 'scrapy crawl ' + param
-#     print('cmdline : ' + cmd)
-#     cmdline.execute(cmd.split())
+#     cmdline.execute(one.split())
+#     print(one)
 #   except Exception as e:
 #     print(e)
-#
-#
-# if __name__ == '__main__':
-#   import sys
-#   sys.path.append('/home/ken/workspace/code/self/github/py-code/house')
-#   if len(sys.argv) >= 2:
-#     param = sys.argv[1]
-#     run(param)
+# cmdline.execute("scrapy crawl lianjia2 -s CLOSESPIDER_ITEMCOUNT=5".split())
+
+
+def run(param):
+  try:
+    cmd = 'scrapy crawl ' + param
+    print('cmdline : ' + cmd)
+    cmdline.execute(cmd.split())
+  except Exception as e:
+    print(e)
+
+
+if __name__ == '__main__':
+  import sys
+  sys.path.append('/home/ken/workspace/code/self/github/py-code/house')
+  if len(sys.argv) >= 2:
+    param = sys.argv[1]
+    run(param)

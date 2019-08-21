@@ -416,7 +416,7 @@ if __name__ == '__main__':
   citys = const.CITYS
   for src in srcs:
    for city in citys:
-    #analyzeCityPriceTrendDigest(city, src, 201909)
+    #analyzeCityPriceTrendDigest(city, src, 201919)
   #     #analyzeCityAvgPriceDigest(city, src)
   #     #analyzeDistrictAvgPriceDigest(city, src)
     pass
@@ -442,9 +442,9 @@ if __name__ == '__main__':
   #
   for district in districts:
     df = query.queryTurnOverData(city, district, (thisYear, august))
-    #unitPriceTrend(df)
+    unitPriceTrend(df)
     #dealNumberTrend(df)
     #dealCycleByPriceTrend(df)
-    dealNumberPriceTrend(df)
+    #dealNumberPriceTrend(df)
     # diffPriceTrend(df)
   # pass

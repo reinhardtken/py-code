@@ -136,3 +136,26 @@ class ZYHousePriceTrend(DBHead):
   district = scrapy.Field()
   updown = scrapy.Field()
   percent = scrapy.Field()
+
+
+class LianjiaHouseAllInfoItem(scrapy.Item):
+  # https://dianpu.lianjia.com/1000000020119665
+  # https://bj.lianjia.com/chengjiao/101102573287.html
+  # https://bj.lianjia.com/ershoufang/101104120051.html
+  # https://bj.lianjia.com/chengjiao/101103200411.html
+  title = scrapy.Field()
+  _id = scrapy.Field()
+
+  district = scrapy.Field()
+  subDistrict = scrapy.Field()
+
+  askPrice = scrapy.Field()
+  bidPrice = scrapy.Field()
+  diffPricePercent = scrapy.Field()
+  unitPrice = scrapy.Field()
+  dealCycle = scrapy.Field()
+  dealDate = scrapy.Field()
+
+  building = scrapy.Field()
+  houseType = scrapy.Field()
+  square = scrapy.Field()
