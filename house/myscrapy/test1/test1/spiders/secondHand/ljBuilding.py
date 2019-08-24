@@ -12,6 +12,8 @@ import numpy as np
 
 
 print("run lianjia-esf-building")
+#db.getCollection('beijing').find({"mortgage" : "无抵押"}).count()
+#db.getCollection('beijing').find({"mortgage" : {"$ne": "无抵押"}}).count()
 #########################################################
 import sys
 # sys.path.append(r'C:\workspace\code\self\github\py-code\house\')
@@ -28,8 +30,24 @@ class Spider(scrapy.Spider):
       'bj.lianjia.com',
                        ]
     start_urls = [
-      # 'https://bj.lianjia.com/ershoufang/rs龙泽苑西区/',
-      'https://bj.lianjia.com/ershoufang/rs%E6%97%97%E8%83%9C%E5%AE%B6%E5%9B%AD/'
+      #龙泽苑西区
+      'https://bj.lianjia.com/ershoufang/rs龙泽苑西区/',
+      #旗胜家园
+      'https://bj.lianjia.com/ershoufang/rs%E6%97%97%E8%83%9C%E5%AE%B6%E5%9B%AD/',
+      #龙腾苑
+      'https://bj.lianjia.com/ershoufang/rs%E9%BE%99%E8%85%BE%E8%8B%91/',
+      #新龙城
+      'https://bj.lianjia.com/ershoufang/rs%E6%96%B0%E9%BE%99%E5%9F%8E/',
+      #溪城家园
+      'https://bj.lianjia.com/ershoufang/rs%E6%BA%AA%E5%9F%8E%E5%AE%B6%E5%9B%AD/',
+      #佳运园
+      'https://bj.lianjia.com/ershoufang/rs%E4%BD%B3%E8%BF%90%E5%9B%AD/',
+      #黄金苑
+      'https://bj.lianjia.com/ershoufang/rs%E9%BB%84%E9%87%91%E8%8B%91/',
+      #龙博苑
+      'https://bj.lianjia.com/ershoufang/rs%E9%BE%99%E5%8D%9A%E8%8B%91/',
+      #龙跃苑
+      'https://bj.lianjia.com/ershoufang/rs%E9%BE%99%E8%B7%83%E8%8B%91/',
     ]
     head = 'https://bj.lianjia.com'
     # nextPageOrder = 1
@@ -70,21 +88,6 @@ class Spider(scrapy.Spider):
       oneOut['crawlDate'] = util.today()
       return oneOut
 
-
-    def parseSubDistricts(self, response):
-      out = []
-
-      ones = response.xpath(self.xpath['subDistricts'])
-      for one in ones:
-        urls = one.xpath('.//@href').extract()
-        for url in urls:
-          if url.startswith('http'):
-            # out.append(url)
-            pass
-          else:
-            out.append(self.head + url)
-
-      return out
 
     def nextPagePlusOne(self, response, url):
       np = []
@@ -129,7 +132,11 @@ class Spider(scrapy.Spider):
         oneOut['unitPrice'] = util.ExtractNumber(one, '/html/body/div[5]/div[2]/div[4]/div[1]/div[1]/span')
         oneOut['totalPrice'] = util.ExtractNumber(one, '/html/body/div[5]/div[2]/div[4]/span[1]')
 
-        oneOut['community'] = block
+        if len(block):
+          oneOut['community'] = block
+        else:
+          oneOut['community'] = util.ExtractString(one, '/html/body/div[5]/div[2]/div[6]/div[1]/a[1]/text()')
+
         oneOut['houseType'] = util.ExtractString(one, '/html/body/div[5]/div[2]/div[5]/div[1]/div[1]/text()')#
         oneOut['square'] = util.ExtractNumber(one, '/html/body/div[5]/div[2]/div[5]/div[3]/div[1]')
 
