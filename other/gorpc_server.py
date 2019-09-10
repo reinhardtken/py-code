@@ -15,6 +15,10 @@
 #sudo docker run -it -p 50051:50051 registry.cn-beijing.aliyuncs.com/lefeng/phone_wager_py_beta:v1.0.2 /bin/bash
 #sudo docker push registry.cn-beijing.aliyuncs.com/lefeng/phone_wager_py_beta:v1.0.2
 
+
+#netstat -tln | grep 8080
+
+
 from concurrent import futures
 import time
 import grpc
@@ -28,7 +32,8 @@ import tushare as ts
 class Greeter(py_rpc_pb2_grpc.HelloServicer):
     # 实现 proto 文件中定义的 rpc 调用
     def SayHello(self, request, context):
-        return py_rpc_pb2.HelloReply(message = 'hello2 {msg}'.format(msg = request.name))
+      print("SayHello run...")
+      return py_rpc_pb2.HelloReply(message = 'hello2 {msg}'.format(msg = request.name))
 
 
 class StockService(py_rpc_pb2_grpc.StockPriceServicer):
@@ -57,13 +62,13 @@ class StockService(py_rpc_pb2_grpc.StockPriceServicer):
 
 def serve():
     # 启动 rpc 服务
-    print("run server ....")
+    print("version=1.0.6  run server ....")
     server = None
     try:
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         py_rpc_pb2_grpc.add_HelloServicer_to_server(Greeter(), server)
         py_rpc_pb2_grpc.add_StockPriceServicer_to_server(StockService(), server)
-        server.add_insecure_port('[::]:50051')
+        server.add_insecure_port('[::]:8080')
         server.start()
     
         while True:
