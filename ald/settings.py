@@ -75,7 +75,8 @@ EXTENSIONS = {
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
   'ald.pipelines.MongoPipeline': 300,
-  'ald.pipelines.MongoPipelineALD':301
+  'ald.pipelines.MongoPipelineALD':301,
+  'ald.pipelines.MongoPipelineALDDetail':302,
 #   'ald.pipelines.MongoPipelineDetailDigest': 301,
 #   'ald.pipelines.MongoPipelineDigest': 302,
 # 'ald.pipelines.MongoPipelineTurnoverDetailDigest': 303,

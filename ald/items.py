@@ -197,3 +197,14 @@ class TopListItem(scrapy.Item):
   aldzs = scrapy.Field()#/ul/li[8]/span
   
   pass
+
+
+class DetailItem(scrapy.Item):
+  # define the fields for your item here like:
+  # name = scrapy.Field()
+  _id = scrapy.Field()
+  logo = scrapy.Field()
+  imageList = scrapy.Field()
+  detail = scrapy.Field()
+
+  

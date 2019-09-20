@@ -376,3 +376,31 @@ class MongoPipelineALD(SaveMongoDB):
 
   def close_spider(self, spider):
     self.client.close()
+    
+    
+    
+class MongoPipelineALDDetail(SaveMongoDB):
+
+  @classmethod
+  def from_crawler(cls, crawler):
+    # return cls(mongo_uri=crawler.settings.get('MONGO_URI'), mongo_db=crawler.settings.get('MONGO_DB'))
+    return cls()
+
+  def open_spider(self, spider):
+    self.client = pymongo.MongoClient()
+    self.dbName = spider.dbName
+    self.collectionName = spider.collectionName
+    self.db = self.client[self.dbName]
+    self.collection = self.db[self.collectionName]
+
+
+  def process_item(self, item, spider):
+    if isinstance(item, items.DetailItem):
+      self.updateMongoDB(item)
+      raise scrapy.exceptions.DropItem()
+
+    return item
+
+
+  def close_spider(self, spider):
+    self.client.close()

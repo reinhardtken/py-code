@@ -28,7 +28,8 @@ cmdList = [
 # "scrapy crawl wiwj-esf-hz",
 # 'scrapy crawl lianjia-esf-sh'
 # 'scrapy crawl lianjia-esf-cs'
-  'scrapy crawl ald-toplist'
+#   'scrapy crawl ald-toplist'
+'scrapy crawl ald-detail'
 ]
 
 
