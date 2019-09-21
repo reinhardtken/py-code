@@ -31,7 +31,7 @@ cmdList = [
 
    # 'scrapy crawl lianjia-esf-building'
 'scrapy crawl lianjia-esf-bj'
-]
+]  
 
 
 #添加当前项目的绝对地址
