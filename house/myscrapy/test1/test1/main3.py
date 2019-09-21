@@ -1,6 +1,9 @@
 
 import sys
+if __name__ == '__main__':
+  sys.path.append('/home/ken/workspace/code/self/github/py-code/house')
 from scrapy import cmdline
+import query
 
 cmdList = [
 # "scrapy crawl lianjia-digest",
@@ -50,6 +53,7 @@ def run(param):
 
 
 if __name__ == '__main__':
+  query.test2()
   import sys
   sys.path.append('/home/ken/workspace/code/self/github/py-code/house')
   if len(sys.argv) >= 2:

@@ -294,6 +294,51 @@ def genDataSize(city, src):
     print(e)
 
 
+#https://blog.csdn.net/tichimi3375/article/details/81876625
+# db.getCollection('beijing').aggregate([
+# {$group : {_id : "$houseID", num_tutorial : {$sum : 1}, price: {$push: "$totalPrice"}}},
+#     {$match:{num_tutorial:{$gt:1}}}
+# ])
+def test2():
+  client = MongoClient()
+  db = client['house-block']
+  collection = db['beijing']
+
+  out = []
+
+  total = 0
+  cursor = collection.aggregate([
+    {"$group": {"_id": "$houseID", "num_tutorial" : {"$sum" : 1}, "price": {"$push": "$totalPrice"}}},
+    {"$match": {"num_tutorial": {"$gt": 1}}}
+  ])
+  upMax = 0
+  upID = None
+  downMax = 0
+  downID = None
+  for c in cursor:
+    if len(c['price']) > 1 :
+       diff = c['price'][0] - c['price'][1]
+       if diff > 0:
+         if diff > downMax:
+           downMax = diff
+           downID = c["_id"]
+         print("price down {0}, {1}, {2}".format(c["_id"], c['price'][0], c['price'][1]))
+       elif diff < 0:
+         if diff < upMax:
+           upMax = diff
+           upID = c["_id"]
+         print("price up!!! {0}, {1}, {2}".format(c["_id"], c['price'][0], c['price'][1]))
+
+  print(upID)
+  print(upMax)
+  print(downID)
+  print(downMax)
+  if len(out):
+    df = pd.DataFrame(out)
+    return df
+
+
+
 
 if __name__ == '__main__':
   citys = const.CITYS

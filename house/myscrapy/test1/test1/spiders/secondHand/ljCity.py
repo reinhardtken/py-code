@@ -20,20 +20,6 @@ class SpiderCS(spiders.secondHand.ljShanghai.Spider):
     collectionName = 'changsha'
 
 
-class SpiderBJ(spiders.secondHand.ljShanghai.Spider):
-  name = 'lianjia-esf-bj'
-  city = '北京'
-  src = 'lj'
-  allowed_domains = [
-    'bj.lianjia.com',
-  ]
-  start_urls = [
-    'https://bj.lianjia.com/ershoufang/chaoyang/',
-  ]
-  head = 'https://bj.lianjia.com'
-
-  collectionName = 'beijing'
-
 
 class SpiderGZ(spiders.secondHand.ljShanghai.Spider):
   name = 'lianjia-esf-gz'

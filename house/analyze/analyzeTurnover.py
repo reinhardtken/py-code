@@ -13,6 +13,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.dates import DayLocator, DateFormatter
 
+import sys
+sys.path.append('/home/ken/workspace/code/self/github/py-code/house')
 #this project
 import query
 import util
