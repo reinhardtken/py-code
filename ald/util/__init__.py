@@ -5,21 +5,21 @@ import datetime
 import re
 
 # thirdpart
-import pandas as pd
+# import pandas as pd
 import pymongo
 from pymongo import MongoClient
-import numpy as np
+# import numpy as np
 import datetime
 #thirdpart
 import pymongo
 from pymongo import MongoClient
 from pymongo import errors
-import pandas as pd
-import numpy as np
+# import pandas as pd
+# import numpy as np
 
 #this project
-import query
-import util
+
+
 import const
 
 def getWeekofYear():
@@ -67,7 +67,7 @@ def today():
 
 
 
-def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=None):
+def saveMongoDB(data, keyFunc, dbName, collectionName, callback=None):
   client = MongoClient()
   db = client[dbName]
   collection = db[collectionName]
@@ -75,10 +75,10 @@ def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=No
   out = {'db': dbName, 'collection': collectionName}
   detail = {}
 
-  for k, v in data.iterrows():
-    result = v.to_dict()
+  for v in data:
+    result = v
     # print(dir(k))
-    result.update(keyFunc(k, result))
+    # result.update(keyFunc(k, result))
 
     try:
       if callback:
@@ -92,13 +92,14 @@ def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=No
       if update_result.matched_count > 0:
         print('upate to Mongo: %s : %s'%(dbName, collectionName))
         if update_result.modified_count > 0:
-          detail[k] = result
-
+          # detail[k] = result
+          pass
+      
       if update_result.matched_count == 0:
         try:
           if collection.insert_one(result):
             print('insert to Mongo: %s : %s' % (dbName, collectionName))
-            detail[k] = result
+            # detail[k] = result
         except errors.DuplicateKeyError as e:
           print('faild to Mongo!!!!: %s : %s' % (dbName, collectionName))
           pass
@@ -106,7 +107,7 @@ def saveMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, callback=No
     except Exception as e:
       print(e)
 
-  out['detail'] = detail
+  # out['detail'] = detail
   print('leave saveMongoDB')
   return out
 

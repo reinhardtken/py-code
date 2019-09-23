@@ -7,7 +7,7 @@
 # sys
 import json
 # thirdpart
-import pandas as pd
+
 from requests.models import RequestEncodingMixin
 
 encode_params = RequestEncodingMixin._encode_params

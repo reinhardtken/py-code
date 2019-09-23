@@ -7,7 +7,7 @@
 # sys
 import json
 # thirdpart
-import pandas as pd
+
 from requests.models import RequestEncodingMixin
 
 encode_params = RequestEncodingMixin._encode_params
@@ -62,11 +62,11 @@ def run():
   
   for item in data:
     item['_id'] = item['key']
-    series = pd.Series(item)
-    tmp.append(series)
+    # series = pd.Series(item)
+    tmp.append(item)
 
-  df = pd.DataFrame(tmp)
-  util.saveMongoDB(df, util.genEmptyFunc(), DB_NAME, COLLECTION_NAME, None)
+  # df = pd.DataFrame(tmp)
+  util.saveMongoDB(tmp, util.genEmptyFunc(), DB_NAME, COLLECTION_NAME, None)
 
 
 if __name__ == '__main__':

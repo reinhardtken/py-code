@@ -7,7 +7,7 @@
 # sys
 import json
 # thirdpart
-import pandas as pd
+# import pandas as pd
 from requests.models import RequestEncodingMixin
 encode_params = RequestEncodingMixin._encode_params
 
@@ -83,7 +83,7 @@ class Handler(spider.FakeSpider):
     pass
   
 
-  def saveDB(self, data: pd.DataFrame):
+  def saveDB(self, data):
     # def callback(result):
     #   self.send_message(self.project_name, result, key + '_' + result[MONGODB_ID])
     util.saveMongoDB(data, util.genEmptyFunc(), self.DB_NAME, self.COLLECTION_NAME, None)
@@ -107,13 +107,13 @@ class Handler(spider.FakeSpider):
       for item in json:
         item['_id'] = item.get('appkey')
         item['index'] = index
-        series = pd.Series(item)
-        tmp.append(series)
+        # series = pd.Series(item)
+        tmp.append(item)
         index += 1
 
-      df = pd.DataFrame(tmp)
-      print(df)
-      return df
+      # df = pd.DataFrame(tmp)
+      # print(df)
+      return tmp
     except Exception as e:
       print(e)
 
