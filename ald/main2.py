@@ -6,7 +6,7 @@
 # pip3 install selenium -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
 # pip3 install pymongo -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
 # pip3 install scrapy -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
-#nohub mongod --config /root/usr/mongodb-linux-x86_64-4.0.0/mongodb.conf
+#nohub /root/usr/mongodb-linux-x86_64-4.0.0/bin/mongod --config /root/usr/mongodb-linux-x86_64-4.0.0/mongodb.conf
 
 
 # sys

@@ -6,7 +6,7 @@ import datetime
 
 import scrapy
 from scrapy.http import Request
-import numpy as np
+# import numpy as np
 
 
 import items

@@ -10,6 +10,7 @@ from pymongo import MongoClient
 
 import items
 import util
+from spiders import toplist_dict
 
 
 class Spider(scrapy.Spider):
@@ -25,7 +26,7 @@ class Spider(scrapy.Spider):
   
   dbName = 'ald'
   collectionName = 'detail'
-  srcCollectionName = 'game'
+  
   xpath = {
 
   }
@@ -36,16 +37,19 @@ class Spider(scrapy.Spider):
   def __init__(self):
     #http://www.aldzs.com/apps/?id=88691116&activetype=assistant
     #从db读取url
+    # self.srcCollectionName = c
     client = MongoClient()
     db = client[self.dbName]
-    collection = db[self.srcCollectionName]
+    data = toplist_dict.GetList()
 
     out = []
-
-    cursor = collection.find()
-    for c in cursor:
-      url = "http://www.aldzs.com/apps/?id={0}&activetype=assistant".format(c["id"])
-      out.append(url)
+    for one in data:
+      collection = db[one['key']]
+      cursor = collection.find()
+      for c in cursor:
+        url = "http://www.aldzs.com/apps/?id={0}&activetype=assistant".format(c["id"])
+        print(url)
+        out.append(url)
       
     self.start_urls = out[:]
   
@@ -53,6 +57,7 @@ class Spider(scrapy.Spider):
   
   def parse(self, response):
     self.received.add(response.url)
+    print("receive data...  " + response.url)
 
     one = items.DetailItem()
     index = response.url.find('id=')

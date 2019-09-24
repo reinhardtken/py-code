@@ -11,14 +11,14 @@ import re
 import math
 
 import pymongo
-import numpy as np
+# import numpy as np
 import scrapy.exceptions
 
 import items
 
 
 def String2Number(s):
-  out = np.nan
+  out = float('nan')#np.nan
   try:
     out = float(re.findall('([-+]?\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?', s)[0][0])
   except Exception as e:

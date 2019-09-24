@@ -23,11 +23,8 @@ import util
 
 
 
-
-def run():
-  DB_NAME = 'ald'
-  COLLECTION_NAME = 'toplist_dict'
-  data = [
+def GetList():
+  return [
     {
       'key': 'content',
       'name': '内容资讯',
@@ -57,6 +54,11 @@ def run():
       'name': '工具',
     },
   ]
+
+def run():
+  DB_NAME = 'ald'
+  COLLECTION_NAME = 'toplist_dict'
+  data = GetList()
 
   tmp = []
   

@@ -1,5 +1,5 @@
-import matplotlib
-import query
+# import matplotlib
+# import query
 from scrapy import cmdline
 
 cmdList = [
