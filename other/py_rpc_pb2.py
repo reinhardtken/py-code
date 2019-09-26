@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='proto',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0cpy_rpc.proto\x12\x05proto\"\x1c\n\x0cHelloRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1d\n\nHelloReply\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x16\n\x07\x45\x63hoReq\x12\x0b\n\x03msg\x18\x01 \x01(\t\"\x16\n\x07\x45\x63hoRes\x12\x0b\n\x03msg\x18\x01 \x01(\t\"\x1c\n\x0cLastPriceReq\x12\x0c\n\x04name\x18\x01 \x01(\t\"H\n\x0cLastPriceRsp\x12\r\n\x05\x65rror\x18\x01 \x01(\x05\x12\x0c\n\x04\x63ode\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\r\n\x05price\x18\x04 \x01(\x01\x32=\n\x05Hello\x12\x34\n\x08SayHello\x12\x13.proto.HelloRequest\x1a\x11.proto.HelloReply\"\x00\x32.\n\x04\x45\x63ho\x12&\n\x04\x65\x63ho\x12\x0e.proto.EchoReq\x1a\x0e.proto.EchoRes2D\n\nStockPrice\x12\x36\n\x08GetPrice\x12\x13.proto.LastPriceReq\x1a\x13.proto.LastPriceRsp\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x0cpy_rpc.proto\x12\x05proto\"\x1c\n\x0cHelloRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1d\n\nHelloReply\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x16\n\x07\x45\x63hoReq\x12\x0b\n\x03msg\x18\x01 \x01(\t\"\x16\n\x07\x45\x63hoRes\x12\x0b\n\x03msg\x18\x01 \x01(\t\"\x1c\n\x0cLastPriceReq\x12\x0c\n\x04name\x18\x01 \x01(\t\"`\n\x0cLastPriceRsp\x12\r\n\x05\x65rror\x18\x01 \x01(\x05\x12\x0c\n\x04\x63ode\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x12\n\nclosePrice\x18\x04 \x01(\x01\x12\x11\n\topenPrice\x18\x05 \x01(\x01\x32=\n\x05Hello\x12\x34\n\x08SayHello\x12\x13.proto.HelloRequest\x1a\x11.proto.HelloReply\"\x00\x32.\n\x04\x45\x63ho\x12&\n\x04\x65\x63ho\x12\x0e.proto.EchoReq\x1a\x0e.proto.EchoRes2D\n\nStockPrice\x12\x36\n\x08GetPrice\x12\x13.proto.LastPriceReq\x1a\x13.proto.LastPriceRsp\"\x00\x62\x06proto3')
 )
 
 
@@ -210,8 +210,15 @@ _LASTPRICERSP = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='price', full_name='proto.LastPriceRsp.price', index=3,
+      name='closePrice', full_name='proto.LastPriceRsp.closePrice', index=3,
       number=4, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='openPrice', full_name='proto.LastPriceRsp.openPrice', index=4,
+      number=5, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -229,7 +236,7 @@ _LASTPRICERSP = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=162,
-  serialized_end=234,
+  serialized_end=258,
 )
 
 DESCRIPTOR.message_types_by_name['HelloRequest'] = _HELLOREQUEST
@@ -290,8 +297,8 @@ _HELLO = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=236,
-  serialized_end=297,
+  serialized_start=260,
+  serialized_end=321,
   methods=[
   _descriptor.MethodDescriptor(
     name='SayHello',
@@ -314,8 +321,8 @@ _ECHO = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=1,
   serialized_options=None,
-  serialized_start=299,
-  serialized_end=345,
+  serialized_start=323,
+  serialized_end=369,
   methods=[
   _descriptor.MethodDescriptor(
     name='echo',
@@ -338,8 +345,8 @@ _STOCKPRICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=2,
   serialized_options=None,
-  serialized_start=347,
-  serialized_end=415,
+  serialized_start=371,
+  serialized_end=439,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetPrice',

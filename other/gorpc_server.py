@@ -9,7 +9,11 @@
 # C:\Programs\Python\Python37\python -m grpc_tools.protoc --python_out=. --grpc_python_out=. --proto_path=C:\workspace\code\self\github\bookServer\src\wager\proto  -I. C:\workspace\code\self\github\bookServer\src\wager\proto\py_rpc.proto
 
 
-#sudo docker run -it -p 50051:50051 registry.cn-beijing.aliyuncs.com/lefeng/phone_wager_py_beta:v1.0.1 /bin/bash
+
+#build dcker
+#sudo docker build -t registry.cn-beijing.aliyuncs.com/lefeng/phone_wager_py_beta:v1.0.2 -f ./Dockerfile  .
+#sudo docker run -it -p 50051:50051 registry.cn-beijing.aliyuncs.com/lefeng/phone_wager_py_beta:v1.0.2 /bin/bash
+#sudo docker push registry.cn-beijing.aliyuncs.com/lefeng/phone_wager_py_beta:v1.0.2
 
 from concurrent import futures
 import time
@@ -28,6 +32,9 @@ class Greeter(py_rpc_pb2_grpc.HelloServicer):
 
 
 class StockService(py_rpc_pb2_grpc.StockPriceServicer):
+  
+    
+    
   # 实现 proto 文件中定义的 rpc 调用
   def GetPrice(self, request, context):
     print("GetPrice run...")
@@ -35,10 +42,12 @@ class StockService(py_rpc_pb2_grpc.StockPriceServicer):
     try:
       df = ts.get_index()
       # print(df)
+      #这里有问题，应该是和昨天收盘比涨跌，不是今天开盘
       AStock = df.loc[df.code == '000001']
       re.code = AStock.loc[0, 'code']
       re.name = AStock.loc[0, 'name']
-      re.price = AStock.loc[0, 'close']
+      re.closePrice = AStock.loc[0, 'close']
+      re.openPrice = AStock.loc[0, 'open']
       re.error = 0
     except Exception as e:
       print(e)
