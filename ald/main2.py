@@ -20,7 +20,7 @@ import spiders.toplist_life
 import spiders.toplist_shopping
 import spiders.toplist_social
 import spiders.toplist_tools
-
+import copy_data
 
 
 if __name__ == '__main__':
@@ -33,3 +33,4 @@ if __name__ == '__main__':
   spiders.toplist_shopping.run()
   spiders.toplist_social.run()
   spiders.toplist_tools.run()
+  copy_data.Copy()
