@@ -21,6 +21,7 @@ def GetPrice():
     out['name'] = AStock.loc[0, 'name']
     out['close'] = AStock.loc[0, 'close']
     out['open'] = AStock.loc[0, 'open']
+    out['preclose'] = AStock.loc[0, 'preclose']
     out['error'] = 0
     
     # re.code = AStock.loc[0, 'code']
@@ -41,7 +42,7 @@ class StockPriceHandler(tornado.web.RequestHandler):
       self.write(out)
 
 if __name__ == "__main__":
-    print("version=1.0.1                     stock server run...")
+    print("version=1.0.2                     stock server run...")
     tornado.options.parse_command_line()
     app = tornado.web.Application(
         handlers=[
