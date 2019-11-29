@@ -39,6 +39,19 @@ def queryAll():
     return None
 
 
+def queryAllCode():
+  client = MongoClient()
+  db = client['stock']
+  collection = db['stock_list']
+
+  out = []
+
+  cursor = collection.find()
+  for c in cursor:
+    out.append(c["_id"])
+
+  return out
+
 
 def queryOne(code):
   client = MongoClient()
@@ -53,6 +66,23 @@ def queryOne(code):
     return df
   else:
     return None
+
+
+def queryOneWrapper(code):
+  re = queryOne(code)
+  tryAgain = False
+  if re is not None:
+    try:
+      zgb = re[const.TS.BASICS.KEY_NAME['zgb']]
+    except KeyError as e:
+      import fake_spider.zgb3
+      tryAgain = True
+      fake_spider.zgb3.runOne([code])
+
+  if tryAgain:
+    re = queryOne(code)
+  return re
+  
 
 
 def queryZgb(code):

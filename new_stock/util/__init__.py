@@ -307,6 +307,35 @@ def updateMongoDB(data: pd.DataFrame, keyFunc, dbName, collectionName, insert=Tr
   return out
 
 
+def saveMongoDB2(data, dbName, collectionName):
+  client = MongoClient()
+  db = client[dbName]
+  collection = db[collectionName]
+  result = data
+  
+  try:
+    update_result = collection.update_one({'_id': result['_id']},
+                                          {'$set': result})  # , upsert=True)
+    
+    if update_result.matched_count > 0:
+      print('upate to Mongo2: %s : %s' % (dbName, collectionName))
+      if update_result.modified_count > 0:
+        # detail[k] = result
+        pass
+    
+    if update_result.matched_count == 0:
+      try:
+        if collection.insert_one(result):
+          print('insert to Mongo2: %s : %s' % (dbName, collectionName))
+          # detail[k] = result
+      except errors.DuplicateKeyError as e:
+        print('faild to Mongo2!!!!: %s : %s' % (dbName, collectionName))
+        pass
+  
+  except Exception as e:
+    print(e)
+  
+  print('leave saveMongoDB2')
 
 ###########################
 def addSysPath(path):
