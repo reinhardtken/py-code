@@ -72,7 +72,9 @@ class TradeUnit:
   def __init__(self):
     self.tradeList = []#交易记录
     self.status = HOLD_MONEY#持仓还是持币
-    self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
+    # self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
+    self.money = 52105
+    self.oldMoney = self.money
     self.costPrice = 0 #持仓的时候，表示持仓成本
     self.number = 0 #持仓的时候表示持仓数目(手)
     self.startYear = 2011 #起始年份
@@ -83,27 +85,53 @@ class TradeUnit:
     self.dangerousPoint = []#利润同比下滑超过10%的位置
     self.dividendPoint = []  # 除权的日期
     self.data = None #行情
+    self.MAXEND = self.Quater2Date(2099, 'first')#默认的冻结开仓截止日期
 
-  def Buy(self, date, triggerPrice, price):
-    #如果持币，以固定价格买入
-    oldMoney = self.money
-    if self.status == HOLD_MONEY:
-      self.number = self.money // (price * 100)
-      self.money = self.money - self.number*100*price
-      self.costPrice = price
-      self.status = HOLD_STOCK
-      print("买入： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}".format(date, triggerPrice, price, self.number, self.money))
-    
-      
+  def buyInner(self, price, money):
+    #计算多少钱买多少股，返回股数，钱数
+    number = money // (price * 100)
+    restMoney = money - number * 100 * price
+    return (number, restMoney)
+  
+  
+  def Buy(self, date, triggerPrice, price, reason=''):
+    try:
+      #如果持币，以固定价格买入
+      if price <= triggerPrice:
+        if self.status == HOLD_MONEY:
+          self.oldMoney = self.money
+          nm = self.buyInner(price, self.money)
+          self.number = nm[0]
+          self.money = nm[1]
+          #self.number = self.money // (price * 100)
+          #self.money = self.money - self.number*100*price
+          self.costPrice = price
+          self.status = HOLD_STOCK
+          print("买入： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price, self.number, self.money, reason))
+        elif self.status == HOLD_STOCK:
+          nm = self.buyInner(price, self.money)
+          if nm[0] > 0:
+            #追加买入
+            self.number += nm[0]
+            self.money = nm[1]
+            print("买入（追加买入）： 日期：{}, 触发价格：{}, 价格：{}, 追加数量：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price,
+                                                                                           nm[0], self.number, self.money, reason))
+    except Exception as e:
+      print(e)
    
  
-  def Sell(self, date, triggerPrice, price):
+  def Sell(self, date, triggerPrice, price, reason=''):
+    if price >= triggerPrice:
+      self.SellNoCodition(date, triggerPrice, price, reason)
+      
+      
+  def SellNoCodition(self, date, triggerPrice, price, reason=''):
     if self.status == HOLD_STOCK:
-      self.money = self.money + self.number*100*price
+      self.money = self.money + self.number * 100 * price
+      winLoss = (self.money - self.oldMoney) / self.oldMoney
       self.status = HOLD_MONEY
-      print("卖入： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}".format(date, triggerPrice, price, self.number))
-
-
+      print("卖出： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 盈亏：{}, 原因：{}".format(date, triggerPrice, price, self.number, winLoss,
+                                                                    reason))
 
   def CheckPrepare(self):
     #准备判定条件
@@ -160,6 +188,21 @@ class TradeUnit:
         self.ProcessQuarterPaper(k, 'forth')
       except KeyError as e:
         print(e)
+    
+    #针对dangerousPoint清理dividendPoint
+    tmp = []
+    have = set()
+    for one in self.dividendPoint:
+      for two in self.dangerousPoint:
+        if two[0] <= one[0] and two[1] >= one[0]:
+          print("清理除权 {} {} {}".format(one[0], two[0], two[1]))
+          break
+      else:
+        if one[0] not in have:
+          tmp.append(one)
+          have.add(one[0])
+    self.dividendPoint = tmp
+    
       
 
 
@@ -230,32 +273,61 @@ class TradeUnit:
         newValue = value[index + 1:]
         profit = util.String2Number(newValue)
         self.checkPoint[year][position]['dividend'] = profit / number
+        index2 = newValue.find('扣税后')
+        if index2 != -1:
+          newValue2 = newValue[index2 + 1:]
+          profit2 = util.String2Number(newValue2)
+          self.checkPoint[year][position]['dividend_aftertax'] = profit2 / number
         
       if const.GPFH_KEYWORD.KEY_NAME['CQCXR'] in self.checkPoint[year][position]:
         self.dividendPoint.append((
-          np.datetime64(self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['CQCXR']]), self.checkPoint[year][position]['dividend']))
+          pd.to_datetime(np.datetime64(self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['CQCXR']])),
+          self.checkPoint[year][position]['dividend'], self.checkPoint[year][position]['dividend_aftertax']))
     
   
   
   def Quater2Date(self, year, quarter):
     #从某个季度，转换到具体日期
     if quarter == 'first':
-      return np.datetime64(str(year) + '-04-30')
+      return pd.to_datetime(np.datetime64(str(year) + '-04-30T00:00:00Z'))
     elif quarter == 'second':
-      return np.datetime64(str(year) + '-08-31')
+      return pd.to_datetime(np.datetime64(str(year) + '-08-31T00:00:00Z'))
     elif quarter == 'third':
-      return np.datetime64(str(year) + '-10-31')
+      return pd.to_datetime(np.datetime64(str(year) + '-10-31T00:00:00Z'))
     elif quarter == 'forth':
       #来年一季度,这里反正有问题，用29号变通下
-      return np.datetime64(str(year+1) + '-04-29')
+      return pd.to_datetime(np.datetime64(str(year+1) + '-04-29T00:00:00Z'))
   
   
   def ProcessQuarterPaper(self, year, position):
     if 'sjltz' in self.checkPoint[year][position]:
       speed = float(self.checkPoint[year][position]['sjltz'])
       if speed < -10:
-        self.dangerousPoint.append((self.Quater2Date(year, position), year, position, speed))
-
+        self.dangerousPoint.append((self.Quater2Date(year, position), self.MAXEND, year, position, speed))
+      elif speed > 0:
+        #增速转正，如果之前有负的，要结合负的计算出冷冻区间（此区间不开仓）
+        if len(self.dangerousPoint) > 0:
+          #找到所有没有填充终止的条目，全部填上当前时间点
+          dirtyFlag = False
+          for index in range(len(self.dangerousPoint)):
+            if self.dangerousPoint[index][1] == self.MAXEND:
+              dirtyFlag = True
+              self.dangerousPoint[index] = (self.dangerousPoint[index][0], self.Quater2Date(year, position), self.dangerousPoint[index][2],
+                                         self.dangerousPoint[index][3], self.dangerousPoint[index][4])
+          
+          #清理在起始时间小于终止时间的区间（比如从2011年2季度开始，2,3,4季度都是负，2012年一季度转正）
+          #此时dangerousPoint里面有多个条目：（2011-2，2012-1），（2011-3，2012-1），（2011-4，2012-1）
+          #其中（2011-3，2012-1），（2011-4，2012-1）是没有意义的，需要删除
+          if dirtyFlag:
+            tmp = []
+            have = set()
+            for index in range(len(self.dangerousPoint)):
+              if self.dangerousPoint[index][1] not in have:
+                have.add(self.dangerousPoint[index][1])
+                tmp.append(self.dangerousPoint[index])
+              else:
+                pass
+            self.dangerousPoint = tmp
 
   def LoadQuotations(self):
     db = self.mongoClient["stock_all_kdata_none"]
@@ -274,18 +346,62 @@ class TradeUnit:
     self.data = df
     
   
+  def ProcessDividend(self, date, buyPrice, price, dividend):
+    if self.status == HOLD_STOCK:
+      if buyPrice >= price:
+        oldMoney = self.money
+        oldNumber = self.number
+        dividendMoney = self.number*100*dividend[2]
+        money = dividendMoney+self.money
+        number = money // (price * 100)
+        self.money = money - number * 100 * price
+        self.number += number
+        print("除权买入： 日期：{}, 除权日：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 分红：{}".format(date, dividend[0], buyPrice, price, self.number, self.money,
+                                                                          dividendMoney))
+      else:
+        oldMoney = self.money
+        dividendMoney = self.number * 100 * dividend[2]
+        self.money += dividendMoney
+        print("除权不买入： 日期：{}, 除权日：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 分红：{}".format(date, dividend[0], buyPrice, price, self.number, self.money,
+                                                                      dividendMoney))
+  
   def BackTest(self):
     #回测
+    cooldown = False
+    cooldownEnd = None
     for date, row in self.data.iterrows():
       try:
+        if cooldown:
+          if date >= cooldownEnd:
+            cooldown = False
+            print('cooldownend {}'.format(cooldownEnd))
+            cooldownEnd = None
+          else:
+            continue
+            
         year = date.year
         if year in self.checkPoint:
           cp = self.checkPoint[year]
           #先完全忽略半年报
-          if row['close'] < cp['buyPrice']:
-            self.Buy(date, cp['buyPrice'], row['close'])
-          elif row['close'] > cp['sellPrice']:
-            self.Sell(date, cp['sellPrice'], row['close'])
+          #if row['close'] < cp['buyPrice']:
+          self.Buy(date, cp['buyPrice'], row['close'], reason='低于买点')
+          #elif row['close'] > cp['sellPrice']:
+          self.Sell(date, cp['sellPrice'], row['close'], reason='高于卖点')
+          
+          
+          #处理除权,
+          # 除权日不可能不是交易日
+          if len(self.dividendPoint) > 0 and date == self.dividendPoint[0][0]:
+            self.ProcessDividend(date, cp['buyPrice'], row['close'], self.dividendPoint[0])
+            self.dividendPoint = self.dividendPoint[1:]
+          
+          #处理季报，检查是否扣非-10%
+          if len(self.dangerousPoint) >0 and date >= self.dangerousPoint[0][0]:
+            self.SellNoCodition(date, cp['sellPrice'], row['close'], reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
+            #记录因为扣非为负的区间，在区间内屏蔽开仓
+            cooldown = True
+            cooldownEnd = self.dangerousPoint[0][1]
+            self.dangerousPoint = self.dangerousPoint[1:]
   
       except TypeError as e:
         print(e)
