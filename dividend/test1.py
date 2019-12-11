@@ -26,6 +26,8 @@ DIR_NONE = 0
 DIR_SELL = -1
 HOLD_MONEY = 1
 HOLD_STOCK = 2
+BUY_PERCENT = 0.04
+SELL_PERCENT = 0.03
  
   
 #尝试计算股息，根据股息买卖股的收益
@@ -201,16 +203,16 @@ class TradeUnit:
         #根据分红计算全年和半年的买入卖出价格
         #allDividend影响下一年
         if v['year']['allDividend'] > 0:
-          self.checkPoint[k+1]['buyPrice'] = v['year']['allDividend'] / 0.04
-          self.checkPoint[k + 1]['sellPrice'] = v['year']['allDividend'] / 0.03
+          self.checkPoint[k+1]['buyPrice'] = v['year']['allDividend'] / BUY_PERCENT
+          self.checkPoint[k + 1]['sellPrice'] = v['year']['allDividend'] / SELL_PERCENT
         else:
           self.checkPoint[k + 1]['buyPrice'] = -10000
           self.checkPoint[k + 1]['sellPrice'] = 10000
           
         # midYear的dividend影响8月31号以后的当年
         if v['midYear']['dividend'] > 0:
-          self.checkPoint[k]['buyPrice2'] = v['midYear']['allDividend'] / 0.04
-          self.checkPoint[k]['sellPrice2'] = v['midYear']['allDividend'] / 0.03
+          self.checkPoint[k]['buyPrice2'] = v['midYear']['allDividend'] / BUY_PERCENT
+          self.checkPoint[k]['sellPrice2'] = v['midYear']['allDividend'] / SELL_PERCENT
         else:
           self.checkPoint[k]['buyPrice2'] = -10000
           self.checkPoint[k]['sellPrice2'] = 10000
@@ -298,27 +300,75 @@ class TradeUnit:
     return (first, second, third, forth)
   
   
+  def processSong(self, value):
+    #处理送股
+    index = value.find('送')
+    if index != -1:
+      newValue = value[index + 1:]
+      out = util.String2Number(newValue)
+      return out
+    else:
+      return 0
+    
+  def processPai(self, value):
+    #处理派息
+    index = value.find('派')
+    if index != -1:
+      newValue = value[index + 1:]
+      out = util.String2Number(newValue)
+      return out
+    else:
+      return 0
+    
+  def processPai2(self, value):
+    #处理派息，税后
+    index = value.find('扣税后')
+    if index != -1:
+      newValue = value[index + 1:]
+      out = util.String2Number(newValue)
+      return out
+    else:
+      return 0
+  
+  # def CalcDividend(self, year, position):
+  #   #'10送3.00派4.00元(含税,扣税后3.30元)'
+  #   if const.GPFH_KEYWORD.KEY_NAME['AllocationPlan'] in self.checkPoint[year][position]:
+  #     value = self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
+  #     number = util.String2Number(value)
+  #     index = value.find('派')
+  #     if index != -1:
+  #       newValue = value[index + 1:]
+  #       profit = util.String2Number(newValue)
+  #       self.checkPoint[year][position]['dividend'] = profit / number
+  #       index2 = newValue.find('扣税后')
+  #       if index2 != -1:
+  #         newValue2 = newValue[index2 + 1:]
+  #         profit2 = util.String2Number(newValue2)
+  #         self.checkPoint[year][position]['dividend_aftertax'] = profit2 / number
+  #
+  #     if const.GPFH_KEYWORD.KEY_NAME['CQCXR'] in self.checkPoint[year][position]:
+  #       self.dividendPoint.append((
+  #         pd.to_datetime(np.datetime64(self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['CQCXR']])),
+  #         self.checkPoint[year][position]['dividend'], self.checkPoint[year][position]['dividend_aftertax']))
+
   def CalcDividend(self, year, position):
+    # '10送3.00派4.00元(含税,扣税后3.30元)'
     if const.GPFH_KEYWORD.KEY_NAME['AllocationPlan'] in self.checkPoint[year][position]:
       value = self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
       number = util.String2Number(value)
-      index = value.find('派')
-      if index != -1:
-        newValue = value[index + 1:]
-        profit = util.String2Number(newValue)
-        self.checkPoint[year][position]['dividend'] = profit / number
-        index2 = newValue.find('扣税后')
-        if index2 != -1:
-          newValue2 = newValue[index2 + 1:]
-          profit2 = util.String2Number(newValue2)
-          self.checkPoint[year][position]['dividend_aftertax'] = profit2 / number
-        
+      profit = self.processPai(value)
+      self.checkPoint[year][position]['dividend'] = profit / number
+      profit2 = self.processPai2(value)
+      self.checkPoint[year][position]['dividend_aftertax'] = profit2 / number
+      gift = self.processSong(value)
+      self.checkPoint[year][position]['gift'] = gift / number
+    
       if const.GPFH_KEYWORD.KEY_NAME['CQCXR'] in self.checkPoint[year][position]:
         self.dividendPoint.append((
           pd.to_datetime(np.datetime64(self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['CQCXR']])),
-          self.checkPoint[year][position]['dividend'], self.checkPoint[year][position]['dividend_aftertax']))
-    
-  
+          self.checkPoint[year][position]['dividend'],
+          self.checkPoint[year][position]['dividend_aftertax'],
+          self.checkPoint[year][position]['gift']))
   
   def Quater2Date(self, year, quarter):
     #从某个季度，转换到具体日期
@@ -412,6 +462,37 @@ class TradeUnit:
         # print("除权不买入： 日期：{}, 除权日：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 分红：{}".format(date, dividend[0], buyPrice, price, self.number, self.money,
         #                                                               dividendMoney))
   
+  
+  def MakeDecisionPrice(self, date):
+    #决定使用哪个年的checkpoit，返回对应的buy和sell
+
+    #在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
+    anchor0 = pd.Timestamp(datetime(date.year, 4, 30))
+    #在8月31日之前，需要使用去年的年报和半年报
+    anchor1 = pd.Timestamp(datetime(date.year, 8, 31))
+    
+    if date <= anchor0:
+      if self.checkPoint[date.year]['buyPrice'] > 0:
+        return True, self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice']
+    elif date <= anchor1:
+      if self.checkPoint[date.year]['buyPrice'] > 0:
+        return True, self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice']
+    else:
+      #使用去年的allDividend和半年报中dividend中大的那个决定
+      buy = self.checkPoint[date.year]['buyPrice']
+      midBuy = self.checkPoint[date.year]['buyPrice2']
+      if buy > midBuy:
+        return True, buy, self.checkPoint[date.year]['sellPrice']
+      else:
+        if midBuy > 0:
+          return True, midBuy, self.checkPoint[date.year]['sellPrice2']
+      
+    return False, 0, 0
+  
+
+  
+    
+    
   def BackTest(self):
     #回测
     cooldown = False
@@ -426,28 +507,26 @@ class TradeUnit:
           else:
             continue
             
+        #midYear, year = self.MakeDecisionYear(date)
         year = date.year
         self.lastDate = date
         self.lastPrice = row['close']
         
-        if year in self.checkPoint:
-          cp = self.checkPoint[year]
-          #先完全忽略半年报
-          #if row['close'] < cp['buyPrice']:
-          self.Buy(date, cp['buyPrice'], row['close'], reason='低于买点')
-          #elif row['close'] > cp['sellPrice']:
-          self.Sell(date, cp['sellPrice'], row['close'], reason='高于卖点')
+        action, buyPrice, sellPrice = self.MakeDecisionPrice(date)
+        if action:
+          self.Buy(date, buyPrice, row['close'], reason='低于买点')
+          self.Sell(date, sellPrice, row['close'], reason='高于卖点')
           
           
           #处理除权,
           # 除权日不可能不是交易日
           if len(self.dividendPoint) > 0 and date == self.dividendPoint[0][0]:
-            self.ProcessDividend(date, cp['buyPrice'], row['close'], self.dividendPoint[0])
+            self.ProcessDividend(date, buyPrice, row['close'], self.dividendPoint[0])
             self.dividendPoint = self.dividendPoint[1:]
           
           #处理季报，检查是否扣非-10%
           if len(self.dangerousPoint) >0 and date >= self.dangerousPoint[0][0]:
-            self.SellNoCodition(date, cp['sellPrice'], row['close'], reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
+            self.SellNoCodition(date, sellPrice, row['close'], reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
             #记录因为扣非为负的区间，在区间内屏蔽开仓
             cooldown = True
             cooldownEnd = self.dangerousPoint[0][1]
@@ -493,6 +572,25 @@ class TradeUnit:
     out['result'] = self.result
     util.SaveMongoDB(out, 'stock_backtest', 'dv1')
     
+  def CheckResult(self):
+    db = self.mongoClient["stock_backtest"]
+    collection = db['dv1']
+    cursor = collection.find({"_id": self.code})
+    out = None
+    for c in cursor:
+      out = c
+      break
+    
+    if self.BEGIN_MONEY == out['beginMoney']:
+      if len(self.tradeList) == len(out['tradeMarks']):
+        if self.result == out['result']:
+          for index in range(len(self.tradeList)):
+            if self.tradeList[index] != TradeMark.FromDB(out['tradeMarks'][index]):
+              return False
+          else:
+            return True
+    
+    return False
 
     
       
@@ -547,12 +645,21 @@ class TradeMark:
     return { 'op': self.__reason, 'date':self.__date, 'dir':self.__dir, 'total':self.__total, 'number':self.__number, 'price':self.__price,
       'extraInfo': self.__extraInfo }
   
+  def FromDB(db):
+    one = TradeMark()
+    one.reason(db['op']).date(db['date']).dir(db['dir']).total(db['total']).number(db['number']).price(db['price']).extraInfo(db['extraInfo'])
+    return one
+  
   def __str__(self):
     return "操作：{}, 日期：{}, 方向：{}, 金额：{}, 价格：{}, 数量：{}, 附加信息：{}, ".format(
       self.__reason, self.__date, self.__dir, self.__total, self.__price, self.__number, self.__extraInfo)
+  
+  def __eq__(self, obj):
+    return self.__reason == obj.__reason and self.__date == obj.__date and self.__dir == obj.__dir \
+      and self.__total == obj.__total and self.__price == obj.__price and self.__number == obj.__number \
+      and self.__fee == obj.__fee and self.__extraInfo == obj.__extraInfo
 
-
-def Test2(code, save=False):
+def Test2(code, save=False, check=False):
   stock = TradeUnit()
   stock.code = code
   stock.LoadQuotations()
@@ -566,6 +673,9 @@ def Test2(code, save=False):
   stock.CloseAccount()
   if save:
     stock.Store2DB()
+    
+  if check:
+    assert stock.CheckResult()
   print(stock.checkPoint)
   print(stock.dangerousPoint)
   print(stock.dividendPoint)
@@ -574,6 +684,6 @@ def Test2(code, save=False):
         
 if __name__ == '__main__':
   #皖通高速
-  Test2('600012', True)
+  Test2('600012', False, True)
   #万华化学
-  #Test2('600039')
+  # Test2('600309')
