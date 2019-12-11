@@ -29,7 +29,8 @@ HOLD_STOCK = 2
 BUY_PERCENT = 0.04
 SELL_PERCENT = 0.03
 INVALID_SELL_PRICE = 10000
-VERSION = '1.0.0.10'
+INVALID_BUY_PRICE = -10000
+VERSION = '1.0.0.11'
   
 #尝试计算股息，根据股息买卖股的收益
 # def Test(code):
@@ -100,6 +101,7 @@ class TradeUnit:
     self.lastPrice = 0 #最后回测的交易价格
     self.result = None #最后的交易结果
     self.sellPrice = None #卖出价格
+    self.dividendAdjust = {} #除权日，调整买入卖出价格
     
     #特殊年报时间
     self.ALL_SPECIAL_PAPER = {}
@@ -224,21 +226,23 @@ class TradeUnit:
         
         #根据分红计算全年和半年的买入卖出价格
         #TODO 如果发生了派股，买入和卖出价格需要根据派股做出调整
+        # TODO 如果发生派股，派股的第二天买入卖出价格要变
         #allDividend影响下一年
         if v['year']['allDividend'] > 0:
           self.checkPoint[k+1]['buyPrice'] = v['year']['allDividend'] / BUY_PERCENT
           self.checkPoint[k + 1]['sellPrice'] = v['year']['allDividend'] / SELL_PERCENT
         else:
-          self.checkPoint[k + 1]['buyPrice'] = -10000
-          self.checkPoint[k + 1]['sellPrice'] = 10000
+          self.checkPoint[k + 1]['buyPrice'] = INVALID_BUY_PRICE
+          self.checkPoint[k + 1]['sellPrice'] = INVALID_SELL_PRICE
           
         # midYear的dividend影响8月31号以后的当年
         if v['midYear']['dividend'] > 0:
           self.checkPoint[k]['buyPrice2'] = v['midYear']['dividend'] / BUY_PERCENT
           self.checkPoint[k]['sellPrice2'] = v['midYear']['dividend'] / SELL_PERCENT
         else:
-          self.checkPoint[k]['buyPrice2'] = -10000
-          self.checkPoint[k]['sellPrice2'] = 10000
+          self.checkPoint[k]['buyPrice2'] = INVALID_BUY_PRICE
+          self.checkPoint[k]['sellPrice2'] = INVALID_SELL_PRICE
+          
           
         #检查净利润同比下降10%以上的位置
         self.ProcessQuarterPaper(k, 'first')
@@ -261,6 +265,27 @@ class TradeUnit:
           tmp.append(one)
           have.add(one[0])
     self.dividendPoint = tmp
+    
+    
+    # 对所有派股的情况，记录除权日，并调整买卖价格
+    for one in self.dividendPoint:
+      tmp = {}
+      # 有派股
+      if one[3] > 0:
+        try:
+          if one[5] == 'midYear' and self.checkPoint[one[4]]['buyPrice2'] != INVALID_BUY_PRICE:
+            tmp['buyPriceX'] = self.checkPoint[one[4]]['buyPrice2'] / (1 + one[3])
+            tmp['sellPriceX'] = self.checkPoint[one[4]]['sellPrice2'] / (1 + one[3])
+            tmp['y'] = one[4]
+            tmp['p'] = 'midYear'
+          elif one[5] == 'year' and self.checkPoint[one[4]+1]['buyPrice'] != INVALID_BUY_PRICE:
+            tmp['buyPriceX'] = self.checkPoint[one[4]+1]['buyPrice'] / (1 + one[3])
+            tmp['sellPriceX'] = self.checkPoint[one[4]+1]['sellPrice'] / (1 + one[3])
+            tmp['y'] = one[4] + 1
+            tmp['p'] = 'year'
+          self.dividendAdjust[one[0]] = tmp
+        except Exception as e:
+          print(e)
     
       
 
@@ -326,8 +351,13 @@ class TradeUnit:
   def processSong(self, value):
     #处理送股
     index = value.find('送')
+    index2 = value.find('转')
     if index != -1:
       newValue = value[index + 1:]
+      out = util.String2Number(newValue)
+      return out
+    elif index2 != -1:
+      newValue = value[index2 + 1:]
       out = util.String2Number(newValue)
       return out
     else:
@@ -391,7 +421,9 @@ class TradeUnit:
           pd.to_datetime(np.datetime64(self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['CQCXR']])),
           self.checkPoint[year][position]['dividend'],
           self.checkPoint[year][position]['dividend_aftertax'],
-          self.checkPoint[year][position]['gift']))
+          self.checkPoint[year][position]['gift'],
+          year,
+          position))
   
   def Quater2Date(self, year, quarter):
     #从某个季度，转换到具体日期
@@ -460,6 +492,14 @@ class TradeUnit:
         oldNumber = self.number
         dividendMoney = self.number*100*dividend[2]
         money = dividendMoney+self.money
+        
+        #如果有转送股，所有的价格，股数需要变动
+        if dividend[3] > 0:
+          self.number *= 1+dividend[3]
+          self.sellPrice /= 1+dividend[3]
+          price /= 1+dividend[3]
+          print('发生转送股 {} {} {}'.format(self.number, self.sellPrice, price))
+          
         number = money // (price * 100)
         self.money = money - number * 100 * price
         self.number += number
@@ -524,7 +564,14 @@ class TradeUnit:
   
 
   
-    
+  def ProcessDividendAdjust(self, data):
+    if data['p'] == 'midYear':
+      self.checkPoint[data['y']]['buyPrice2'] = data['buyPriceX']
+      self.checkPoint[data['y']]['sellPrice2'] = data['sellPriceX']
+    elif data['p'] == 'year':
+      self.checkPoint[data['y']]['buyPrice'] = data['buyPriceX']
+      self.checkPoint[data['y']]['sellPrice'] = data['sellPriceX']
+  
     
   def BackTest(self):
     #回测
@@ -565,6 +612,11 @@ class TradeUnit:
           cooldown = True
           cooldownEnd = self.dangerousPoint[0][1]
           self.dangerousPoint = self.dangerousPoint[1:]
+        
+        
+        #处理除权日结束时，需要调整买入卖出价格
+        if date in self.dividendAdjust:
+          self.ProcessDividendAdjust(self.dividendAdjust[date])
   
       except TypeError as e:
         print(e)
