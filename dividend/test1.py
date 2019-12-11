@@ -28,7 +28,7 @@ HOLD_MONEY = 1
 HOLD_STOCK = 2
 BUY_PERCENT = 0.04
 SELL_PERCENT = 0.03
-VERSION = '1.0.0.7'
+VERSION = '1.0.0.8'
   
 #尝试计算股息，根据股息买卖股的收益
 # def Test(code):
@@ -75,11 +75,11 @@ VERSION = '1.0.0.7'
 
 class TradeUnit:
   #代表一个交易单元，比如10万本金
-  def __init__(self):
+  def __init__(self, beginMoney):
     self.tradeList = []#交易记录
     self.status = HOLD_MONEY#持仓还是持币
     # self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
-    self.BEGIN_MONEY = 52105#146005
+    self.BEGIN_MONEY = beginMoney
     self.money = self.BEGIN_MONEY
     self.oldMoney = self.money
     self.costPrice = 0 #持仓的时候，表示持仓成本
@@ -217,8 +217,8 @@ class TradeUnit:
           
         # midYear的dividend影响8月31号以后的当年
         if v['midYear']['dividend'] > 0:
-          self.checkPoint[k]['buyPrice2'] = v['midYear']['allDividend'] / BUY_PERCENT
-          self.checkPoint[k]['sellPrice2'] = v['midYear']['allDividend'] / SELL_PERCENT
+          self.checkPoint[k]['buyPrice2'] = v['midYear']['dividend'] / BUY_PERCENT
+          self.checkPoint[k]['sellPrice2'] = v['midYear']['dividend'] / SELL_PERCENT
         else:
           self.checkPoint[k]['buyPrice2'] = -10000
           self.checkPoint[k]['sellPrice2'] = 10000
@@ -474,24 +474,26 @@ class TradeUnit:
 
     anchor0 = pd.Timestamp(datetime(date.year, 4, 30))
     anchor1 = pd.Timestamp(datetime(date.year, 8, 31))
-    
-    if date <= anchor0:
-      # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
-      if self.checkPoint[date.year]['buyPrice2'] > 0:
-        return True, self.checkPoint[date.year]['buyPrice2'], self.checkPoint[date.year]['sellPrice2']
-    elif date <= anchor1:
-      # 在8月31日之前，需要使用去年的年报
-      if self.checkPoint[date.year]['buyPrice'] > 0:
-        return True, self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice']
-    else:
-      #在8月31日之后，使用去年的allDividend和今年半年报中dividend中大的那个决定
-      buy = self.checkPoint[date.year]['buyPrice']
-      midBuy = self.checkPoint[date.year]['buyPrice2']
-      if buy > midBuy and buy > 0:
-        return True, buy, self.checkPoint[date.year]['sellPrice']
+    try:
+      if date <= anchor0:
+        # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
+        if self.checkPoint[date.year]['buyPrice2'] > 0:
+          return True, self.checkPoint[date.year]['buyPrice2'], self.checkPoint[date.year]['sellPrice2']
+      elif date <= anchor1:
+        # 在8月31日之前，需要使用去年的年报
+        if self.checkPoint[date.year]['buyPrice'] > 0:
+          return True, self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice']
       else:
-        if midBuy > 0:
-          return True, midBuy, self.checkPoint[date.year]['sellPrice2']
+        #在8月31日之后，使用去年的allDividend和今年半年报中dividend中大的那个决定
+        buy = self.checkPoint[date.year]['buyPrice']
+        midBuy = self.checkPoint[date.year]['buyPrice2']
+        if buy > midBuy and buy > 0:
+          return True, buy, self.checkPoint[date.year]['sellPrice']
+        else:
+          if midBuy > 0:
+            return True, midBuy, self.checkPoint[date.year]['sellPrice2']
+    except Exception as e:
+      pass
       
     return False, 0, 0
   
@@ -588,15 +590,22 @@ class TradeUnit:
       out = c
       break
     
+    where = 0
     if self.BEGIN_MONEY == out['beginMoney']:
       if len(self.tradeList) == len(out['tradeMarks']):
         if self.result == out['result']:
           for index in range(len(self.tradeList)):
             if self.tradeList[index] != TradeMark.FromDB(out['tradeMarks'][index]):
+              where += 1
               return False
           else:
             return True
-    
+        else:
+          where = 3
+      else:
+        where = 2
+    else:
+      where = 1
     return False
 
     
@@ -668,8 +677,8 @@ class TradeMark:
 
 
 #########################################################
-def Test2(code, save=False, check=False):
-  stock = TradeUnit()
+def Test2(code, beginMoney, save=False, check=False):
+  stock = TradeUnit(beginMoney)
   stock.code = code
   stock.LoadQuotations()
   stock.CheckPrepare()
@@ -689,10 +698,45 @@ def Test2(code, save=False, check=False):
   print(stock.dangerousPoint)
   print(stock.dividendPoint)
   
-        
+
+
+
+
+def TestAll(codes, save, check):
+  # # 皖通高速
+  # Test2('600012', 52105, save, check)
+  # # 万华化学
+  # Test2('600309', 146005, save, check)
+  # # 北京银行
+  # Test2('601169', 88305, save, check)
+  # # 大秦铁路
+  # # 2015年4月27日那天，预警价为14.33元，但收盘价只有14.32元，我们按照收盘价计算，
+  # # 差一分钱才触发卖出规则。如果当时卖出，可收回现金14.32*12500+330=179330元。
+  # # 错过这次卖出机会后不久，牛市见顶，股价狂泻，从14元多一直跌到5.98元。
+  # # TODO 需要牛市清盘卖出策略辅助
+  # Test2('601006', 84305, save, check)
+  # # 南京银行
+  # Test2('601009', 75005, save, check)
+  for one in codes:
+    Test2(one['code'], one['money'], save, check)
         
 if __name__ == '__main__':
-  #皖通高速
-  Test2('600012', True, True)
-  #万华化学
-  #Test2('600309')
+  CODE_AND_MONEY = [
+    # # # 皖通高速
+     {'code': '600012', 'money': 52105},
+    # # # 万华化学
+     {'code': '600309', 'money': 146005},
+    # # # 北京银行
+     {'code': '601169', 'money': 88305},
+    # # # 大秦铁路
+    # # # 2015年4月27日那天，预警价为14.33元，但收盘价只有14.32元，我们按照收盘价计算，
+    # # # 差一分钱才触发卖出规则。如果当时卖出，可收回现金14.32*12500+330=179330元。
+    # # # 错过这次卖出机会后不久，牛市见顶，股价狂泻，从14元多一直跌到5.98元。
+    # # # TODO 需要牛市清盘卖出策略辅助
+     {'code': '601006', 'money': 84305},
+  ]
+  #save
+  # TestAll(CODE_AND_MONEY, True, False)
+  #check
+  TestAll(CODE_AND_MONEY, False, True)
+  
