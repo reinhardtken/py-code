@@ -29,7 +29,7 @@ HOLD_STOCK = 2
 BUY_PERCENT = 0.04
 SELL_PERCENT = 0.03
 INVALID_SELL_PRICE = 10000
-VERSION = '1.0.0.9'
+VERSION = '1.0.0.10'
   
 #尝试计算股息，根据股息买卖股的收益
 # def Test(code):
@@ -76,7 +76,7 @@ VERSION = '1.0.0.9'
 
 class TradeUnit:
   #代表一个交易单元，比如10万本金
-  def __init__(self, beginMoney):
+  def __init__(self, code, beginMoney):
     self.tradeList = []#交易记录
     self.status = HOLD_MONEY#持仓还是持币
     # self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
@@ -88,7 +88,7 @@ class TradeUnit:
     self.startYear = 2011 #起始年份
     self.checkYear = self.startYear
     self.checkPoint = {}#所有的年报季报除权等影响买卖点的特殊时点
-    self.code = None#代码
+    self.code = code#代码
     self.mongoClient = MongoClient()
     self.dangerousPoint = []#利润同比下滑超过10%的位置
     self.dividendPoint = []  # 除权的日期
@@ -100,6 +100,21 @@ class TradeUnit:
     self.lastPrice = 0 #最后回测的交易价格
     self.result = None #最后的交易结果
     self.sellPrice = None #卖出价格
+    
+    #特殊年报时间
+    self.ALL_SPECIAL_PAPER = {}
+    self.ALL_SPECIAL_PAPER['601009'] = {
+      2015 :{
+        # 0: pd.Timestamp(datetime(date.year, 4, 30)),
+        1: pd.Timestamp(datetime(2015, 8, 20))
+      },
+    }
+    
+    if self.code in self.ALL_SPECIAL_PAPER:
+      self.specialPaper = self.ALL_SPECIAL_PAPER[self.code]
+    
+    
+    
 
   def buyInner(self, price, money):
     #计算多少钱买多少股，返回股数，钱数
@@ -476,6 +491,14 @@ class TradeUnit:
 
     anchor0 = pd.Timestamp(datetime(date.year, 4, 30))
     anchor1 = pd.Timestamp(datetime(date.year, 8, 31))
+    #特殊年报调整
+    if date.year in self.specialPaper:
+      if 0 in self.specialPaper[date.year]:
+        anchor0 = self.specialPaper[date.year][0]
+      if 1 in self.specialPaper[date.year]:
+        anchor1 = self.specialPaper[date.year][1]
+      
+        
     try:
       if date <= anchor0:
         # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
@@ -680,8 +703,7 @@ class TradeMark:
 
 #########################################################
 def Test2(code, beginMoney, save=False, check=False):
-  stock = TradeUnit(beginMoney)
-  stock.code = code
+  stock = TradeUnit(code, beginMoney)
   stock.LoadQuotations()
   stock.CheckPrepare()
 
