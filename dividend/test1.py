@@ -17,7 +17,10 @@ import util
 if __name__ == '__main__':
   import sys
   
-  
+ 
+ #https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
+ 
+ 
 DIR_BUY = 1
 DIR_SELL = -1
 HOLD_MONEY = 1
@@ -73,7 +76,8 @@ class TradeUnit:
     self.tradeList = []#交易记录
     self.status = HOLD_MONEY#持仓还是持币
     # self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
-    self.money = 52105
+    self.BEGIN_MONEY = 52105
+    self.money = self.BEGIN_MONEY
     self.oldMoney = self.money
     self.costPrice = 0 #持仓的时候，表示持仓成本
     self.number = 0 #持仓的时候表示持仓数目(手)
@@ -86,6 +90,10 @@ class TradeUnit:
     self.dividendPoint = []  # 除权的日期
     self.data = None #行情
     self.MAXEND = self.Quater2Date(2099, 'first')#默认的冻结开仓截止日期
+    self.holdStockDate = 0 #持股总交易天数
+    self.holdStockNatureDate = 0 #持股总自然天数
+    self.lastDate = None #最后回测的交易日
+    self.lastPrice = 0 #最后回测的交易价格
 
   def buyInner(self, price, money):
     #计算多少钱买多少股，返回股数，钱数
@@ -96,6 +104,9 @@ class TradeUnit:
   
   def Buy(self, date, triggerPrice, price, reason=''):
     try:
+      if self.status == HOLD_MONEY:
+        self.holdStockDate += 1
+        
       #如果持币，以固定价格买入
       if price <= triggerPrice:
         if self.status == HOLD_MONEY:
@@ -130,8 +141,8 @@ class TradeUnit:
       self.money = self.money + self.number * 100 * price
       winLoss = (self.money - self.oldMoney) / self.oldMoney
       self.status = HOLD_MONEY
-      print("卖出： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 盈亏：{}, 原因：{}".format(date, triggerPrice, price, self.number, winLoss,
-                                                                    reason))
+      print("卖出： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 盈亏：{}, 现金：{}, 原因：{}".format(date, triggerPrice, price,
+                                                                           self.number, winLoss, self.money, reason))
 
   def CheckPrepare(self):
     #准备判定条件
@@ -380,6 +391,9 @@ class TradeUnit:
             continue
             
         year = date.year
+        self.lastDate = date
+        self.lastPrice = row['close']
+        
         if year in self.checkPoint:
           cp = self.checkPoint[year]
           #先完全忽略半年报
@@ -407,6 +421,27 @@ class TradeUnit:
         print(e)
       except KeyError as e:
         print(e)
+
+
+
+  def CloseAccount(self):
+    if self.status == HOLD_MONEY:
+      profit, profitPercent = self.CloseAccountHoldMoney()
+      print("结算(持币)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY, profit,
+                                                                                 profitPercent, self.holdStockDate))
+    elif self.status == HOLD_STOCK:
+      self.money = self.lastPrice*self.number*100
+      profit, profitPercent = self.CloseAccountHoldMoney()
+      print("结算(持股)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}, 持股数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY,
+                                                                         profit,
+                                                                         profitPercent, self.holdStockDate, self.number))
+  
+  def CloseAccountHoldMoney(self):
+    profit = self.money - self.BEGIN_MONEY
+    profitPercent = profit / self.BEGIN_MONEY
+    return profit, profitPercent
+    
+
     
       
 
@@ -432,6 +467,7 @@ def Test2(code):
   print(stock.dividendPoint)
   
   stock.BackTest()
+  stock.CloseAccount()
   print(stock.checkPoint)
   print(stock.dangerousPoint)
   print(stock.dividendPoint)
