@@ -28,48 +28,48 @@ HOLD_MONEY = 1
 HOLD_STOCK = 2
 BUY_PERCENT = 0.04
 SELL_PERCENT = 0.03
- 
+VERSION = '1.0.0.7'
   
 #尝试计算股息，根据股息买卖股的收益
-def Test(code):
-  client = MongoClient()
-  db = client['stock2']
-  collection = db['dv']
-  
-  out = []
-  totalMoney = 100000
-  stockNumber = 0
-  cashOrStock = 0 # 0 cash 1 stock
-  cursor = collection.find({"_id": code})
-  index = 0
-  flag = False
-  for c in cursor:
-    date = c["date"]
-    allPrice = c["price"]
-    dv = c["dv"]
-    
-  for index in range(len(date)):
-    if flag is False and date[index].startswith("2011-"):
-      flag = True
-      
-    if flag:
-      if cashOrStock == 0 and dv[index] >= 4.0:
-        #买入
-        price = float(allPrice[index])
-        stockNumber = totalMoney / price
-        print("buy action price {}, dv {}, and number {}".format(price, dv[index], stockNumber))
-        cashOrStock = 1
-      elif cashOrStock == 1 and dv[index] <= 3.0:
-        #卖出
-        price = float(allPrice[index])
-        totalMoney = stockNumber * price
-        print("sell action price {}, dv {}, and money {}".format(price, dv[index], totalMoney))
-        cashOrStock = 0
-  
-  if cashOrStock == 0:
-    print("final result {}".format(totalMoney))
-  else:
-    print("final result2 {}".format(stockNumber*float(allPrice[-1])))
+# def Test(code):
+#   client = MongoClient()
+#   db = client['stock2']
+#   collection = db['dv']
+#
+#   out = []
+#   totalMoney = 100000
+#   stockNumber = 0
+#   cashOrStock = 0 # 0 cash 1 stock
+#   cursor = collection.find({"_id": code})
+#   index = 0
+#   flag = False
+#   for c in cursor:
+#     date = c["date"]
+#     allPrice = c["price"]
+#     dv = c["dv"]
+#
+#   for index in range(len(date)):
+#     if flag is False and date[index].startswith("2011-"):
+#       flag = True
+#
+#     if flag:
+#       if cashOrStock == 0 and dv[index] >= 4.0:
+#         #买入
+#         price = float(allPrice[index])
+#         stockNumber = totalMoney / price
+#         print("buy action price {}, dv {}, and number {}".format(price, dv[index], stockNumber))
+#         cashOrStock = 1
+#       elif cashOrStock == 1 and dv[index] <= 3.0:
+#         #卖出
+#         price = float(allPrice[index])
+#         totalMoney = stockNumber * price
+#         print("sell action price {}, dv {}, and money {}".format(price, dv[index], totalMoney))
+#         cashOrStock = 0
+#
+#   if cashOrStock == 0:
+#     print("final result {}".format(totalMoney))
+#   else:
+#     print("final result2 {}".format(stockNumber*float(allPrice[-1])))
     
     
 
@@ -79,7 +79,7 @@ class TradeUnit:
     self.tradeList = []#交易记录
     self.status = HOLD_MONEY#持仓还是持币
     # self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
-    self.BEGIN_MONEY = 52105
+    self.BEGIN_MONEY = 52105#146005
     self.money = self.BEGIN_MONEY
     self.oldMoney = self.money
     self.costPrice = 0 #持仓的时候，表示持仓成本
@@ -98,6 +98,7 @@ class TradeUnit:
     self.lastDate = None #最后回测的交易日
     self.lastPrice = 0 #最后回测的交易价格
     self.result = None #最后的交易结果
+    self.sellPrice = None #卖出价格
 
   def buyInner(self, price, money):
     #计算多少钱买多少股，返回股数，钱数
@@ -106,18 +107,22 @@ class TradeUnit:
     return (number, restMoney)
   
   
-  def Buy(self, date, triggerPrice, price, reason=''):
+  def Buy(self, date, triggerPrice, sellPrice, price, reason=''):
     try:
-      if self.status == HOLD_MONEY:
+      if self.status == HOLD_STOCK:
         self.holdStockDate += 1
+        #如果已经持股，需要根据历年股息调整卖出价格
+        self.sellPrice = sellPrice
         
       #如果持币，以固定价格买入
       if price <= triggerPrice:
         if self.status == HOLD_MONEY:
+          #卖出的价格是在建仓的时候决定的
+          self.sellPrice = sellPrice
           self.oldMoney = self.money
-          nm = self.buyInner(price, self.money)
-          self.number = nm[0]
-          self.money = nm[1]
+          number, money = self.buyInner(price, self.money)
+          self.number = number
+          self.money = money
           #self.number = self.money // (price * 100)
           #self.money = self.money - self.number*100*price
           self.costPrice = price
@@ -148,12 +153,12 @@ class TradeUnit:
       print(e)
    
  
-  def Sell(self, date, triggerPrice, price, reason=''):
-    if price >= triggerPrice:
-      self.SellNoCodition(date, triggerPrice, price, reason)
+  def Sell(self, date, price, reason=''):
+    if self.status == HOLD_STOCK and price >= self.sellPrice:
+      self.SellNoCodition(date, price, reason)
       
       
-  def SellNoCodition(self, date, triggerPrice, price, reason=''):
+  def SellNoCodition(self, date, price, reason=''):
     if self.status == HOLD_STOCK:
       self.money = self.money + self.number * 100 * price
       winLoss = (self.money - self.oldMoney) / self.oldMoney
@@ -201,6 +206,7 @@ class TradeUnit:
         v['year']['allDividend'] = v['midYear']['dividend'] + v['year']['dividend']
         
         #根据分红计算全年和半年的买入卖出价格
+        #TODO 如果发生了派股，买入和卖出价格需要根据派股做出调整
         #allDividend影响下一年
         if v['year']['allDividend'] > 0:
           self.checkPoint[k+1]['buyPrice'] = v['year']['allDividend'] / BUY_PERCENT
@@ -466,22 +472,22 @@ class TradeUnit:
   def MakeDecisionPrice(self, date):
     #决定使用哪个年的checkpoit，返回对应的buy和sell
 
-    #在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
     anchor0 = pd.Timestamp(datetime(date.year, 4, 30))
-    #在8月31日之前，需要使用去年的年报和半年报
     anchor1 = pd.Timestamp(datetime(date.year, 8, 31))
     
     if date <= anchor0:
-      if self.checkPoint[date.year]['buyPrice'] > 0:
-        return True, self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice']
+      # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
+      if self.checkPoint[date.year]['buyPrice2'] > 0:
+        return True, self.checkPoint[date.year]['buyPrice2'], self.checkPoint[date.year]['sellPrice2']
     elif date <= anchor1:
+      # 在8月31日之前，需要使用去年的年报
       if self.checkPoint[date.year]['buyPrice'] > 0:
         return True, self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice']
     else:
-      #使用去年的allDividend和半年报中dividend中大的那个决定
+      #在8月31日之后，使用去年的allDividend和今年半年报中dividend中大的那个决定
       buy = self.checkPoint[date.year]['buyPrice']
       midBuy = self.checkPoint[date.year]['buyPrice2']
-      if buy > midBuy:
+      if buy > midBuy and buy > 0:
         return True, buy, self.checkPoint[date.year]['sellPrice']
       else:
         if midBuy > 0:
@@ -514,23 +520,24 @@ class TradeUnit:
         
         action, buyPrice, sellPrice = self.MakeDecisionPrice(date)
         if action:
-          self.Buy(date, buyPrice, row['close'], reason='低于买点')
-          self.Sell(date, sellPrice, row['close'], reason='高于卖点')
+          self.Buy(date, buyPrice, sellPrice, row['close'], reason='低于买点')
+          
+        self.Sell(date, row['close'], reason='高于卖点')
           
           
-          #处理除权,
-          # 除权日不可能不是交易日
-          if len(self.dividendPoint) > 0 and date == self.dividendPoint[0][0]:
-            self.ProcessDividend(date, buyPrice, row['close'], self.dividendPoint[0])
-            self.dividendPoint = self.dividendPoint[1:]
-          
-          #处理季报，检查是否扣非-10%
-          if len(self.dangerousPoint) >0 and date >= self.dangerousPoint[0][0]:
-            self.SellNoCodition(date, sellPrice, row['close'], reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
-            #记录因为扣非为负的区间，在区间内屏蔽开仓
-            cooldown = True
-            cooldownEnd = self.dangerousPoint[0][1]
-            self.dangerousPoint = self.dangerousPoint[1:]
+        #处理除权,
+        # 除权日不可能不是交易日
+        if len(self.dividendPoint) > 0 and date == self.dividendPoint[0][0]:
+          self.ProcessDividend(date, buyPrice, row['close'], self.dividendPoint[0])
+          self.dividendPoint = self.dividendPoint[1:]
+        
+        #处理季报，检查是否扣非-10%
+        if len(self.dangerousPoint) >0 and date >= self.dangerousPoint[0][0]:
+          self.SellNoCodition(date, row['close'], reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
+          #记录因为扣非为负的区间，在区间内屏蔽开仓
+          cooldown = True
+          cooldownEnd = self.dangerousPoint[0][1]
+          self.dangerousPoint = self.dangerousPoint[1:]
   
       except TypeError as e:
         print(e)
@@ -563,7 +570,7 @@ class TradeUnit:
   
   def Store2DB(self):
     #保存交易记录到db，用于回测验证
-    out = {"_id": self.code}
+    out = {"_id": self.code, 'ver': VERSION}
     out["beginMoney"] = self.BEGIN_MONEY
     tl = []
     for one in self.tradeList:
@@ -594,7 +601,7 @@ class TradeUnit:
 
     
       
-#交易记录
+#交易记录#################################################
 class TradeMark:
   def __init__(self):
     self.__date = None #交易发生的时间
@@ -659,6 +666,8 @@ class TradeMark:
       and self.__total == obj.__total and self.__price == obj.__price and self.__number == obj.__number \
       and self.__fee == obj.__fee and self.__extraInfo == obj.__extraInfo
 
+
+#########################################################
 def Test2(code, save=False, check=False):
   stock = TradeUnit()
   stock.code = code
@@ -684,6 +693,6 @@ def Test2(code, save=False, check=False):
         
 if __name__ == '__main__':
   #皖通高速
-  Test2('600012', False, True)
+  Test2('600012', True, True)
   #万华化学
-  # Test2('600309')
+  #Test2('600309')
