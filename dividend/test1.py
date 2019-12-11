@@ -28,7 +28,8 @@ HOLD_MONEY = 1
 HOLD_STOCK = 2
 BUY_PERCENT = 0.04
 SELL_PERCENT = 0.03
-VERSION = '1.0.0.8'
+INVALID_SELL_PRICE = 10000
+VERSION = '1.0.0.9'
   
 #尝试计算股息，根据股息买卖股的收益
 # def Test(code):
@@ -112,7 +113,8 @@ class TradeUnit:
       if self.status == HOLD_STOCK:
         self.holdStockDate += 1
         #如果已经持股，需要根据历年股息调整卖出价格
-        self.sellPrice = sellPrice
+        if sellPrice != INVALID_SELL_PRICE:
+          self.sellPrice = sellPrice
         
       #如果持币，以固定价格买入
       if price <= triggerPrice:
@@ -478,7 +480,7 @@ class TradeUnit:
       if date <= anchor0:
         # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
         if self.checkPoint[date.year]['buyPrice2'] > 0:
-          return True, self.checkPoint[date.year]['buyPrice2'], self.checkPoint[date.year]['sellPrice2']
+          return True, self.checkPoint[date.year-1]['buyPrice2'], self.checkPoint[date.year-1]['sellPrice2']
       elif date <= anchor1:
         # 在8月31日之前，需要使用去年的年报
         if self.checkPoint[date.year]['buyPrice'] > 0:
@@ -723,20 +725,23 @@ def TestAll(codes, save, check):
 if __name__ == '__main__':
   CODE_AND_MONEY = [
     # # # 皖通高速
-     {'code': '600012', 'money': 52105},
+    #   {'code': '600012', 'money': 52105},
     # # # 万华化学
-     {'code': '600309', 'money': 146005},
+    #   {'code': '600309', 'money': 146005},
     # # # 北京银行
-     {'code': '601169', 'money': 88305},
+    #   {'code': '601169', 'money': 88305},
     # # # 大秦铁路
     # # # 2015年4月27日那天，预警价为14.33元，但收盘价只有14.32元，我们按照收盘价计算，
     # # # 差一分钱才触发卖出规则。如果当时卖出，可收回现金14.32*12500+330=179330元。
     # # # 错过这次卖出机会后不久，牛市见顶，股价狂泻，从14元多一直跌到5.98元。
     # # # TODO 需要牛市清盘卖出策略辅助
-     {'code': '601006', 'money': 84305},
+    #   {'code': '601006', 'money': 84305},
+    #南京银行
+    {'code': '601009', 'money': 75005},
   ]
+  # test
+  TestAll(CODE_AND_MONEY, False, False)
   #save
   # TestAll(CODE_AND_MONEY, True, False)
   #check
-  TestAll(CODE_AND_MONEY, False, True)
-  
+  #TestAll(CODE_AND_MONEY, False, True)
