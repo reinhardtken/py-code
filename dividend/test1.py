@@ -95,6 +95,7 @@ class TradeUnit:
     self.holdStockNatureDate = 0 #持股总自然天数
     self.lastDate = None #最后回测的交易日
     self.lastPrice = 0 #最后回测的交易价格
+    self.result = None #最后的交易结果
 
   def buyInner(self, price, money):
     #计算多少钱买多少股，返回股数，钱数
@@ -462,19 +463,35 @@ class TradeUnit:
   def CloseAccount(self):
     if self.status == HOLD_MONEY:
       profit, profitPercent = self.CloseAccountHoldMoney()
-      print("结算(持币)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY, profit,
-                                                                                 profitPercent, self.holdStockDate))
+      self.result = "结算(持币)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY, profit,
+                                                                                 profitPercent, self.holdStockDate)
     elif self.status == HOLD_STOCK:
       self.money = self.lastPrice*self.number*100
       profit, profitPercent = self.CloseAccountHoldMoney()
-      print("结算(持股)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}, 持股数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY,
+      self.result = "结算(持股)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}, 持股数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY,
                                                                          profit,
-                                                                         profitPercent, self.holdStockDate, self.number))
+                                                                         profitPercent, self.holdStockDate, self.number)
+    
+    print(self.result)
+  
+  
   
   def CloseAccountHoldMoney(self):
     profit = self.money - self.BEGIN_MONEY
     profitPercent = profit / self.BEGIN_MONEY
     return profit, profitPercent
+  
+  
+  def Store2DB(self):
+    #保存交易记录到db，用于回测验证
+    out = {"_id": self.code}
+    out["beginMoney"] = self.BEGIN_MONEY
+    tl = []
+    for one in self.tradeList:
+      tl.append(one.ToDB())
+    out['tradeMarks'] = tl
+    out['result'] = self.result
+    util.SaveMongoDB(out, 'stock_backtest', 'dv1')
     
 
     
@@ -525,13 +542,17 @@ class TradeMark:
   
   def Dump(self):
     print(self)
+    
+  def ToDB(self):
+    return { 'op': self.__reason, 'date':self.__date, 'dir':self.__dir, 'total':self.__total, 'number':self.__number, 'price':self.__price,
+      'extraInfo': self.__extraInfo }
   
   def __str__(self):
     return "操作：{}, 日期：{}, 方向：{}, 金额：{}, 价格：{}, 数量：{}, 附加信息：{}, ".format(
       self.__reason, self.__date, self.__dir, self.__total, self.__price, self.__number, self.__extraInfo)
 
 
-def Test2(code):
+def Test2(code, save=False):
   stock = TradeUnit()
   stock.code = code
   stock.LoadQuotations()
@@ -543,6 +564,8 @@ def Test2(code):
   
   stock.BackTest()
   stock.CloseAccount()
+  if save:
+    stock.Store2DB()
   print(stock.checkPoint)
   print(stock.dangerousPoint)
   print(stock.dividendPoint)
@@ -551,6 +574,6 @@ def Test2(code):
         
 if __name__ == '__main__':
   #皖通高速
-  # Test2('600012')
+  Test2('600012', True)
   #万华化学
-  Test2('600039')
+  #Test2('600039')
