@@ -22,6 +22,7 @@ if __name__ == '__main__':
  
  
 DIR_BUY = 1
+DIR_NONE = 0
 DIR_SELL = -1
 HOLD_MONEY = 1
 HOLD_STOCK = 2
@@ -118,15 +119,28 @@ class TradeUnit:
           #self.money = self.money - self.number*100*price
           self.costPrice = price
           self.status = HOLD_STOCK
-          print("买入： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price, self.number, self.money, reason))
+
+          # 记录
+          mark = TradeMark()
+          mark.reason('买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
+            price).extraInfo(
+            '{}'.format(reason)).Dump()
+          self.tradeList.append(mark)
+          # print("买入： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price, self.number, self.money, reason))
         elif self.status == HOLD_STOCK:
-          nm = self.buyInner(price, self.money)
-          if nm[0] > 0:
+          number, money = self.buyInner(price, self.money)
+          if number > 0:
             #追加买入
-            self.number += nm[0]
-            self.money = nm[1]
-            print("买入（追加买入）： 日期：{}, 触发价格：{}, 价格：{}, 追加数量：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price,
-                                                                                           nm[0], self.number, self.money, reason))
+            self.number += number
+            self.money = money
+            
+            mark = TradeMark()
+            mark.reason('追加买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
+              price).extraInfo(
+              '剩余资金：{}'.format(self.money)).Dump()
+            self.tradeList.append(mark)
+            # print("买入（追加买入）： 日期：{}, 触发价格：{}, 价格：{}, 追加数量：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price,
+            #                                                                                nm[0], self.number, self.money, reason))
     except Exception as e:
       print(e)
    
@@ -141,8 +155,16 @@ class TradeUnit:
       self.money = self.money + self.number * 100 * price
       winLoss = (self.money - self.oldMoney) / self.oldMoney
       self.status = HOLD_MONEY
-      print("卖出： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 盈亏：{}, 现金：{}, 原因：{}".format(date, triggerPrice, price,
-                                                                           self.number, winLoss, self.money, reason))
+
+      # 记录
+      mark = TradeMark()
+      mark.reason('卖出').date(date).dir(DIR_SELL).total(self.number * 100 * price).number(self.number).price(price).extraInfo(
+        '盈亏：{}, 原因：{}'.format(winLoss, reason)).Dump()
+      self.tradeList.append(mark)
+      # print(mark)
+      # print("卖出： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 盈亏：{}, 现金：{}, 原因：{}".format(date, triggerPrice, price,
+      #                                                                      self.number, winLoss, self.money, reason))
+
 
   def CheckPrepare(self):
     #准备判定条件
@@ -367,14 +389,27 @@ class TradeUnit:
         number = money // (price * 100)
         self.money = money - number * 100 * price
         self.number += number
-        print("除权买入： 日期：{}, 除权日：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 分红：{}".format(date, dividend[0], buyPrice, price, self.number, self.money,
-                                                                          dividendMoney))
+        
+        #记录
+        mark = TradeMark()
+        mark.reason('除权买入').date(date).dir(DIR_BUY).total(number*100*price).number(number).\
+          price(price).extraInfo('分红金额：{}'.format(dividendMoney)).Dump()
+        self.tradeList.append(mark)
+        # print(mark)
+        # print("除权买入： 日期：{}, 除权日：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 分红：{}".format(date, dividend[0], buyPrice, price, self.number, self.money,
+        #                                                                   dividendMoney))
       else:
         oldMoney = self.money
         dividendMoney = self.number * 100 * dividend[2]
         self.money += dividendMoney
-        print("除权不买入： 日期：{}, 除权日：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 分红：{}".format(date, dividend[0], buyPrice, price, self.number, self.money,
-                                                                      dividendMoney))
+        # 记录
+        mark = TradeMark()
+        mark.reason('除权不买入').date(date).dir(DIR_NONE).total(dividendMoney).number(0).price(0).extraInfo(
+          '分红金额：{}'.format(dividendMoney)).Dump()
+        self.tradeList.append(mark)
+        # print(mark)
+        # print("除权不买入： 日期：{}, 除权日：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 分红：{}".format(date, dividend[0], buyPrice, price, self.number, self.money,
+        #                                                               dividendMoney))
   
   def BackTest(self):
     #回测
@@ -444,16 +479,56 @@ class TradeUnit:
 
     
       
-
+#交易记录
 class TradeMark:
   def __init__(self):
-    self.date = None #交易发生的时间
-    self.dir = None #交易发生的方向，1 买入，-1 卖出
-    self.fee = None
-    self.number = None #股票交易数量
-    self.price = None
-    self.total = None
+    self.__date = None #交易发生的时间
+    self.__dir = None #交易发生的方向，1 买入，-1 卖出
+    self.__fee = None
+    self.__number = None #股票交易数量
+    self.__price = None #股票交易的金额
+    self.__total = None #涉及的总金额
+    self.__reason = None #交易原因
+    self.__extraInfo = None #其他附带信息
  
+  def date(self, d):
+    self.__date = d
+    return self
+  
+  def dir(self, d):
+    self.__dir = d
+    return self
+  
+  def fee(self, d):
+    self.__fee = d
+    return self
+  
+  def number(self, d):
+    self.__number = d
+    return self
+  
+  def price(self, d):
+    self.__price = d
+    return self
+  
+  def total(self, d):
+    self.__total = d
+    return self
+  
+  def reason(self, d):
+    self.__reason = d
+    return self
+  
+  def extraInfo(self, d):
+    self.__extraInfo = d
+    return self
+  
+  def Dump(self):
+    print(self)
+  
+  def __str__(self):
+    return "操作：{}, 日期：{}, 方向：{}, 金额：{}, 价格：{}, 数量：{}, 附加信息：{}, ".format(
+      self.__reason, self.__date, self.__dir, self.__total, self.__price, self.__number, self.__extraInfo)
 
 
 def Test2(code):
@@ -475,6 +550,7 @@ def Test2(code):
         
         
 if __name__ == '__main__':
-  # Test("sh600012")
-  # Test("sh600309")
-  Test2('600012')
+  #皖通高速
+  # Test2('600012')
+  #万华化学
+  Test2('600039')
