@@ -127,7 +127,7 @@ class TradeUnit:
     return (number, restMoney)
   
   
-  def Buy(self, date, triggerPrice, sellPrice, price, reason=''):
+  def Buy(self, date, triggerPrice, sellPrice, price, where, reason=''):
     try:
       if self.status == HOLD_STOCK:
         self.holdStockDate += 1
@@ -152,8 +152,7 @@ class TradeUnit:
           # 记录
           mark = TradeMark()
           mark.reason('买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
-            price).extraInfo(
-            '{}'.format(reason)).Dump()
+            price).where(where).extraInfo('{}'.format(reason)).Dump()
           self.tradeList.append(mark)
           # print("买入： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price, self.number, self.money, reason))
         elif self.status == HOLD_STOCK:
@@ -165,8 +164,7 @@ class TradeUnit:
             
             mark = TradeMark()
             mark.reason('追加买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
-              price).extraInfo(
-              '剩余资金：{}'.format(self.money)).Dump()
+              price).where(where).extraInfo('剩余资金：{}'.format(self.money)).Dump()
             self.tradeList.append(mark)
             # print("买入（追加买入）： 日期：{}, 触发价格：{}, 价格：{}, 追加数量：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price,
             #                                                                                nm[0], self.number, self.money, reason))
@@ -442,7 +440,13 @@ class TradeUnit:
   
   def ProcessQuarterPaper(self, year, position):
     if 'sjltz' in self.checkPoint[year][position]:
-      speed = float(self.checkPoint[year][position]['sjltz'])
+      speed = -11
+      try:
+        #存在这个值为“-”的情形
+        speed = float(self.checkPoint[year][position]['sjltz'])
+      except Exception as e:
+        pass
+      
       if speed < -10:
         self.dangerousPoint.append((self.Quater2Date(year, position), self.MAXEND, year, position, speed))
       elif speed > 0:
@@ -553,24 +557,24 @@ class TradeUnit:
       if date <= anchor0:
         # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
         if self.checkPoint[date.year]['buyPrice2'] > 0:
-          return True, self.checkPoint[date.year-1]['buyPrice2'], self.checkPoint[date.year-1]['sellPrice2']
+          return True, self.checkPoint[date.year-1]['buyPrice2'], self.checkPoint[date.year-1]['sellPrice2'], str(date.year)+'-midYear'
       elif date <= anchor1:
         # 在8月31日之前，需要使用去年的年报
         if self.checkPoint[date.year]['buyPrice'] > 0:
-          return True, self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice']
+          return True, self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice'], str(date.year-1)+'-year'
       else:
         #在8月31日之后，使用去年的allDividend和今年半年报中dividend中大的那个决定
         buy = self.checkPoint[date.year]['buyPrice']
         midBuy = self.checkPoint[date.year]['buyPrice2']
         if buy > midBuy and buy > 0:
-          return True, buy, self.checkPoint[date.year]['sellPrice']
+          return True, buy, self.checkPoint[date.year]['sellPrice'], str(date.year-1)+'-year2'
         else:
           if midBuy > 0:
-            return True, midBuy, self.checkPoint[date.year]['sellPrice2']
+            return True, midBuy, self.checkPoint[date.year]['sellPrice2'], str(date.year)+'-midYear2'
     except Exception as e:
       pass
       
-    return False, 0, 0
+    return False, 0, 0, None
   
 
   
@@ -602,9 +606,9 @@ class TradeUnit:
         self.lastDate = date
         self.lastPrice = row['close']
         
-        action, buyPrice, sellPrice = self.MakeDecisionPrice(date)
+        action, buyPrice, sellPrice, where = self.MakeDecisionPrice(date)
         if action:
-          self.Buy(date, buyPrice, sellPrice, row['close'], reason='低于买点')
+          self.Buy(date, buyPrice, sellPrice, row['close'], where, reason='低于买点')
           
         self.Sell(date, row['close'], reason='高于卖点')
           
@@ -707,6 +711,7 @@ class TradeMark:
     self.__price = None #股票交易的金额
     self.__total = None #涉及的总金额
     self.__reason = None #交易原因
+    self.__where = ''  # 根据哪一年的中报年报分红决定买入，仅开仓有效
     self.__extraInfo = None #其他附带信息
  
   def date(self, d):
@@ -741,26 +746,31 @@ class TradeMark:
     self.__extraInfo = d
     return self
   
+  def where(self, d):
+    self.__where = d
+    return self
+  
   def Dump(self):
     print(self)
     
+  def __str__(self):
+    return "操作：{}, 日期：{}, 方向：{}, 金额：{}, 价格：{}, 数量：{}, 年报：{}, 附加信息：{}, ".format(
+      self.__reason, self.__date, self.__dir, self.__total, self.__price, self.__number, self.__where, self.__extraInfo)
+    
   def ToDB(self):
     return { 'op': self.__reason, 'date':self.__date, 'dir':self.__dir, 'total':self.__total, 'number':self.__number, 'price':self.__price,
-      'extraInfo': self.__extraInfo }
+             'where': self.__where, 'extraInfo': self.__extraInfo }
   
   def FromDB(db):
     one = TradeMark()
-    one.reason(db['op']).date(db['date']).dir(db['dir']).total(db['total']).number(db['number']).price(db['price']).extraInfo(db['extraInfo'])
+    one.reason(db['op']).date(db['date']).dir(db['dir']).total(db['total']).number(db['number']).price(db['price']).\
+      where(db['where']).extraInfo(db['extraInfo'])
     return one
-  
-  def __str__(self):
-    return "操作：{}, 日期：{}, 方向：{}, 金额：{}, 价格：{}, 数量：{}, 附加信息：{}, ".format(
-      self.__reason, self.__date, self.__dir, self.__total, self.__price, self.__number, self.__extraInfo)
   
   def __eq__(self, obj):
     return self.__reason == obj.__reason and self.__date == obj.__date and self.__dir == obj.__dir \
       and self.__total == obj.__total and self.__price == obj.__price and self.__number == obj.__number \
-      and self.__fee == obj.__fee and self.__extraInfo == obj.__extraInfo
+      and self.__fee == obj.__fee and self.__where == obj.__where and self.__extraInfo == obj.__extraInfo
 
 #########################################################
 class DividendPoint:
@@ -848,23 +858,44 @@ def TestAll(codes, save, check):
 if __name__ == '__main__':
   CODE_AND_MONEY = [
     # # # 皖通高速
-    #   {'code': '600012', 'money': 52105},
+      {'code': '600012', 'money': 52105},
     # # # 万华化学
-    #   {'code': '600309', 'money': 146005},
+      {'code': '600309', 'money': 146005},
     # # # 北京银行
-    #   {'code': '601169', 'money': 88305},
+      {'code': '601169', 'money': 88305},
     # # # 大秦铁路
     # # # 2015年4月27日那天，预警价为14.33元，但收盘价只有14.32元，我们按照收盘价计算，
     # # # 差一分钱才触发卖出规则。如果当时卖出，可收回现金14.32*12500+330=179330元。
     # # # 错过这次卖出机会后不久，牛市见顶，股价狂泻，从14元多一直跌到5.98元。
     # # # TODO 需要牛市清盘卖出策略辅助
-    #   {'code': '601006', 'money': 84305},
+      {'code': '601006', 'money': 84305},
     #南京银行
     {'code': '601009', 'money': 75005},
+    # 东风股份
+    # {'code': '601515', 'money': 133705},
+  ]
+
+  CODE_AND_MONEY2 = [
+    # # # 皖通高速
+    {'code': '600012', 'money': 52105},
+    # # # 万华化学
+    {'code': '600309', 'money': 146005},
+    # # # 北京银行
+    {'code': '601169', 'money': 88305},
+    # # # 大秦铁路
+    # # # 2015年4月27日那天，预警价为14.33元，但收盘价只有14.32元，我们按照收盘价计算，
+    # # # 差一分钱才触发卖出规则。如果当时卖出，可收回现金14.32*12500+330=179330元。
+    # # # 错过这次卖出机会后不久，牛市见顶，股价狂泻，从14元多一直跌到5.98元。
+    # # # TODO 需要牛市清盘卖出策略辅助
+    {'code': '601006', 'money': 84305},
+    # 南京银行
+    {'code': '601009', 'money': 75005},
+    # 东风股份
+    # {'code': '601515', 'money': 133705},
   ]
   # test
   #TestAll(CODE_AND_MONEY, False, False)
   #save
-  TestAll(CODE_AND_MONEY, True, False)
+  TestAll(CODE_AND_MONEY2, True, False)
   #check
-  #TestAll(CODE_AND_MONEY, False, True)
+  # TestAll(CODE_AND_MONEY2, False, True)
