@@ -30,7 +30,7 @@ BUY_PERCENT = 0.04
 SELL_PERCENT = 0.03
 INVALID_SELL_PRICE = 10000
 INVALID_BUY_PRICE = -10000
-VERSION = '1.0.0.12'
+VERSION = '1.0.0.13'
   
 #尝试计算股息，根据股息买卖股的收益
 # def Test(code):
@@ -102,6 +102,7 @@ class TradeUnit:
     self.result = None #最后的交易结果
     self.sellPrice = None #卖出价格
     self.dividendAdjust = {} #除权日，调整买入卖出价格
+    self.lastPriceVec = [] #最后5天价格，用于调试
     
     #特殊年报时间
     self.ALL_SPECIAL_PAPER = {}
@@ -279,8 +280,14 @@ class TradeUnit:
             tmp['y'] = one.year
             tmp['p'] = 'midYear'
           elif one.position == 'year' and self.checkPoint[one.year+1]['buyPrice'] != INVALID_BUY_PRICE:
-            tmp['buyPriceX'] = self.checkPoint[one.year+1]['buyPrice'] / (1 + one.gift)
-            tmp['sellPriceX'] = self.checkPoint[one.year+1]['sellPrice'] / (1 + one.gift)
+            #送股調整的時候，年报的调整需要囊括半年报的送股
+            midYearGift = 0
+            try:
+              midYearGift =  self.checkPoint[one.year]['midYear']['gift']
+            except Exception as e:
+              pass
+            tmp['buyPriceX'] = self.checkPoint[one.year+1]['buyPrice'] / ((1+one.gift)*(1+midYearGift))
+            tmp['sellPriceX'] = self.checkPoint[one.year+1]['sellPrice'] / ((1+one.gift)*(1+midYearGift))
             tmp['y'] = one.year + 1
             tmp['p'] = 'year'
           self.dividendAdjust[one.date] = tmp
@@ -288,7 +295,25 @@ class TradeUnit:
           print(e)
     
       
+  def CalcDividendPrice(self, k, v):
+    # 根据分红计算全年和半年的买入卖出价格
+    # allDividend影响下一年
+    if v['year']['allDividend'] > 0:
+      self.checkPoint[k + 1]['buyPrice'] = v['year']['allDividend'] / BUY_PERCENT
+      self.checkPoint[k + 1]['sellPrice'] = v['year']['allDividend'] / SELL_PERCENT
+    else:
+      self.checkPoint[k + 1]['buyPrice'] = INVALID_BUY_PRICE
+      self.checkPoint[k + 1]['sellPrice'] = INVALID_SELL_PRICE
+  
+    # midYear的dividend影响8月31号以后的当年
+    if v['midYear']['dividend'] > 0:
+      self.checkPoint[k]['buyPrice2'] = v['midYear']['dividend'] / BUY_PERCENT
+      self.checkPoint[k]['sellPrice2'] = v['midYear']['dividend'] / SELL_PERCENT
+    else:
+      self.checkPoint[k]['buyPrice2'] = INVALID_BUY_PRICE
+      self.checkPoint[k]['sellPrice2'] = INVALID_SELL_PRICE
 
+    
 
   def LoadYearPaper(self, y):
     #加载年报，中报
@@ -422,8 +447,7 @@ class TradeUnit:
           self.checkPoint[year][position]['dividend'],
           self.checkPoint[year][position]['dividend_aftertax'],
           self.checkPoint[year][position]['gift'],
-          year,
-          position))
+          year, position))
   
   def Quater2Date(self, year, quarter):
     #从某个季度，转换到具体日期
@@ -605,7 +629,15 @@ class TradeUnit:
         year = date.year
         self.lastDate = date
         self.lastPrice = row['close']
-        
+        if len(self.lastPriceVec) > 5:
+          self.lastPriceVec = self.lastPriceVec[1:]
+        self.lastPriceVec.append((self.lastDate, self.lastPrice))
+
+        # 处理除权日时，需要调整买入卖出价格
+        if date in self.dividendAdjust:
+          self.ProcessDividendAdjust(self.dividendAdjust[date])
+          
+        #根据具体日期，决定使用的年报位置
         action, buyPrice, sellPrice, where = self.MakeDecisionPrice(date)
         if action:
           self.Buy(date, buyPrice, sellPrice, row['close'], where, reason='低于买点')
@@ -628,9 +660,6 @@ class TradeUnit:
           self.dangerousPoint = self.dangerousPoint[1:]
         
         
-        #处理除权日结束时，需要调整买入卖出价格
-        if date in self.dividendAdjust:
-          self.ProcessDividendAdjust(self.dividendAdjust[date])
   
       except TypeError as e:
         print(e)
@@ -781,6 +810,7 @@ class DividendPoint:
     self.__gift = gift  # 送转股数量
     self.__year = year  # 影响哪个位置分红的买卖股价
     self.__position = postion  # year还是midYear
+    # self.__profit = profit
 
 
   @property
@@ -806,6 +836,10 @@ class DividendPoint:
   @property
   def position(self):
     return self.__position
+
+  # @property
+  # def profit(self):
+  #   return self.__profit
   
   
   def __str__(self):
@@ -858,21 +892,21 @@ def TestAll(codes, save, check):
 if __name__ == '__main__':
   CODE_AND_MONEY = [
     # # # 皖通高速
-      {'code': '600012', 'money': 52105},
+    #   {'code': '600012', 'money': 52105},
     # # # 万华化学
-      {'code': '600309', 'money': 146005},
+    #   {'code': '600309', 'money': 146005},
     # # # 北京银行
-      {'code': '601169', 'money': 88305},
+    #   {'code': '601169', 'money': 88305},
     # # # 大秦铁路
     # # # 2015年4月27日那天，预警价为14.33元，但收盘价只有14.32元，我们按照收盘价计算，
     # # # 差一分钱才触发卖出规则。如果当时卖出，可收回现金14.32*12500+330=179330元。
     # # # 错过这次卖出机会后不久，牛市见顶，股价狂泻，从14元多一直跌到5.98元。
     # # # TODO 需要牛市清盘卖出策略辅助
-      {'code': '601006', 'money': 84305},
+    #   {'code': '601006', 'money': 84305},
     #南京银行
-    {'code': '601009', 'money': 75005},
+    # {'code': '601009', 'money': 75005},
     # 东风股份
-    # {'code': '601515', 'money': 133705},
+    {'code': '601515', 'money': 133705},
   ]
 
   CODE_AND_MONEY2 = [
@@ -896,6 +930,6 @@ if __name__ == '__main__':
   # test
   #TestAll(CODE_AND_MONEY, False, False)
   #save
-  TestAll(CODE_AND_MONEY2, True, False)
+  # TestAll(CODE_AND_MONEY2, True, False)
   #check
-  # TestAll(CODE_AND_MONEY2, False, True)
+  TestAll(CODE_AND_MONEY2, False, True)
