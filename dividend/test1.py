@@ -30,7 +30,7 @@ BUY_PERCENT = 0.04
 SELL_PERCENT = 0.03
 INVALID_SELL_PRICE = 10000
 INVALID_BUY_PRICE = -10000
-VERSION = '1.0.0.11'
+VERSION = '1.0.0.12'
   
 #尝试计算股息，根据股息买卖股的收益
 # def Test(code):
@@ -105,6 +105,8 @@ class TradeUnit:
     
     #特殊年报时间
     self.ALL_SPECIAL_PAPER = {}
+    self.specialPaper = {}
+    
     self.ALL_SPECIAL_PAPER['601009'] = {
       2015 :{
         # 0: pd.Timestamp(datetime(date.year, 4, 30)),
@@ -257,13 +259,13 @@ class TradeUnit:
     have = set()
     for one in self.dividendPoint:
       for two in self.dangerousPoint:
-        if two[0] <= one[0] and two[1] >= one[0]:
-          print("清理除权 {} {} {}".format(one[0], two[0], two[1]))
+        if two[0] <= one.date and two[1] >= one.date:
+          print("清理除权 {} {} {}".format(one.date, two[0], two[1]))
           break
       else:
-        if one[0] not in have:
+        if one.date not in have:
           tmp.append(one)
-          have.add(one[0])
+          have.add(one.date)
     self.dividendPoint = tmp
     
     
@@ -271,19 +273,19 @@ class TradeUnit:
     for one in self.dividendPoint:
       tmp = {}
       # 有派股
-      if one[3] > 0:
+      if one.gift > 0:
         try:
-          if one[5] == 'midYear' and self.checkPoint[one[4]]['buyPrice2'] != INVALID_BUY_PRICE:
-            tmp['buyPriceX'] = self.checkPoint[one[4]]['buyPrice2'] / (1 + one[3])
-            tmp['sellPriceX'] = self.checkPoint[one[4]]['sellPrice2'] / (1 + one[3])
-            tmp['y'] = one[4]
+          if one.position == 'midYear' and self.checkPoint[one.year]['buyPrice2'] != INVALID_BUY_PRICE:
+            tmp['buyPriceX'] = self.checkPoint[one.year]['buyPrice2'] / (1 + one.gift)
+            tmp['sellPriceX'] = self.checkPoint[one.year]['sellPrice2'] / (1 + one.gift)
+            tmp['y'] = one.year
             tmp['p'] = 'midYear'
-          elif one[5] == 'year' and self.checkPoint[one[4]+1]['buyPrice'] != INVALID_BUY_PRICE:
-            tmp['buyPriceX'] = self.checkPoint[one[4]+1]['buyPrice'] / (1 + one[3])
-            tmp['sellPriceX'] = self.checkPoint[one[4]+1]['sellPrice'] / (1 + one[3])
-            tmp['y'] = one[4] + 1
+          elif one.position == 'year' and self.checkPoint[one.year+1]['buyPrice'] != INVALID_BUY_PRICE:
+            tmp['buyPriceX'] = self.checkPoint[one.year+1]['buyPrice'] / (1 + one.gift)
+            tmp['sellPriceX'] = self.checkPoint[one.year+1]['sellPrice'] / (1 + one.gift)
+            tmp['y'] = one.year + 1
             tmp['p'] = 'year'
-          self.dividendAdjust[one[0]] = tmp
+          self.dividendAdjust[one.date] = tmp
         except Exception as e:
           print(e)
     
@@ -417,7 +419,7 @@ class TradeUnit:
       self.checkPoint[year][position]['gift'] = gift / number
     
       if const.GPFH_KEYWORD.KEY_NAME['CQCXR'] in self.checkPoint[year][position]:
-        self.dividendPoint.append((
+        self.dividendPoint.append(DividendPoint(
           pd.to_datetime(np.datetime64(self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['CQCXR']])),
           self.checkPoint[year][position]['dividend'],
           self.checkPoint[year][position]['dividend_aftertax'],
@@ -490,14 +492,14 @@ class TradeUnit:
       if buyPrice >= price:
         oldMoney = self.money
         oldNumber = self.number
-        dividendMoney = self.number*100*dividend[2]
+        dividendMoney = self.number*100*dividend.dividendAfterTax
         money = dividendMoney+self.money
         
         #如果有转送股，所有的价格，股数需要变动
-        if dividend[3] > 0:
-          self.number *= 1+dividend[3]
-          self.sellPrice /= 1+dividend[3]
-          price /= 1+dividend[3]
+        if dividend.gift > 0:
+          self.number *= 1+dividend.gift
+          self.sellPrice /= 1+dividend.gift
+          price /= 1+dividend.gift
           print('发生转送股 {} {} {}'.format(self.number, self.sellPrice, price))
           
         number = money // (price * 100)
@@ -514,8 +516,16 @@ class TradeUnit:
         #                                                                   dividendMoney))
       else:
         oldMoney = self.money
-        dividendMoney = self.number * 100 * dividend[2]
+        dividendMoney = self.number * 100 * dividend.dividendAfterTax
         self.money += dividendMoney
+
+        # 如果有转送股，所有的价格，股数需要变动
+        if dividend.gift > 0:
+          self.number *= 1 + dividend.gift
+          self.sellPrice /= 1 + dividend.gift
+          #price /= 1 + dividend.gift
+          print('发生转送股2 {} {} {}'.format(self.number, self.sellPrice, price))
+          
         # 记录
         mark = TradeMark()
         mark.reason('除权不买入').date(date).dir(DIR_NONE).total(dividendMoney).number(0).price(0).extraInfo(
@@ -601,7 +611,7 @@ class TradeUnit:
           
         #处理除权,
         # 除权日不可能不是交易日
-        if len(self.dividendPoint) > 0 and date == self.dividendPoint[0][0]:
+        if len(self.dividendPoint) > 0 and date == self.dividendPoint[0].date:
           self.ProcessDividend(date, buyPrice, row['close'], self.dividendPoint[0])
           self.dividendPoint = self.dividendPoint[1:]
         
@@ -752,7 +762,45 @@ class TradeMark:
       and self.__total == obj.__total and self.__price == obj.__price and self.__number == obj.__number \
       and self.__fee == obj.__fee and self.__extraInfo == obj.__extraInfo
 
+#########################################################
+class DividendPoint:
+  def __init__(self, date, dividend, dividendAfterTax, gift, year, postion):
+    self.__date = date
+    self.__dividend = dividend
+    self.__dividendAfterTax = dividendAfterTax
+    self.__gift = gift  # 送转股数量
+    self.__year = year  # 影响哪个位置分红的买卖股价
+    self.__position = postion  # year还是midYear
 
+
+  @property
+  def date(self):
+    return self.__date
+
+  @property
+  def dividend(self):
+    return self.__dividend
+
+  @property
+  def dividendAfterTax(self):
+    return self.__dividendAfterTax
+
+  @property
+  def gift(self):
+    return self.__gift
+
+  @property
+  def year(self):
+    return self.__year
+
+  @property
+  def position(self):
+    return self.__position
+  
+  
+  def __str__(self):
+    return "日期：{}, 派息：{}, 派息税后：{}, 送股：{}, 年份：{}, 位置：{}, ".format(
+      self.date, self.dividend, self.dividendAfterTax, self.gift, self.year, self.position)
 #########################################################
 def Test2(code, beginMoney, save=False, check=False):
   stock = TradeUnit(code, beginMoney)
@@ -761,7 +809,8 @@ def Test2(code, beginMoney, save=False, check=False):
 
   print(stock.checkPoint)
   print(stock.dangerousPoint)
-  print(stock.dividendPoint)
+  for one in stock.dividendPoint:
+    print(one)
   
   stock.BackTest()
   stock.CloseAccount()
@@ -814,8 +863,8 @@ if __name__ == '__main__':
     {'code': '601009', 'money': 75005},
   ]
   # test
-  TestAll(CODE_AND_MONEY, False, False)
+  #TestAll(CODE_AND_MONEY, False, False)
   #save
-  # TestAll(CODE_AND_MONEY, True, False)
+  TestAll(CODE_AND_MONEY, True, False)
   #check
   #TestAll(CODE_AND_MONEY, False, True)
