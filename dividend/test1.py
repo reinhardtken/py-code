@@ -30,7 +30,7 @@ BUY_PERCENT = 0.04
 SELL_PERCENT = 0.03
 INVALID_SELL_PRICE = 10000
 INVALID_BUY_PRICE = -10000
-VERSION = '1.0.0.13'
+VERSION = '1.0.0.14'
   
 #尝试计算股息，根据股息买卖股的收益
 # def Test(code):
@@ -112,6 +112,31 @@ class TradeUnit:
       2015 :{
         # 0: pd.Timestamp(datetime(date.year, 4, 30)),
         1: pd.Timestamp(datetime(2015, 8, 20))
+      },
+    }
+
+    self.ALL_SPECIAL_PAPER['600660'] = {
+      2011: {
+        0: pd.Timestamp(datetime(2011, 3, 20)),
+        #1: pd.Timestamp(datetime(2015, 8, 20))
+      },
+      2015: {
+        0: pd.Timestamp(datetime(2015, 3, 20)),
+        # 1: pd.Timestamp(datetime(2015, 8, 20))
+      },
+    }
+
+    self.ALL_SPECIAL_PAPER['601818'] = {
+      2015: {
+        0: pd.Timestamp(datetime(2015, 4, 20)),
+        # 1: pd.Timestamp(datetime(2015, 8, 20))
+      },
+    }
+
+    self.ALL_SPECIAL_PAPER['600585'] = {
+      2019: {
+        0: pd.Timestamp(datetime(2015, 3, 25)),
+        # 1: pd.Timestamp(datetime(2015, 8, 20))
       },
     }
     
@@ -286,32 +311,18 @@ class TradeUnit:
               midYearGift =  self.checkPoint[one.year]['midYear']['gift']
             except Exception as e:
               pass
+            if midYearGift != 0:
+              assert 0
             tmp['buyPriceX'] = self.checkPoint[one.year+1]['buyPrice'] / ((1+one.gift)*(1+midYearGift))
             tmp['sellPriceX'] = self.checkPoint[one.year+1]['sellPrice'] / ((1+one.gift)*(1+midYearGift))
             tmp['y'] = one.year + 1
             tmp['p'] = 'year'
-          self.dividendAdjust[one.date] = tmp
+          if len(tmp) > 0:
+            #有配股有分红才调整价格
+            self.dividendAdjust[one.date] = tmp
         except Exception as e:
           print(e)
-    
-      
-  def CalcDividendPrice(self, k, v):
-    # 根据分红计算全年和半年的买入卖出价格
-    # allDividend影响下一年
-    if v['year']['allDividend'] > 0:
-      self.checkPoint[k + 1]['buyPrice'] = v['year']['allDividend'] / BUY_PERCENT
-      self.checkPoint[k + 1]['sellPrice'] = v['year']['allDividend'] / SELL_PERCENT
-    else:
-      self.checkPoint[k + 1]['buyPrice'] = INVALID_BUY_PRICE
-      self.checkPoint[k + 1]['sellPrice'] = INVALID_SELL_PRICE
   
-    # midYear的dividend影响8月31号以后的当年
-    if v['midYear']['dividend'] > 0:
-      self.checkPoint[k]['buyPrice2'] = v['midYear']['dividend'] / BUY_PERCENT
-      self.checkPoint[k]['sellPrice2'] = v['midYear']['dividend'] / SELL_PERCENT
-    else:
-      self.checkPoint[k]['buyPrice2'] = INVALID_BUY_PRICE
-      self.checkPoint[k]['sellPrice2'] = INVALID_SELL_PRICE
 
     
 
@@ -526,9 +537,11 @@ class TradeUnit:
         #如果有转送股，所有的价格，股数需要变动
         if dividend.gift > 0:
           self.number *= 1+dividend.gift
+          oldSellPrice = self.sellPrice
           self.sellPrice /= 1+dividend.gift
-          price /= 1+dividend.gift
-          print('发生转送股 {} {} {}'.format(self.number, self.sellPrice, price))
+          #此时价格已经变化，无需处理
+          #price /= 1+dividend.gift
+          print('发生转送股 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
           
         number = money // (price * 100)
         self.money = money - number * 100 * price
@@ -550,9 +563,10 @@ class TradeUnit:
         # 如果有转送股，所有的价格，股数需要变动
         if dividend.gift > 0:
           self.number *= 1 + dividend.gift
+          oldSellPrice = self.sellPrice
           self.sellPrice /= 1 + dividend.gift
           #price /= 1 + dividend.gift
-          print('发生转送股2 {} {} {}'.format(self.number, self.sellPrice, price))
+          print('发生转送股2 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
           
         # 记录
         mark = TradeMark()
@@ -613,6 +627,7 @@ class TradeUnit:
     
   def BackTest(self):
     #回测
+    print('BackTest {} {}'.format(self.code, self.BEGIN_MONEY))
     cooldown = False
     cooldownEnd = None
     for date, row in self.data.iterrows():
@@ -647,14 +662,23 @@ class TradeUnit:
           
         #处理除权,
         # 除权日不可能不是交易日
-        if len(self.dividendPoint) > 0 and date == self.dividendPoint[0].date:
-          self.ProcessDividend(date, buyPrice, row['close'], self.dividendPoint[0])
-          self.dividendPoint = self.dividendPoint[1:]
-        
+        if len(self.dividendPoint) > 0:
+          if date > self.dividendPoint[0].date:
+            # 比如600900,在除权期间停牌。。。，对于这种目前简化为弹出这些除权，避免影响后续
+            # TODO 如何处理停牌？
+            while date > self.dividendPoint[0].date:
+              print(' 弹出除权信息！！！ {}， {}'.format(self.lastPriceVec, self.dividendPoint[0]))
+              self.dividendPoint = self.dividendPoint[1:]
+          elif date == self.dividendPoint[0].date:
+            self.ProcessDividend(date, buyPrice, row['close'], self.dividendPoint[0])
+            self.dividendPoint = self.dividendPoint[1:]
+              
+              
         #处理季报，检查是否扣非-10%
         if len(self.dangerousPoint) >0 and date >= self.dangerousPoint[0][0]:
           self.SellNoCodition(date, row['close'], reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
           #记录因为扣非为负的区间，在区间内屏蔽开仓
+          print('cooldownbegin {}'.format(self.dangerousPoint[0][0]))
           cooldown = True
           cooldownEnd = self.dangerousPoint[0][1]
           self.dangerousPoint = self.dangerousPoint[1:]
@@ -906,10 +930,57 @@ if __name__ == '__main__':
     #南京银行
     # {'code': '601009', 'money': 75005},
     # 东风股份
-    {'code': '601515', 'money': 133705},
+    # {'code': '601515', 'money': 133705},
+    # 福耀玻璃
+    # {'code': '600660', 'money': 125905},
+    # 光大银行
+    # {'code': '601818', 'money': 29105},
+    # 浦发银行
+    # {'code': '600000', 'money': 74505},
+    # 重庆水务
+    # {'code': '601158', 'money': 58105},
+    # 中国建筑
+    # {'code': '601668', 'money': 29605},
+    # 永新股份
+    # {'code': '002014', 'money': 124305},
+    # 万科
+    # {'code': '000002', 'money': 72705},
+    # 华域汽车
+    # {'code': '600741', 'money': 92005},
+    # 宇通客车
+   # 再看历史PB情况，在2016年4月，宇通客车的PB位于3.84，中位值3.96，很显然，
+    # 不具有很强的估值吸引力。也就是说，如果考虑估值因素，我们将不会买入。
+    # TODO 买点看pb？
+    # {'code': '600066', 'money': 203305},
+    # 宝钢股份
+    # TODO 买点看pb？
+    # {'code': '600019', 'money': 70705},
+    # 荣盛发展
+    # {'code': '002146', 'money': 99205},
+    # 厦门空港
+    # {'code': '600897', 'money': 242805},
+    # 金地集团
+    # {'code': '600383', 'money': 103205},
+    # 海螺水泥
+    # {'code': '600585', 'money': 295905},
+    # 长江电力
+    # {'code': '600900', 'money': 63905},
+    # 承德露露
+    #可以看到，虽然承德露露目前属于高息股票，但从2011到2016年，它的分红一直不达标
+    #TODO 需要持续分红剔除没有做到持续分红的标的
+    # {'code': '000848', 'money': 97405},
+    # 联发股份
+    #TODO 这是一个股息率算法的典型例子，因为它每年分红两次（中报、年报），且常有送转股
+    #缺少db.getCollection('gpfh-2015-12-31').find({"_id" : "002394"}) 数据
+    # {'code': '002394', 'money': 149005},
+    # 粤高速A
+    # {'code': '000429', 'money': 75105},
+    # 招商银行
+    {'code': '600036', 'money': 101505},
   ]
+  
 
-  CODE_AND_MONEY2 = [
+  VERIFY_CODES = [
     # # # 皖通高速
     {'code': '600012', 'money': 52105},
     # # # 万华化学
@@ -925,11 +996,53 @@ if __name__ == '__main__':
     # 南京银行
     {'code': '601009', 'money': 75005},
     # 东风股份
-    # {'code': '601515', 'money': 133705},
+    {'code': '601515', 'money': 133705},
+    # 福耀玻璃
+     {'code': '600660', 'money': 125905},
+    # 光大银行
+    {'code': '601818', 'money': 29105},
+    # 浦发银行
+    {'code': '600000', 'money': 74505},
+    # 重庆水务
+    {'code': '601158', 'money': 58105},
+    # 中国建筑
+    {'code': '601668', 'money': 29605},
+    # 永新股份
+    {'code': '002014', 'money': 124305},
+    # 万科
+    {'code': '000002', 'money': 72705},
+    # 华域汽车
+    {'code': '600741', 'money': 92005},
+    # 宇通客车
+    # 再看历史PB情况，在2016年4月，宇通客车的PB位于3.84，中位值3.96，很显然，
+    # 不具有很强的估值吸引力。也就是说，如果考虑估值因素，我们将不会买入。
+    # TODO 买点看pb？
+    {'code': '600066', 'money': 203305},
+    # 宝钢股份
+    # TODO 买点看pb？
+    {'code': '600019', 'money': 70705},
+    # 荣盛发展
+    {'code': '002146', 'money': 99205},
+    # 厦门空港
+    {'code': '600897', 'money': 242805},
+    # 金地集团
+    {'code': '600383', 'money': 103205},
+    # 海螺水泥
+    {'code': '600585', 'money': 295905},
+    # 长江电力
+    {'code': '600900', 'money': 63905},
+    # 承德露露
+    # 可以看到，虽然承德露露目前属于高息股票，但从2011到2016年，它的分红一直不达标
+    # TODO 需要持续分红剔除没有做到持续分红的标的
+    {'code': '000848', 'money': 97405},
+    # 粤高速A
+    {'code': '000429', 'money': 75105},
   ]
+  # Test2('601158', 58105, True, False)
   # test
-  #TestAll(CODE_AND_MONEY, False, False)
+  TestAll(CODE_AND_MONEY, True, False)
   #save
-  # TestAll(CODE_AND_MONEY2, True, False)
+  # TestAll(VERIFY_CODES, True, False)
   #check
-  TestAll(CODE_AND_MONEY2, False, True)
+  # TestAll(VERIFY_CODES, False, True)
+  #TODO 周末研究下怎么画图，把入出点放在图形上，更直观，hs300，股价，收益曲线
