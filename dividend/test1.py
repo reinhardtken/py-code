@@ -30,7 +30,7 @@ BUY_PERCENT = 0.04
 SELL_PERCENT = 0.03
 INVALID_SELL_PRICE = 10000
 INVALID_BUY_PRICE = -10000
-VERSION = '1.0.0.14'
+VERSION = '1.0.0.15'
   
 #尝试计算股息，根据股息买卖股的收益
 # def Test(code):
@@ -103,6 +103,8 @@ class TradeUnit:
     self.sellPrice = None #卖出价格
     self.dividendAdjust = {} #除权日，调整买入卖出价格
     self.lastPriceVec = [] #最后5天价格，用于调试
+    self.index = None #沪深300指数
+
     
     #特殊年报时间
     self.ALL_SPECIAL_PAPER = {}
@@ -521,10 +523,32 @@ class TradeUnit:
   
     if len(out):
       df = pd.DataFrame(out)
+      df.drop('date', axis=1, inplace=True)
       df.set_index('_id', inplace=True)
       
     self.data = df
+
+  def LoadIndexs(self):
+    db = self.mongoClient["stock_all_kdata_none"]
+    collection = db['000300']
+    start = str(self.startYear) + '-01-01T00:00:00Z'
+    datetime1 = parser.parse(start)
+    cursor = collection.find({"_id": {"$gte": datetime1}})
+    out = []
+    for c in cursor:
+      out.append(c)
+  
+    if len(out):
+      df = pd.DataFrame(out)
+      df.drop('date', axis=1, inplace=True)
+      df.set_index('_id', inplace=True)
+      self.index = df
     
+  def Merge(self):
+    if self.index is not None:
+      self.mergeData = self.index.join(self.data, how='left', lsuffix='_index')
+      self.mergeData.fillna(method='ffill', inplace=True)  # 用前面的值来填充
+  
   
   def ProcessDividend(self, date, buyPrice, price, dividend):
     if self.status == HOLD_STOCK:
@@ -624,13 +648,21 @@ class TradeUnit:
       self.checkPoint[data['y']]['buyPrice'] = data['buyPriceX']
       self.checkPoint[data['y']]['sellPrice'] = data['sellPriceX']
   
-    
+  
+  
   def BackTest(self):
+    #1 ver
+    # self.backTestInner(self.data)
+    # 2 ver
+    self.backTestInner(self.mergeData)
+    
+    
+  def backTestInner(self, backtestData):
     #回测
     print('BackTest {} {}'.format(self.code, self.BEGIN_MONEY))
     cooldown = False
     cooldownEnd = None
-    for date, row in self.data.iterrows():
+    for date, row in backtestData.iterrows():
       try:
         if cooldown:
           if date >= cooldownEnd:
@@ -693,25 +725,38 @@ class TradeUnit:
 
 
   def CloseAccount(self):
-    if self.status == HOLD_MONEY:
-      profit, profitPercent = self.CloseAccountHoldMoney()
-      self.result = "结算(持币)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY, profit,
-                                                                                 profitPercent, self.holdStockDate)
-    elif self.status == HOLD_STOCK:
-      self.money = self.lastPrice*self.number*100
-      profit, profitPercent = self.CloseAccountHoldMoney()
-      self.result = "结算(持股)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}, 持股数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY,
-                                                                         profit,
-                                                                         profitPercent, self.holdStockDate, self.number)
-    
-    print(self.result)
+    money = 0
+    if self.status == HOLD_STOCK:
+      money = self.money + self.number*100*self.lastPrice
+    else:
+      money = self.money
+      
+    one = TradeResult()
+    one.beginDate(pd.Timestamp(datetime(self.startYear, 1, 1))).endDate(self.lastDate).status(self.status).beginMoney(self.BEGIN_MONEY).\
+      total(money).days(self.holdStockDate)
+    one.Calc()
+    self.result = one
+    one.Dump()
+      
+    # if self.status == HOLD_MONEY:
+    #   profit, profitPercent = self.CloseAccountHoldMoney()
+    #   self.result = "结算(持币)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY, profit,
+    #                                                                              profitPercent, self.holdStockDate)
+    # elif self.status == HOLD_STOCK:
+    #   self.money = self.lastPrice*self.number*100
+    #   profit, profitPercent = self.CloseAccountHoldMoney()
+    #   self.result = "结算(持股)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}, 持股数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY,
+    #                                                                      profit,
+    #                                                                      profitPercent, self.holdStockDate, self.number)
+    #
+    # print(self.result)
   
   
   
-  def CloseAccountHoldMoney(self):
-    profit = self.money - self.BEGIN_MONEY
-    profitPercent = profit / self.BEGIN_MONEY
-    return profit, profitPercent
+  # def CloseAccountHoldMoney(self):
+  #   profit = self.money - self.BEGIN_MONEY
+  #   profitPercent = profit / self.BEGIN_MONEY
+  #   return profit, profitPercent
   
   
   def Store2DB(self):
@@ -722,8 +767,23 @@ class TradeUnit:
     for one in self.tradeList:
       tl.append(one.ToDB())
     out['tradeMarks'] = tl
-    out['result'] = self.result
+    out['result'] = self.result.ToDB()
     util.SaveMongoDB(out, 'stock_backtest', 'dv1')
+  
+  
+  def ExistCheckResult(self):
+    db = self.mongoClient["stock_backtest"]
+    collection = db['dv1']
+    cursor = collection.find({"_id": self.code})
+    out = None
+    for c in cursor:
+      out = c
+      break
+      
+    if out is not None:
+      return True
+    else:
+      return False
     
   def CheckResult(self):
     db = self.mongoClient["stock_backtest"]
@@ -737,7 +797,7 @@ class TradeUnit:
     where = 0
     if self.BEGIN_MONEY == out['beginMoney']:
       if len(self.tradeList) == len(out['tradeMarks']):
-        if self.result == out['result']:
+        if self.result == TradeResult.FromDB(out['result']):
           for index in range(len(self.tradeList)):
             if self.tradeList[index] != TradeMark.FromDB(out['tradeMarks'][index]):
               where += 1
@@ -870,9 +930,100 @@ class DividendPoint:
     return "日期：{}, 派息：{}, 派息税后：{}, 送股：{}, 年份：{}, 位置：{}, ".format(
       self.date, self.dividend, self.dividendAfterTax, self.gift, self.year, self.position)
 #########################################################
+class TradeResult:
+  def __init__(self):
+    self.__beginDate = None  # 开始的时间
+    self.__endDate = None  # 结算的时间
+    self.__status = None  # 结算状态
+    self.__profit = None #总收益
+    self.__percent = None  # 股票收益率
+    self.__total = None  # 涉及的总金额
+    self.__beginMoney = None #开始资金
+    self.__days = None #持股天数
+    self.__hs300Profit = None #同期沪深300指数收益
+
+
+  
+  def beginDate(self, d):
+    self.__beginDate = d
+    return self
+  
+  def endDate(self, d):
+    self.__endDate = d
+    return self
+  
+  def status(self, d):
+    self.__status = d
+    return self
+  
+  def beginMoney(self, d):
+    self.__beginMoney = d
+    return self
+  
+  def number(self, d):
+    self.__number = d
+    return self
+  
+  def days(self, d):
+    self.__days = d
+    return self
+  
+  def total(self, d):
+    self.__total = d
+    return self
+  
+  def profit(self, d):
+    self.__profit = d
+    return self
+  
+  def percent(self, d):
+    self.__percent = d
+    return self
+  
+  def hs300Profit(self, d):
+    self.__hs300Profit = d
+    return self
+  
+  
+  def Calc(self):
+    self.__profit = self.__total - self.__beginMoney
+    self.__percent = self.__profit / self.__beginMoney
+  
+
+  
+  def Dump(self):
+    print(self)
+  
+  def __str__(self):
+    return "日期开始：{}, 日期结束：{}, 持仓：{}, 开始资金：{}, 结束资金：{}, 绝对收益：{}, 相对收益：{}, 持股天数：{}, 同期沪深300：{}, ".format(
+      self.__beginDate, self.__endDate, self.__status, self.__beginMoney, self.__total, self.__profit, self.__percent, self.__days, self.__hs300Profit)
+  
+  def ToDB(self):
+    return {'beginDate': self.__beginDate, 'endDate': self.__endDate, 'status': self.__status, 'beginMoney': self.__beginMoney, 'total': self.__total,
+            'profit': self.__profit, 'percent': self.__percent, 'days': self.__days, 'hs300Profit': self.__hs300Profit}
+  
+  def FromDB(db):
+    one = TradeResult()
+    one.beginDate(db['beginDate']).endDate(db['endDate']).status(db['status']).beginMoney(db['beginMoney']).total(db['total']).profit(db['profit']). \
+      percent(db['percent']).days(db['days']).hs300Profit(db['hs300Profit'])
+    return one
+  
+  def __eq__(self, obj):
+    # return self.__beginDate == obj.__beginDate and self.__endDate == obj.__endDate and self.__status == obj.__status \
+    #        and self.__total == obj.__total and self.__beginMoney == obj.__beginMoney and self.__profit == obj.__profit \
+    #        and self.__days == obj.__days and self.__percent == obj.__percent and self.__hs300Profit == obj.__hs300Profit
+
+    return self.__beginDate == obj.__beginDate and self.__status == obj.__status \
+           and self.__total == obj.__total and self.__beginMoney == obj.__beginMoney and self.__profit == obj.__profit \
+           and self.__percent == obj.__percent and self.__hs300Profit == obj.__hs300Profit
+
+
+#########################################################
 def Test2(code, beginMoney, save=False, check=False):
   stock = TradeUnit(code, beginMoney)
   stock.LoadQuotations()
+  stock.LoadIndexs()
+  stock.Merge()
   stock.CheckPrepare()
 
   print(stock.checkPoint)
@@ -978,7 +1129,7 @@ if __name__ == '__main__':
     # 招商银行
     # {'code': '600036', 'money': 101505},
     # 鲁泰A
-    {'code': '000726', 'money': 93505},
+    # {'code': '000726', 'money': 93505},
   ]
   
 
@@ -1044,11 +1195,17 @@ if __name__ == '__main__':
     # 鲁泰A
     {'code': '000726', 'money': 93505},
   ]
-  # Test2('601158', 58105, True, False)
+  
+  # for one in VERIFY_CODES:
+  #   stock = TradeUnit(one['code'], one['money'])
+  #   if not stock.ExistCheckResult():
+  #     print(stock.code)
+  
+  # Test2('600900', 63095, False, False)
   # test
-  TestAll(CODE_AND_MONEY, True, False)
+  # TestAll(CODE_AND_MONEY, True, False)
   #save
-  # TestAll(VERIFY_CODES, True, False)
+  TestAll(VERIFY_CODES, True, False)
   #check
   # TestAll(VERIFY_CODES, False, True)
   #TODO 周末研究下怎么画图，把入出点放在图形上，更直观，hs300，股价，收益曲线
