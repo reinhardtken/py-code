@@ -30,7 +30,7 @@ BUY_PERCENT = 0.04
 SELL_PERCENT = 0.03
 INVALID_SELL_PRICE = 10000
 INVALID_BUY_PRICE = -10000
-VERSION = '1.0.0.15'
+VERSION = '1.0.0.16'
   
 #尝试计算股息，根据股息买卖股的收益
 # def Test(code):
@@ -77,7 +77,7 @@ VERSION = '1.0.0.15'
 
 class TradeUnit:
   #代表一个交易单元，比如10万本金
-  def __init__(self, code, beginMoney):
+  def __init__(self, code, name, beginMoney):
     self.tradeList = []#交易记录
     self.status = HOLD_MONEY#持仓还是持币
     # self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
@@ -90,6 +90,7 @@ class TradeUnit:
     self.checkYear = self.startYear
     self.checkPoint = {}#所有的年报季报除权等影响买卖点的特殊时点
     self.code = code#代码
+    self.name = name
     self.mongoClient = MongoClient()
     self.dangerousPoint = []#利润同比下滑超过10%的位置
     self.dividendPoint = []  # 除权的日期
@@ -104,6 +105,9 @@ class TradeUnit:
     self.dividendAdjust = {} #除权日，调整买入卖出价格
     self.lastPriceVec = [] #最后5天价格，用于调试
     self.index = None #沪深300指数
+    self.indexProfit = 1 #沪深300指数收益
+    self.indexBuyPoint = None #股票开仓时候沪深300指数点位
+    self.lastIndex = None
 
     
     #特殊年报时间
@@ -155,7 +159,7 @@ class TradeUnit:
     return (number, restMoney)
   
   
-  def Buy(self, date, triggerPrice, sellPrice, price, where, reason=''):
+  def Buy(self, date, triggerPrice, sellPrice, price, indexPrice, where, reason=''):
     try:
       if self.status == HOLD_STOCK:
         self.holdStockDate += 1
@@ -176,6 +180,9 @@ class TradeUnit:
           #self.money = self.money - self.number*100*price
           self.costPrice = price
           self.status = HOLD_STOCK
+          
+          #记录指数变化
+          self.indexBuyPoint = indexPrice
 
           # 记录
           mark = TradeMark()
@@ -200,16 +207,22 @@ class TradeUnit:
       print(e)
    
  
-  def Sell(self, date, price, reason=''):
-    if self.status == HOLD_STOCK and price >= self.sellPrice:
-      self.SellNoCodition(date, price, reason)
+  def Sell(self, date, sellPrice, price, indexPrice, where, reason=''):
+    if self.status == HOLD_STOCK:
+      if price >= self.sellPrice:
+        self.SellNoCodition(date, price, indexPrice, reason)
+      elif sellPrice == INVALID_SELL_PRICE and where.find('-year') != -1:
+        #在由年报决定买卖的情况下，如果卖出价格是INVALID_SELL_PRICE
+        #说明当年没有分红，那就必须无条件卖出了
+        self.SellNoCodition(date, price, indexPrice, '年报未分红')
       
-      
-  def SellNoCodition(self, date, price, reason=''):
+  def SellNoCodition(self, date, price, indexPrice, reason=''):
     if self.status == HOLD_STOCK:
       self.money = self.money + self.number * 100 * price
       winLoss = (self.money - self.oldMoney) / self.oldMoney
       self.status = HOLD_MONEY
+      #计算指数收益
+      self.indexProfit *= indexPrice / self.indexBuyPoint
 
       # 记录
       mark = TradeMark()
@@ -421,26 +434,7 @@ class TradeUnit:
     else:
       return 0
   
-  # def CalcDividend(self, year, position):
-  #   #'10送3.00派4.00元(含税,扣税后3.30元)'
-  #   if const.GPFH_KEYWORD.KEY_NAME['AllocationPlan'] in self.checkPoint[year][position]:
-  #     value = self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
-  #     number = util.String2Number(value)
-  #     index = value.find('派')
-  #     if index != -1:
-  #       newValue = value[index + 1:]
-  #       profit = util.String2Number(newValue)
-  #       self.checkPoint[year][position]['dividend'] = profit / number
-  #       index2 = newValue.find('扣税后')
-  #       if index2 != -1:
-  #         newValue2 = newValue[index2 + 1:]
-  #         profit2 = util.String2Number(newValue2)
-  #         self.checkPoint[year][position]['dividend_aftertax'] = profit2 / number
-  #
-  #     if const.GPFH_KEYWORD.KEY_NAME['CQCXR'] in self.checkPoint[year][position]:
-  #       self.dividendPoint.append((
-  #         pd.to_datetime(np.datetime64(self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['CQCXR']])),
-  #         self.checkPoint[year][position]['dividend'], self.checkPoint[year][position]['dividend_aftertax']))
+
 
   def CalcDividend(self, year, position):
     # '10送3.00派4.00元(含税,扣税后3.30元)'
@@ -455,12 +449,23 @@ class TradeUnit:
       self.checkPoint[year][position]['gift'] = gift / number
     
       if const.GPFH_KEYWORD.KEY_NAME['CQCXR'] in self.checkPoint[year][position]:
+        tmpDate = self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
+        #农业银行，2010年
+        if tmpDate == '-':
+          if position == 'midYear':
+            #半年默认在当年年底除权
+            tmpDate = pd.Timestamp(datetime(year, 12, 1))
+          else:
+            tmpDate = pd.Timestamp(datetime(year+1, 6, 30))
+        else:
+          tmpDate = pd.to_datetime(np.datetime64(tmpDate))
         self.dividendPoint.append(DividendPoint(
-          pd.to_datetime(np.datetime64(self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['CQCXR']])),
+          tmpDate,
           self.checkPoint[year][position]['dividend'],
           self.checkPoint[year][position]['dividend_aftertax'],
           self.checkPoint[year][position]['gift'],
           year, position))
+
   
   def Quater2Date(self, year, quarter):
     #从某个季度，转换到具体日期
@@ -529,6 +534,8 @@ class TradeUnit:
     self.data = df
 
   def LoadIndexs(self):
+    #这里不适用前复权数据，避免根据最新日期调整起始数值
+    #这里可以考虑采用后复权数据，目前使用不复权数据，会有分红损失
     db = self.mongoClient["stock_all_kdata_none"]
     collection = db['000300']
     start = str(self.startYear) + '-01-01T00:00:00Z'
@@ -550,7 +557,7 @@ class TradeUnit:
       self.mergeData.fillna(method='ffill', inplace=True)  # 用前面的值来填充
   
   
-  def ProcessDividend(self, date, buyPrice, price, dividend):
+  def ProcessDividend(self, date, buyPrice, price, indexPrice, dividend):
     if self.status == HOLD_STOCK:
       if buyPrice >= price:
         oldMoney = self.money
@@ -614,16 +621,18 @@ class TradeUnit:
       if 1 in self.specialPaper[date.year]:
         anchor1 = self.specialPaper[date.year][1]
       
-        
+    where = None
     try:
       if date <= anchor0:
         # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
+        where = str(date.year)+'-midYear'
         if self.checkPoint[date.year]['buyPrice2'] > 0:
-          return True, self.checkPoint[date.year-1]['buyPrice2'], self.checkPoint[date.year-1]['sellPrice2'], str(date.year)+'-midYear'
+          return True, self.checkPoint[date.year-1]['buyPrice2'], self.checkPoint[date.year-1]['sellPrice2'], where
       elif date <= anchor1:
         # 在8月31日之前，需要使用去年的年报
+        where = str(date.year-1)+'-year'
         if self.checkPoint[date.year]['buyPrice'] > 0:
-          return True, self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice'], str(date.year-1)+'-year'
+          return True, self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice'], where
       else:
         #在8月31日之后，使用去年的allDividend和今年半年报中dividend中大的那个决定
         buy = self.checkPoint[date.year]['buyPrice']
@@ -633,10 +642,12 @@ class TradeUnit:
         else:
           if midBuy > 0:
             return True, midBuy, self.checkPoint[date.year]['sellPrice2'], str(date.year)+'-midYear2'
+          else:
+            return False, INVALID_BUY_PRICE, INVALID_SELL_PRICE, str(date.year-1)+'-year3'
     except Exception as e:
       pass
       
-    return False, 0, 0, None
+    return False, INVALID_BUY_PRICE, INVALID_SELL_PRICE, where
   
 
   
@@ -676,6 +687,7 @@ class TradeUnit:
         year = date.year
         self.lastDate = date
         self.lastPrice = row['close']
+        self.lastIndex = row['close_index']
         if len(self.lastPriceVec) > 5:
           self.lastPriceVec = self.lastPriceVec[1:]
         self.lastPriceVec.append((self.lastDate, self.lastPrice))
@@ -687,9 +699,9 @@ class TradeUnit:
         #根据具体日期，决定使用的年报位置
         action, buyPrice, sellPrice, where = self.MakeDecisionPrice(date)
         if action:
-          self.Buy(date, buyPrice, sellPrice, row['close'], where, reason='低于买点')
+          self.Buy(date, buyPrice, sellPrice, self.lastPrice, self.lastIndex, where, reason='低于买点')
           
-        self.Sell(date, row['close'], reason='高于卖点')
+        self.Sell(date, sellPrice, self.lastPrice, self.lastIndex, where, reason='高于卖点')
           
           
         #处理除权,
@@ -702,13 +714,13 @@ class TradeUnit:
               print(' 弹出除权信息！！！ {}， {}'.format(self.lastPriceVec, self.dividendPoint[0]))
               self.dividendPoint = self.dividendPoint[1:]
           elif date == self.dividendPoint[0].date:
-            self.ProcessDividend(date, buyPrice, row['close'], self.dividendPoint[0])
+            self.ProcessDividend(date, buyPrice, self.lastPrice, self.lastIndex, self.dividendPoint[0])
             self.dividendPoint = self.dividendPoint[1:]
               
               
         #处理季报，检查是否扣非-10%
         if len(self.dangerousPoint) >0 and date >= self.dangerousPoint[0][0]:
-          self.SellNoCodition(date, row['close'], reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
+          self.SellNoCodition(date, self.lastPrice, self.lastIndex, reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
           #记录因为扣非为负的区间，在区间内屏蔽开仓
           print('cooldownbegin {}'.format(self.dangerousPoint[0][0]))
           cooldown = True
@@ -728,12 +740,14 @@ class TradeUnit:
     money = 0
     if self.status == HOLD_STOCK:
       money = self.money + self.number*100*self.lastPrice
+      # 计算指数收益
+      self.indexProfit *= self.lastIndex / self.indexBuyPoint
     else:
       money = self.money
       
     one = TradeResult()
     one.beginDate(pd.Timestamp(datetime(self.startYear, 1, 1))).endDate(self.lastDate).status(self.status).beginMoney(self.BEGIN_MONEY).\
-      total(money).days(self.holdStockDate)
+      total(money).days(self.holdStockDate).hs300Profit(self.indexProfit-1)
     one.Calc()
     self.result = one
     one.Dump()
@@ -761,7 +775,7 @@ class TradeUnit:
   
   def Store2DB(self):
     #保存交易记录到db，用于回测验证
-    out = {"_id": self.code, 'ver': VERSION}
+    out = {"_id": self.code, 'ver': VERSION, 'name': self.name}
     out["beginMoney"] = self.BEGIN_MONEY
     tl = []
     for one in self.tradeList:
@@ -995,7 +1009,7 @@ class TradeResult:
     print(self)
   
   def __str__(self):
-    return "日期开始：{}, 日期结束：{}, 持仓：{}, 开始资金：{}, 结束资金：{}, 绝对收益：{}, 相对收益：{}, 持股天数：{}, 同期沪深300：{}, ".format(
+    return "结算：开始：{}, 结束：{}, 持仓：{}, 开始资金：{}, 结束资金：{}, 绝对收益：{}, 相对收益：{}, 持股天数：{}, 同期沪深300：{}, ".format(
       self.__beginDate, self.__endDate, self.__status, self.__beginMoney, self.__total, self.__profit, self.__percent, self.__days, self.__hs300Profit)
   
   def ToDB(self):
@@ -1019,8 +1033,8 @@ class TradeResult:
 
 
 #########################################################
-def Test2(code, beginMoney, save=False, check=False):
-  stock = TradeUnit(code, beginMoney)
+def Test2(code, beginMoney, name, save=False, check=False):
+  stock = TradeUnit(code, name, beginMoney)
   stock.LoadQuotations()
   stock.LoadIndexs()
   stock.Merge()
@@ -1062,7 +1076,7 @@ def TestAll(codes, save, check):
   # # 南京银行
   # Test2('601009', 75005, save, check)
   for one in codes:
-    Test2(one['code'], one['money'], save, check)
+    Test2(one['code'], one['money'], one['name'], save, check)
         
 if __name__ == '__main__':
   CODE_AND_MONEY = [
@@ -1134,66 +1148,80 @@ if __name__ == '__main__':
   
 
   VERIFY_CODES = [
-    # # # 皖通高速
-    {'code': '600012', 'money': 52105},
-    # # # 万华化学
-    {'code': '600309', 'money': 146005},
-    # # # 北京银行
-    {'code': '601169', 'money': 88305},
-    # # # 大秦铁路
-    # # # 2015年4月27日那天，预警价为14.33元，但收盘价只有14.32元，我们按照收盘价计算，
-    # # # 差一分钱才触发卖出规则。如果当时卖出，可收回现金14.32*12500+330=179330元。
-    # # # 错过这次卖出机会后不久，牛市见顶，股价狂泻，从14元多一直跌到5.98元。
-    # # # TODO 需要牛市清盘卖出策略辅助
-    {'code': '601006', 'money': 84305},
-    # 南京银行
-    {'code': '601009', 'money': 75005},
-    # 东风股份
-    {'code': '601515', 'money': 133705},
-    # 福耀玻璃
-     {'code': '600660', 'money': 125905},
-    # 光大银行
-    {'code': '601818', 'money': 29105},
-    # 浦发银行
-    {'code': '600000', 'money': 74505},
-    # 重庆水务
-    {'code': '601158', 'money': 58105},
-    # 中国建筑
-    {'code': '601668', 'money': 29605},
-    # 永新股份
-    {'code': '002014', 'money': 124305},
-    # 万科
-    {'code': '000002', 'money': 72705},
-    # 华域汽车
-    {'code': '600741', 'money': 92005},
-    # 宇通客车
-    # 再看历史PB情况，在2016年4月，宇通客车的PB位于3.84，中位值3.96，很显然，
-    # 不具有很强的估值吸引力。也就是说，如果考虑估值因素，我们将不会买入。
-    # TODO 买点看pb？
-    {'code': '600066', 'money': 203305},
-    # 宝钢股份
-    # TODO 买点看pb？
-    {'code': '600019', 'money': 70705},
-    # 荣盛发展
-    {'code': '002146', 'money': 99205},
-    # 厦门空港
-    {'code': '600897', 'money': 242805},
-    # 金地集团
-    {'code': '600383', 'money': 103205},
-    # 海螺水泥
-    {'code': '600585', 'money': 295905},
-    # 长江电力
-    {'code': '600900', 'money': 63905},
-    # 承德露露
-    # 可以看到，虽然承德露露目前属于高息股票，但从2011到2016年，它的分红一直不达标
-    # TODO 需要持续分红剔除没有做到持续分红的标的
-    {'code': '000848', 'money': 97405},
-    # 粤高速A
-    {'code': '000429', 'money': 75105},
-    # 招商银行
-    {'code': '600036', 'money': 101505},
+    # # # # 皖通高速
+    # {'name': '皖通高速', 'code': '600012', 'money': 52105},
+    # # # # 万华化学
+    # {'name': '万华化学', 'code': '600309', 'money': 146005},
+    # # # # 北京银行
+    # {'name': '北京银行', 'code': '601169', 'money': 88305},
+    # # # # 大秦铁路
+    # # # # 2015年4月27日那天，预警价为14.33元，但收盘价只有14.32元，我们按照收盘价计算，
+    # # # # 差一分钱才触发卖出规则。如果当时卖出，可收回现金14.32*12500+330=179330元。
+    # # # # 错过这次卖出机会后不久，牛市见顶，股价狂泻，从14元多一直跌到5.98元。
+    # # # # TODO 需要牛市清盘卖出策略辅助
+    # {'name': '大秦铁路', 'code': '601006', 'money': 84305},
+    # # 南京银行
+    # {'name': '南京银行', 'code': '601009', 'money': 75005},
+    # # 东风股份
+    # {'name': '东风股份', 'code': '601515', 'money': 133705},
+    # # 福耀玻璃
+    #  {'name': '福耀玻璃', 'code': '600660', 'money': 125905},
+    # # 光大银行
+    # {'name': '光大银行', 'code': '601818', 'money': 29105},
+    # # 浦发银行
+    # {'name': '浦发银行', 'code': '600000', 'money': 74505},
+    # # 重庆水务
+    # {'name': '重庆水务', 'code': '601158', 'money': 58105},
+    # # 中国建筑
+    # {'name': '中国建筑', 'code': '601668', 'money': 29605},
+    # # 永新股份
+    # {'name': '永新股份', 'code': '002014', 'money': 124305},
+    # # 万科
+    # {'name': '万科', 'code': '000002', 'money': 72705},
+    # # 华域汽车
+    # {'name': '华域汽车', 'code': '600741', 'money': 92005},
+    # # 宇通客车
+    # # 再看历史PB情况，在2016年4月，宇通客车的PB位于3.84，中位值3.96，很显然，
+    # # 不具有很强的估值吸引力。也就是说，如果考虑估值因素，我们将不会买入。
+    # # TODO 买点看pb？
+    # {'name': '宇通客车', 'code': '600066', 'money': 203305},
+    # # 宝钢股份
+    # # TODO 买点看pb？
+    # {'name': '宝钢股份', 'code': '600019', 'money': 70705},
+    # # 荣盛发展
+    # {'name': '荣盛发展', 'code': '002146', 'money': 99205},
+    # # 厦门空港
+    # {'name': '厦门空港', 'code': '600897', 'money': 242805},
+    # # 金地集团
+    # {'name': '金地集团', 'code': '600383', 'money': 103205},
+    # # 海螺水泥
+    # {'name': '海螺水泥', 'code': '600585', 'money': 295905},
+    # # 长江电力
+    # {'name': '长江电力', 'code': '600900', 'money': 63905},
+    # # 承德露露
+    # # 可以看到，虽然承德露露目前属于高息股票，但从2011到2016年，它的分红一直不达标
+    # # TODO 需要持续分红剔除没有做到持续分红的标的
+    # {'name': '承德露露', 'code': '000848', 'money': 97405},
+    # # 粤高速A
+    # {'name': '粤高速A', 'code': '000429', 'money': 75105},
+    # # 招商银行
+    # {'name': '招商银行', 'code': '600036', 'money': 101505},
     # 鲁泰A
-    {'code': '000726', 'money': 93505},
+    {'name': '鲁泰A', 'code': '000726', 'money': 93505},
+  
+    {'name': '中国石化', 'code': '600028', 'money': 74405},
+    {'name': '双汇发展', 'code': '000895', 'money': 211205},
+    {'name': '伟星股份', 'code': '002003', 'money': 80805},
+    {'name': '兴业银行', 'code': '601166', 'money': 90205},
+    {'name': '交通银行', 'code': '601328', 'money': 46905},
+    {'name': '方大特钢', 'code': '600507', 'money': 167905},
+    #TODO 增加pb指标
+    {'name': '中国神华', 'code': '601088', 'money': 219705},
+    {'name': '新城控股', 'code': '601155', 'money': 102805},
+    {'name': '农业银行', 'code': '601288', 'money': 26405},
+    #2017年全年无分红，2018年出年报就该卖出
+    {'name': '格力电器', 'code': '000651', 'money': 296305},
+
   ]
   
   # for one in VERIFY_CODES:
@@ -1201,11 +1229,11 @@ if __name__ == '__main__':
   #   if not stock.ExistCheckResult():
   #     print(stock.code)
   
-  # Test2('600900', 63095, False, False)
+  Test2('000726', 93505, '鲁泰A', True, False)
   # test
   # TestAll(CODE_AND_MONEY, True, False)
   #save
-  TestAll(VERIFY_CODES, True, False)
+  # TestAll(VERIFY_CODES, True, False)
   #check
-  # TestAll(VERIFY_CODES, False, True)
+  TestAll(VERIFY_CODES, False, True)
   #TODO 周末研究下怎么画图，把入出点放在图形上，更直观，hs300，股价，收益曲线
