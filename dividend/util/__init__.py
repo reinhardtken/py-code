@@ -62,3 +62,58 @@ def SaveMongoDB(data, dbName, collectionName):
   
   except Exception as e:
     print(e)
+    
+    
+def QueryHS300All():
+  client = MongoClient()
+  db = client['stock']
+  collection = db['hs300_stock_list']
+
+  out = []
+
+  cursor = collection.find()
+  for c in cursor:
+    out.append(c)
+
+  if len(out):
+    df = pd.DataFrame(out)
+    df.set_index(const.HS300.KEY_NAME['code'], inplace=True)
+    return df
+  else:
+    return None
+  
+  
+
+def QueryCodeList():
+  client = MongoClient()
+  db = client['stock']
+  collection = db['hs300_stock_list']
+
+  out = []
+
+  cursor = collection.find()
+  index = 0
+  for c in cursor:
+    out.append(c[const.HS300.KEY_NAME['code']])
+
+  return out
+
+
+
+def QueryAll():
+  client = MongoClient()
+  db = client['stock']
+  collection = db['stock_list']
+
+  out = []
+
+  cursor = collection.find()
+  for c in cursor:
+    out.append(c)
+
+  if len(out):
+    df = pd.DataFrame(out)
+    df.set_index("代码", inplace=True)
+    return df
+  else:
+    return None

@@ -24,3 +24,15 @@ class GPFH_KEYWORD:
     'AllocationPlan': '分配方案',
 
   }
+  
+  
+class HS300:
+  KEY_NAME = {
+    'code': '股票代码',
+    'name': '股票名称',
+    'date': '日期',
+    'weight': '权重',
+  }
+  DB_NAME = 'stock'
+  COLLECTION_NAME = 'hs300_stock_list'
+  
