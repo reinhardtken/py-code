@@ -18,6 +18,8 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
+VERSION = '1.0.0.17'
+
 
 DIR_BUY = 1
 DIR_NONE = 0
@@ -28,11 +30,25 @@ BUY_PERCENT = 0.04
 SELL_PERCENT = 0.03
 INVALID_SELL_PRICE = 10000
 INVALID_BUY_PRICE = -10000
-VERSION = '1.0.0.16'
 YEAR_POSITION = 2
 MIDYEAR_POSITION = 1
 
 
+#交易日当天的信息
+class DayInfo:
+  def __init__(self):
+    self.year = None
+    self.date = None
+    self.index = None
+    self.price = None
+    self.pb = None
+    self.priceVec = []
+    #5日平均线等等，都放在这里
+    
+#update DayInfo
+# for buyChain
+# for sellChain
+# action
 class TradeUnit:
   #沪深300，如果跑多个实例无需重复load数据
   DF_HS300 = None
@@ -46,8 +62,15 @@ class TradeUnit:
     self.oldMoney = self.money
     self.costPrice = 0  # 持仓的时候，表示持仓成本
     self.number = 0  # 持仓的时候表示持仓数目(手)
+    
     self.startYear = 2011  # 起始年份
-    self.checkYear = self.startYear
+    start = str(self.startYear) + '-01-01T00:00:00Z'
+    self.startDate = parser.parse(start, ignoretz=True)
+    self.endYear = 2011  # 结束年份
+    end = str(self.endYear) + '-12-10T00:00:00Z'
+    self.endDate = parser.parse(end, ignoretz=True)
+    
+    
     self.checkPoint = {}  # 所有的年报季报除权等影响买卖点的特殊时点
     self.code = code  # 代码
     self.name = name
@@ -58,8 +81,8 @@ class TradeUnit:
     self.MAXEND = self.Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
     self.holdStockDate = 0  # 持股总交易天数
     self.holdStockNatureDate = 0  # 持股总自然天数
-    self.lastDate = None  # 最后回测的交易日
-    self.lastPrice = 0  # 最后回测的交易价格
+    # self.lastDate = None  # 最后回测的交易日
+    # self.lastPrice = 0  # 最后回测的交易价格
     self.result = None  # 最后的交易结果
     self.sellPrice = None  # 卖出价格
     self.dividendAdjust = {}  # 除权日，调整买入卖出价格
@@ -67,10 +90,11 @@ class TradeUnit:
     self.index = None  # 沪深300指数
     self.indexProfit = 1  # 沪深300指数收益
     self.indexBuyPoint = None  # 股票开仓时候沪深300指数点位
-    self.lastIndex = None
+    # self.lastIndex = None
     self.collectionName = 'dv1'  # 存盘表名
     self.beforeProfit = None  # 前复权行情，用于计算从头到尾持有股票的收益
-    self.tradeCounter = 0 #交易的次数，建仓次数
+    self.tradeCounter = 0  # 交易的次数，建仓次数
+    self.current = DayInfo()  #当前循环的全部信息
     
     # 特殊年报时间
     self.ALL_SPECIAL_PAPER = {}
@@ -468,8 +492,6 @@ class TradeUnit:
   def loadData(self, dbName, collectionName, condition):
     db = self.mongoClient[dbName]
     collection = db[collectionName]
-    # start = str(self.startYear) + '-01-01T00:00:00Z'
-    # datetime1 = parser.parse(start)
     cursor = collection.find(condition)
     out = []
     for c in cursor:
@@ -482,12 +504,31 @@ class TradeUnit:
       return df
     
     return None
-    
+
+
+  def loadPB(self):
+    db = self.mongoClient['stock2']
+    collection = db['pb2']
+    cursor = collection.find({'_id': self.code})
+    out = None
+    for c in cursor:
+      out = c['data']
+      break
+  
+    for one in out:
+      one['date'] = pd.Timestamp(datetime.strptime(one['date'], '%Y-%m-%d'))
+      
+    if len(out):
+      df = pd.DataFrame(out)
+      df.drop('timestamp', axis=1, inplace=True)
+      df.drop('price', axis=1, inplace=True)
+      df.set_index('date', inplace=True)
+      return df
+  
+    return None
   
   def LoadQuotations(self):
-    start = str(self.startYear) + '-01-01T00:00:00Z'
-    datetime1 = parser.parse(start)
-    self.data = self.loadData("stock_all_kdata_none", self.code, {"_id": {"$gte": datetime1}})
+    self.data = self.loadData("stock_all_kdata_none", self.code, {"_id": {"$gte": self.startDate}})
     #加载前复权数据，计算区间股价涨幅
     try:
       pass
@@ -497,49 +538,25 @@ class TradeUnit:
       # self.beforeProfit = (endPrice - startPrice)/startPrice
     except Exception as e:
       print(e)
-    # db = self.mongoClient["stock_all_kdata_none"]
-    # collection = db[self.code]
-    # start = str(self.startYear) + '-01-01T00:00:00Z'
-    # datetime1 = parser.parse(start)
-    # cursor = collection.find({"_id": {"$gte": datetime1}})
-    # out = []
-    # for c in cursor:
-    #   out.append(c)
-    #
-    # if len(out):
-    #   df = pd.DataFrame(out)
-    #   df.drop('date', axis=1, inplace=True)
-    #   df.set_index('_id', inplace=True)
-    #
-    # self.data = df
+
   
   def LoadIndexs(self):
     if TradeUnit.DF_HS300 is None:
-      start = str(self.startYear) + '-01-01T00:00:00Z'
-      datetime1 = parser.parse(start)
-      TradeUnit.DF_HS300 = self.loadData("stock_all_kdata_none", '000300', {"_id": {"$gte": datetime1}})
+      TradeUnit.DF_HS300 = self.loadData("stock_all_kdata_none", '000300', {"_id": {"$gte": self.startDate}})
     self.index = TradeUnit.DF_HS300
-    # # 这里不适用前复权数据，避免根据最新日期调整起始数值
-    # # 这里可以考虑采用后复权数据，目前使用不复权数据，会有分红损失
-    # db = self.mongoClient["stock_all_kdata_none"]
-    # collection = db['000300']
-    # start = str(self.startYear) + '-01-01T00:00:00Z'
-    # datetime1 = parser.parse(start)
-    # cursor = collection.find({"_id": {"$gte": datetime1}})
-    # out = []
-    # for c in cursor:
-    #   out.append(c)
-    #
-    # if len(out):
-    #   df = pd.DataFrame(out)
-    #   df.drop('date', axis=1, inplace=True)
-    #   df.set_index('_id', inplace=True)
-    #   self.index = df
+
   
   
   def Merge(self):
     if self.index is not None:
       self.mergeData = self.index.join(self.data, how='left', lsuffix='_index')
+      try:
+        # pb = self.loadPB()
+        # if pb is not None:
+        #   self.mergeData = self.mergeData.join(pb, how='left')
+        pass
+      except Exception as e:
+        pass
       self.mergeData.fillna(method='ffill', inplace=True)  # 用前面的值来填充
   
   
@@ -653,6 +670,7 @@ class TradeUnit:
     print('BackTest {} {}'.format(self.code, self.BEGIN_MONEY))
     cooldown = False
     cooldownEnd = None
+    current = self.current
     for date, row in backtestData.iterrows():
       try:
         if cooldown:
@@ -664,13 +682,14 @@ class TradeUnit:
             continue
 
         # midYear, year = self.MakeDecisionYear(date)
-        year = date.year
-        self.lastDate = date
-        self.lastPrice = row['close']
-        self.lastIndex = row['close_index']
-        if len(self.lastPriceVec) > 5:
-          self.lastPriceVec = self.lastPriceVec[1:]
-        self.lastPriceVec.append((self.lastDate, self.lastPrice))
+        current.year = date.year
+        current.date = date
+        current.price = row['close']
+        current.index = row['close_index']
+        # pb = row['pb']
+        if len(current.priceVec) > 5:
+          current.priceVec = current.priceVec[1:]
+        current.priceVec.append((date, current.price, current.index))
         
         # 处理除权日时，需要调整买入卖出价格
         if date in self.dividendAdjust:
@@ -679,9 +698,9 @@ class TradeUnit:
         # 根据具体日期，决定使用的年报位置
         action, buyPrice, sellPrice, where = self.MakeDecisionPrice(date)
         if action:
-          self.Buy(date, buyPrice, sellPrice, self.lastPrice, self.lastIndex, where, reason='低于买点')
+          self.Buy(date, buyPrice, sellPrice, current.price, current.index, where, reason='低于买点')
         
-        self.Sell(date, sellPrice, self.lastPrice, self.lastIndex, where, reason='高于卖点')
+        self.Sell(date, sellPrice, current.price, current.index, where, reason='高于卖点')
         
         # 处理除权,
         # 除权日不可能不是交易日
@@ -693,12 +712,12 @@ class TradeUnit:
               print(' 弹出除权信息！！！ {}， {}'.format(self.lastPriceVec, self.dividendPoint[0]))
               self.dividendPoint = self.dividendPoint[1:]
           elif len(self.dividendPoint) > 0 and date == self.dividendPoint[0].date:
-            self.ProcessDividend(date, buyPrice, self.lastPrice, self.lastIndex, self.dividendPoint[0])
+            self.ProcessDividend(date, buyPrice, current.price, current.index, self.dividendPoint[0])
             self.dividendPoint = self.dividendPoint[1:]
         
         # 处理季报，检查是否扣非-10%
         if len(self.dangerousPoint) > 0 and date >= self.dangerousPoint[0][0]:
-          self.SellNoCodition(date, self.lastPrice, self.lastIndex, reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
+          self.SellNoCodition(date, current.price, current.index, reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
           # 记录因为扣非为负的区间，在区间内屏蔽开仓
           print('cooldownbegin {}'.format(self.dangerousPoint[0][0]))
           cooldown = True
@@ -715,37 +734,20 @@ class TradeUnit:
   def CloseAccount(self):
     money = 0
     if self.status == HOLD_STOCK:
-      money = self.money + self.number * 100 * self.lastPrice
+      money = self.money + self.number * 100 * self.current.price
       # 计算指数收益
-      self.indexProfit *= self.lastIndex / self.indexBuyPoint
+      self.indexProfit *= self.current.index / self.indexBuyPoint
     else:
       money = self.money
     
     one = TradeResult()
-    one.beginDate(pd.Timestamp(datetime(self.startYear, 1, 1))).endDate(self.lastDate).status(self.status).beginMoney(
+    one.beginDate(pd.Timestamp(self.startDate)).endDate(self.current.date).status(self.status).beginMoney(
       self.BEGIN_MONEY). \
       total(money).days(self.holdStockDate).hs300Profit(self.indexProfit - 1)
     one.Calc()
     self.result = one
     one.Dump()
     
-    # if self.status == HOLD_MONEY:
-    #   profit, profitPercent = self.CloseAccountHoldMoney()
-    #   self.result = "结算(持币)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY, profit,
-    #                                                                              profitPercent, self.holdStockDate)
-    # elif self.status == HOLD_STOCK:
-    #   self.money = self.lastPrice*self.number*100
-    #   profit, profitPercent = self.CloseAccountHoldMoney()
-    #   self.result = "结算(持股)： 日期：{}, 终止资金：{}, 开始资金：{}, 收益：{}, 收益率：{}, 持有天数：{}, 持股数：{}".format(self.lastDate, self.money, self.BEGIN_MONEY,
-    #                                                                      profit,
-    #                                                                      profitPercent, self.holdStockDate, self.number)
-    #
-    # print(self.result)
-  
-  # def CloseAccountHoldMoney(self):
-  #   profit = self.money - self.BEGIN_MONEY
-  #   profitPercent = profit / self.BEGIN_MONEY
-  #   return profit, profitPercent
   
   def Store2DB(self):
     # 保存交易记录到db，用于回测验证
@@ -1066,6 +1068,7 @@ def CompareOne(collectionName, code, name):
     result['hs300Profit'] = out['result']['hs300Profit']
     result['beforeProfit'] = out['beforeProfit']
     result['winHS300'] = result['profit'] - result['hs300Profit']
+    result['hold'] = out['result']['status']
     try:
       result['winAlwaysHold'] = result['profit'] - result['beforeProfit']
     except Exception as e:
@@ -1095,6 +1098,9 @@ def CompareAll(collectionName, codes):
   holdAllTimeHS300 = 0
   #发生过交易的股票数目
   tradeCounter = 0
+  #回测结束时候，是持币的股票。如果持币，亏损属于真实亏损
+  realLossCounter = 0
+  tempLossCounter = 0
   HOLD_ALL_HS300_PROFIT = 0.24
   for one in codes:
     tmp = CompareOne(collectionName, one['code'], one['name'])
@@ -1107,6 +1113,12 @@ def CompareAll(collectionName, codes):
         
       if tmp['winAlwaysHold'] > 0:
         winHoldAlwaysNumber += 1
+      
+      if tmp['profit'] < 0:
+        if tmp['hold'] == 1:
+          realLossCounter += 1
+        else:
+          tempLossCounter += 1
         
       allProfit += tmp['profit']
       holdAlwaysProfit += tmp['beforeProfit']
@@ -1115,7 +1127,8 @@ def CompareAll(collectionName, codes):
   
   out.sort(key=lambda x: x['profit'])
   out.reverse()
-  print("总数：{}, 交易数：{}, 战胜沪深300：{}, 战胜始终持股：{}, 总收益：{}, 沪深300收益：{}, 持续收益：{}, 所有持续收益：{}, 持续沪深300收益：{}".format(TOTAL, tradeCounter, winHS300Number, winHoldAlwaysNumber, allProfit, allHS300Profit, holdAlwaysProfit, holdAlwaysAllProfit, holdAllTimeHS300))
+  print("总数：{}, 交易数：{}, 持币亏损数：{}, 持股亏损数：{}, 战胜沪深300：{}, 战胜始终持股：{}, 总收益：{}, 沪深300收益：{}, 持续收益：{}, 所有持续收益：{}, 持续沪深300收益：{}".format(
+    TOTAL, tradeCounter, realLossCounter, tempLossCounter, winHS300Number, winHoldAlwaysNumber, allProfit, allHS300Profit, holdAlwaysProfit, holdAlwaysAllProfit, holdAllTimeHS300))
   for one in out:
     print(one)
 
@@ -1276,7 +1289,7 @@ if __name__ == '__main__':
   # save
   # TestAll(VERIFY_CODES, True, False)
   # check
-  # TestAll(VERIFY_CODES, False, True)
+  TestAll(VERIFY_CODES, False, True)
   # compare
-  CompareAll(VERIFY_CODES)
+  # CompareAll(VERIFY_CODES)
   # TODO 周末研究下怎么画图，把入出点放在图形上，更直观，hs300，股价，收益曲线

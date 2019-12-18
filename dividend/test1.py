@@ -1277,7 +1277,7 @@ if __name__ == '__main__':
   #   if not stock.ExistCheckResult():
   #     print(stock.code)
   
-  # Test2('600028', 74405, '中国石化', True, False)
+  # Test2('601169', 88305, '北京银行', False, False)
   # test
   # TestAll(CODE_AND_MONEY, True, False)
   #save

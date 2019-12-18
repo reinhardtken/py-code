@@ -38,12 +38,12 @@ if __name__ == '__main__':
   #   stock.Store2DB()
 
   #沪深300统计##############################################
-  # df = util.QueryHS300All()
-  # out = []
-  # for code, row in df.iterrows():
-  #   out.append({'code': code, 'name': row['股票名称']})
-  #
-  # strategy.dv1.CompareAll('hs300_dv1', out)
+  df = util.QueryHS300All()
+  out = []
+  for code, row in df.iterrows():
+    out.append({'code': code, 'name': row['股票名称']})
+
+  strategy.dv1.CompareAll('hs300_dv1', out)
 
   #全部股票################################################
   # df = util.QueryAll()
@@ -75,9 +75,9 @@ if __name__ == '__main__':
   #   stock.CloseAccount()
   #   stock.Store2DB()
 
-  df = util.QueryAll()
-  out = []
-  for code, row in df.iterrows():
-    out.append({'code': code, 'name': row['名称']})
-
-  strategy.dv1.CompareAll('all_dv1', out)
+  # df = util.QueryAll()
+  # out = []
+  # for code, row in df.iterrows():
+  #   out.append({'code': code, 'name': row['名称']})
+  #
+  # strategy.dv1.CompareAll('all_dv1', out)
