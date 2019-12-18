@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '1.0.0.17'
+VERSION = '1.0.0.18'
 
 
 DIR_BUY = 1
@@ -81,6 +81,7 @@ class TradeUnit:
     self.MAXEND = self.Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
     self.holdStockDate = 0  # 持股总交易天数
     self.holdStockNatureDate = 0  # 持股总自然天数
+    self.holdStockNatureDateLastCheck = None #上个检查持股自然日的时点
     # self.lastDate = None  # 最后回测的交易日
     # self.lastPrice = 0  # 最后回测的交易价格
     self.result = None  # 最后的交易结果
@@ -95,6 +96,11 @@ class TradeUnit:
     self.beforeProfit = None  # 前复权行情，用于计算从头到尾持有股票的收益
     self.tradeCounter = 0  # 交易的次数，建仓次数
     self.current = DayInfo()  #当前循环的全部信息
+    self.maxValue = self.BEGIN_MONEY #最大账户净值
+    self.maxRetracement = 0 #最大回撤
+    self.maxRetracementDays = 0#连续不创新高天数
+    self.maxRetracementDaysHistory = 0  # 连续不创新高天数，历史最大值
+    self.maxRetracementDaysLastCheck = None  # 上个检查持股时点
     
     # 特殊年报时间
     self.ALL_SPECIAL_PAPER = {}
@@ -144,7 +150,7 @@ class TradeUnit:
   def Buy(self, date, triggerPrice, sellPrice, price, indexPrice, where, reason=''):
     try:
       if self.status == HOLD_STOCK:
-        self.holdStockDate += 1
+        # self.holdStockDate += 1
         # 如果已经持股，需要根据历年股息调整卖出价格
         if sellPrice != INVALID_SELL_PRICE:
           self.sellPrice = sellPrice
@@ -724,12 +730,62 @@ class TradeUnit:
           cooldownEnd = self.dangerousPoint[0][1]
           self.dangerousPoint = self.dangerousPoint[1:]
       
+        #记录净值和回撤
+        self.processOther(current.date, current.price)
       
       
       except TypeError as e:
         print(e)
       except KeyError as e:
         print(e)
+  
+  
+  
+  def processOther(self, date, price):
+    #最大净值
+    if self.status == HOLD_MONEY:
+      pass
+      # if self.money > self.maxValue:
+      #   self.maxValue = self.money
+      #   print('新高, 日期：{}, 净值：{}, 最大不创新高天数：{}'.format(date, self.maxValue, old))
+    elif self.status == HOLD_STOCK:
+      if self.number*100*price + self.money > self.maxValue:
+        self.maxValue = self.number*100*price + self.money
+        old = self.maxRetracementDays
+        if self.maxRetracementDays > self.maxRetracementDaysHistory:
+          self.maxRetracementDaysHistory = self.maxRetracementDays
+        self.maxRetracementDays = 0
+        self.maxRetracementDaysLastCheck = None
+        print('新高, 日期：{}, 净值：{}, 最大不创新高天数：{}'.format(date, self.maxValue, old))
+     
+    #最大回撤
+    if self.status == HOLD_MONEY:
+      pass
+      # if (self.maxValue - self.money) / self.maxValue > self.maxRetracement:
+      #   self.maxRetracement = (self.maxValue - self.money) / self.maxValue
+      #   print('最大回撤, 日期：{}, 回撤：{}'.format(date, self.maxRetracement))
+    elif self.status == HOLD_STOCK:
+      nowValue = self.number*100*price + self.money
+      if  (self.maxValue - nowValue) / self.maxValue > self.maxRetracement:
+        self.maxRetracement = (self.maxValue - nowValue) / self.maxValue
+        if self.maxRetracementDaysLastCheck is None:
+          self.maxRetracementDaysLastCheck = date
+        else:
+          diff = date - self.maxRetracementDaysLastCheck
+          self.maxRetracementDaysLastCheck = date
+          self.maxRetracementDays += diff.days
+        print('最大回撤2, 日期：{}, 回撤：{}, 持续：{}'.format(date, self.maxRetracement, self.maxRetracementDays))
+
+    #持股交易日
+    if self.status == HOLD_STOCK:
+      self.holdStockDate += 1
+      #持股自然日
+      if self.holdStockNatureDateLastCheck is None:
+        self.holdStockNatureDateLastCheck = date
+      else:
+        diff = date - self.holdStockNatureDateLastCheck
+        self.holdStockNatureDateLastCheck = date
+        self.holdStockNatureDate += diff.days
   
   def CloseAccount(self):
     money = 0
@@ -757,9 +813,13 @@ class TradeUnit:
     for one in self.tradeList:
       tl.append(one.ToDB())
     out['tradeMarks'] = tl
-    out['result'] = self.result.ToDB()
+    out.update(self.result.ToDB())
     out['beforeProfit'] = self.beforeProfit
     out['tradeCounter'] = self.tradeCounter
+    out['maxValue'] = self.maxValue
+    out['maxRetracement'] = self.maxRetracement
+    out['maxRetracementDays'] = self.maxRetracementDaysHistory
+    out['holdStockNatureDate'] = self.holdStockNatureDate
     util.SaveMongoDB(out, 'stock_backtest', self.collectionName)
   
   def ExistCheckResult(self):
@@ -988,9 +1048,10 @@ class TradeResult:
   
   def ToDB(self):
     return {'beginDate': self.__beginDate, 'endDate': self.__endDate, 'status': self.__status,
-            'beginMoney': self.__beginMoney, 'total': self.__total,
-            'profit': self.__profit, 'percent': self.__percent, 'days': self.__days, 'hs300Profit': self.__hs300Profit}
-  
+                     'beginMoney': self.__beginMoney, 'total': self.__total,
+                      'profit': self.__profit, 'percent': self.__percent, 'days': self.__days,
+            'hs300Profit': self.__hs300Profit}
+
   def FromDB(db):
     one = TradeResult()
     one.beginDate(db['beginDate']).endDate(db['endDate']).status(db['status']).beginMoney(db['beginMoney']).total(
@@ -1287,9 +1348,9 @@ if __name__ == '__main__':
   # test
   # TestAll(CODE_AND_MONEY, True, False)
   # save
-  # TestAll(VERIFY_CODES, True, False)
+  TestAll(VERIFY_CODES, True, False)
   # check
-  TestAll(VERIFY_CODES, False, True)
+  # TestAll(VERIFY_CODES, False, True)
   # compare
   # CompareAll(VERIFY_CODES)
   # TODO 周末研究下怎么画图，把入出点放在图形上，更直观，hs300，股价，收益曲线
