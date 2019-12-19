@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '1.0.0.18'
+VERSION = '1.0.0.20'
 
 
 DIR_BUY = 1
@@ -45,6 +45,299 @@ class DayInfo:
     self.priceVec = []
     #5日平均线等等，都放在这里
     
+ 
+#回撤相关信息
+class RetracementMark:
+  def __init__(self):
+    self.clear()
+  
+  def copy(self):
+    one = RetracementMark()
+    one.value = self.value
+    one.days = self.days
+    one.beginPrice = self.beginPrice
+    one.endPrice = self.endPrice
+    one.begin = self.begin
+    one.end = self.end
+    return one
+  
+  def clear(self):
+    self.value = 0  # 最大回撤
+    self.days = 0  # 连续不创新高天数
+    self.beginPrice = 0
+    self.endPrice = 0
+    self.begin = None
+    self.end = None
+    
+  def ToDict(self, head):
+    return {head+':value': self.value, head+':days': self.days, head+':begin': self.begin, head+':end': self.end,
+            head + ':beginPrice': self.beginPrice, head + ':endPrice': self.endPrice}
+    
+class Retracement:
+  def __init__(self):
+    self.__current = RetracementMark()
+    self.__history = RetracementMark()
+    self.maxRetracementDaysLastCheck = None  # 上个检查持股时点
+    
+  
+  def Record(self, date):
+    old = self.current.days
+    self.current.end = date
+    # 如果回测创新高，记录
+    if self.current.value > self.history.value:
+      self.updateHistory(self.current.copy())
+    # 回撤记录清零
+    self.current.clear()
+    self.maxRetracementDaysLastCheck = None
+    return old
+  
+  
+  def ToDict(self, head):
+    return self.__history.ToDict(head)
+  
+  @property
+  def current(self):
+    return self.__current
+
+  @property
+  def history(self):
+    return self.__history
+  
+  def updateHistory(self, one):
+    self.__history = one
+  
+#记录新高
+class MaxRecord:
+  def __init__(self):
+    self.value = 0
+    self.date = None
+    
+  
+  def ToDict(self, head):
+    return {head + ':value': self.value, head + ':date': self.date}
+#########################################################
+#代表账号信息
+class Account:
+  def __init__(self, beginMoney, startDate):
+    self.status = HOLD_MONEY  # 持仓还是持币
+    # self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
+    self.startDate = startDate
+    self.BEGIN_MONEY = beginMoney
+    self.money = self.BEGIN_MONEY
+    self.oldMoney = self.money
+
+    self.number = 0  # 持仓的时候表示持仓数目(手)
+
+    self.indexBuyPoint = None
+    self.tradeCounter = 0
+    self.tradeList = []
+    self.holdStockDate = 0  # 持股总交易天数
+    self.holdStockNatureDate = 0  # 持股总自然天数
+    self.holdStockNatureDateLastCheck = None  # 上个检查持股自然日的时点
+    self.beforeProfit = None
+
+    self.result = None  # 最后的交易结果
+    self.sellPrice = None  # 卖出价格
+
+    self.indexProfit = 1  # 沪深300指数收益
+    self.indexBuyPoint = None  # 股票开仓时候沪深300指数点位
+
+    # 最大账户净值
+    self.maxValue = MaxRecord()
+    self.maxValue.value = self.BEGIN_MONEY
+    self.maxValue.date = self.startDate
+    # 回撤相关
+    self.Retracement = Retracement()
+  
+  def isHoldStock(self):
+    return self.status == HOLD_STOCK
+  
+  def isHoldMoney(self):
+    return self.status == HOLD_MONEY
+
+  def buyInner(self, price, money):
+    # 计算多少钱买多少股，返回股数，钱数
+    number = money // (price * 100)
+    restMoney = money - number * 100 * price
+    return (number, restMoney)
+
+
+  def Buy(self, date, triggerPrice, sellPrice, price, indexPrice, where, reason=''):
+    try:
+      if self.isHoldStock():
+        # self.holdStockDate += 1
+        # 如果已经持股，需要根据历年股息调整卖出价格
+        if sellPrice != INVALID_SELL_PRICE:
+          self.sellPrice = sellPrice
+    
+      # 如果持币，以固定价格买入
+      if price <= triggerPrice:
+        if self.isHoldMoney():
+          # 卖出的价格是在建仓的时候决定的
+          self.sellPrice = sellPrice
+          self.oldMoney = self.money
+          number, money = self.buyInner(price, self.money)
+          self.number = number
+          self.money = money
+          self.status = HOLD_STOCK
+        
+          # 记录指数变化
+          self.indexBuyPoint = indexPrice
+          # 交易次数+1
+          self.tradeCounter += 1
+        
+          # 记录
+          mark = TradeMark()
+          mark.reason('买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
+            price).where(where).extraInfo('{}'.format(reason)).Dump()
+          self.tradeList.append(mark)
+          # print("买入： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price, self.number, self.money, reason))
+        elif self.isHoldStock():
+          number, money = self.buyInner(price, self.money)
+          if number > 0:
+            # 追加买入
+            self.number += number
+            self.money = money
+          
+            mark = TradeMark()
+            mark.reason('追加买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
+              price).where(where).extraInfo('剩余资金：{}'.format(self.money)).Dump()
+            self.tradeList.append(mark)
+            # print("买入（追加买入）： 日期：{}, 触发价格：{}, 价格：{}, 追加数量：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price,
+            #                                                                                nm[0], self.number, self.money, reason))
+    except Exception as e:
+      print(e)
+
+  def Sell(self, date, sellPrice, price, indexPrice, where, reason=''):
+    if self.isHoldStock():
+      if price >= self.sellPrice:
+        self.SellNoCodition(date, price, indexPrice, reason)
+      elif sellPrice == INVALID_SELL_PRICE and where.find('-year') != -1:
+        # 在由年报决定买卖的情况下，如果卖出价格是INVALID_SELL_PRICE
+        # 说明当年没有分红，那就必须无条件卖出了
+        self.SellNoCodition(date, price, indexPrice, '年报未分红')
+
+  def SellNoCodition(self, date, price, indexPrice, reason=''):
+    if self.isHoldStock():
+      self.money = self.money + self.number * 100 * price
+      winLoss = (self.money - self.oldMoney) / self.oldMoney
+      self.status = HOLD_MONEY
+      # 计算指数收益
+      self.indexProfit *= indexPrice / self.indexBuyPoint
+    
+      # 记录
+      mark = TradeMark()
+      mark.reason('卖出').date(date).dir(DIR_SELL).total(self.number * 100 * price).number(self.number).price(
+        price).extraInfo(
+        '盈亏：{}, 原因：{}'.format(winLoss, reason)).Dump()
+      self.tradeList.append(mark)
+      
+      
+  def ProcessDividend(self, date, buyPrice, price, indexPrice, dividend):
+    if self.isHoldStock():
+      if buyPrice >= price:
+        oldMoney = self.money
+        oldNumber = self.number
+        dividendMoney = self.number * 100 * dividend.dividendAfterTax
+        money = dividendMoney + self.money
+      
+        # 如果有转送股，所有的价格，股数需要变动
+        if dividend.gift > 0:
+          self.number *= 1 + dividend.gift
+          oldSellPrice = self.sellPrice
+          self.sellPrice /= 1 + dividend.gift
+          # 此时价格已经变化，无需处理
+          # price /= 1+dividend.gift
+          print('发生转送股 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
+      
+        number = money // (price * 100)
+        self.money = money - number * 100 * price
+        self.number += number
+      
+        # 记录
+        mark = TradeMark()
+        mark.reason('除权买入').date(date).dir(DIR_BUY).total(number * 100 * price).number(number). \
+          price(price).extraInfo('分红金额：{}'.format(dividendMoney)).Dump()
+        self.tradeList.append(mark)
+      else:
+        oldMoney = self.money
+        dividendMoney = self.number * 100 * dividend.dividendAfterTax
+        self.money += dividendMoney
+      
+        # 如果有转送股，所有的价格，股数需要变动
+        if dividend.gift > 0:
+          self.number *= 1 + dividend.gift
+          oldSellPrice = self.sellPrice
+          self.sellPrice /= 1 + dividend.gift
+          # price /= 1 + dividend.gift
+          print('发生转送股2 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
+      
+        # 记录
+        mark = TradeMark()
+        mark.reason('除权不买入').date(date).dir(DIR_NONE).total(dividendMoney).number(0).price(0).extraInfo(
+          '分红金额：{}'.format(dividendMoney)).Dump()
+        self.tradeList.append(mark)
+
+  def processOther(self, date, price):
+    # 最大净值
+    if self.isHoldMoney():
+      pass
+    elif self.isHoldStock():
+      # 新高
+      if self.number * 100 * price + self.money > self.maxValue.value:
+        self.maxValue.value = self.number * 100 * price + self.money
+        self.maxValue.date = date
+        old = self.Retracement.Record(date)
+        print('新高, 日期：{}, 净值：{}, 最近最大不创新高天数：{}'.format(date, self.maxValue.value, old))
+
+    # 最大回撤
+    if self.isHoldMoney():
+      pass
+    elif self.isHoldStock():
+      nowValue = self.number * 100 * price + self.money
+      # 回撤创新低
+      if (self.maxValue.value - nowValue) / self.maxValue.value > self.Retracement.current.value:
+        self.Retracement.current.value = (self.maxValue.value - nowValue) / self.maxValue.value
+        if self.Retracement.maxRetracementDaysLastCheck is None:
+          self.Retracement.maxRetracementDaysLastCheck = date
+          self.Retracement.current.begin = date
+          self.Retracement.current.beginPrice = price
+        else:
+          diff = date - self.Retracement.maxRetracementDaysLastCheck
+          self.Retracement.maxRetracementDaysLastCheck = date
+          self.Retracement.current.days += diff.days
+        print('最大回撤, 日期：{}, 回撤：{}, 持续：{}'.format(date, self.Retracement.current.value, self.Retracement.current.days))
+
+    # 持股交易日
+    if self.isHoldStock():
+      self.holdStockDate += 1
+      # 持股自然日
+      if self.holdStockNatureDateLastCheck is None:
+        self.holdStockNatureDateLastCheck = date
+      else:
+        diff = date - self.holdStockNatureDateLastCheck
+        self.holdStockNatureDateLastCheck = date
+        self.holdStockNatureDate += diff.days
+
+  def CloseAccount(self, current):
+    money = 0
+    if self.isHoldStock():
+      money = self.money + self.number * 100 * current.price
+      # 计算指数收益
+      self.indexProfit *= current.index / self.indexBuyPoint
+      # 可能结束回测的时候，都没有创新高，导致最大回撤记录没有刷新，在这里刷新下
+      self.Retracement.Record(current.date)
+    else:
+      money = self.money
+  
+    one = TradeResult()
+    one.beginDate(pd.Timestamp(self.startDate)).endDate(current.date).status(self.status).beginMoney(
+      self.BEGIN_MONEY). \
+      total(money).days(self.holdStockDate).hs300Profit(self.indexProfit - 1)
+    one.Calc()
+    self.result = one
+    one.Dump()
+#########################################################
 #update DayInfo
 # for buyChain
 # for sellChain
@@ -54,14 +347,8 @@ class TradeUnit:
   DF_HS300 = None
   # 代表一个交易单元，比如10万本金
   def __init__(self, code, name, beginMoney):
-    self.tradeList = []  # 交易记录
-    self.status = HOLD_MONEY  # 持仓还是持币
-    # self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
-    self.BEGIN_MONEY = beginMoney
-    self.money = self.BEGIN_MONEY
-    self.oldMoney = self.money
-    self.costPrice = 0  # 持仓的时候，表示持仓成本
-    self.number = 0  # 持仓的时候表示持仓数目(手)
+    # self.tradeList = []  # 交易记录
+    
     
     self.startYear = 2011  # 起始年份
     start = str(self.startYear) + '-01-01T00:00:00Z'
@@ -69,7 +356,10 @@ class TradeUnit:
     self.endYear = 2011  # 结束年份
     end = str(self.endYear) + '-12-10T00:00:00Z'
     self.endDate = parser.parse(end, ignoretz=True)
-    
+
+    # 用户账号
+    self.BEGIN_MONEY = beginMoney
+    self.A = Account(beginMoney, self.startDate)
     
     self.checkPoint = {}  # 所有的年报季报除权等影响买卖点的特殊时点
     self.code = code  # 代码
@@ -79,28 +369,19 @@ class TradeUnit:
     self.dividendPoint = []  # 除权的日期
     self.data = None  # 行情
     self.MAXEND = self.Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
-    self.holdStockDate = 0  # 持股总交易天数
-    self.holdStockNatureDate = 0  # 持股总自然天数
-    self.holdStockNatureDateLastCheck = None #上个检查持股自然日的时点
-    # self.lastDate = None  # 最后回测的交易日
-    # self.lastPrice = 0  # 最后回测的交易价格
-    self.result = None  # 最后的交易结果
-    self.sellPrice = None  # 卖出价格
+    
     self.dividendAdjust = {}  # 除权日，调整买入卖出价格
     self.lastPriceVec = []  # 最后5天价格，用于调试
     self.index = None  # 沪深300指数
-    self.indexProfit = 1  # 沪深300指数收益
-    self.indexBuyPoint = None  # 股票开仓时候沪深300指数点位
+    
     # self.lastIndex = None
     self.collectionName = 'dv1'  # 存盘表名
-    self.beforeProfit = None  # 前复权行情，用于计算从头到尾持有股票的收益
-    self.tradeCounter = 0  # 交易的次数，建仓次数
+    # self.beforeProfit = None  # 前复权行情，用于计算从头到尾持有股票的收益
+    # self.tradeCounter = 0  # 交易的次数，建仓次数
     self.current = DayInfo()  #当前循环的全部信息
-    self.maxValue = self.BEGIN_MONEY #最大账户净值
-    self.maxRetracement = 0 #最大回撤
-    self.maxRetracementDays = 0#连续不创新高天数
-    self.maxRetracementDaysHistory = 0  # 连续不创新高天数，历史最大值
-    self.maxRetracementDaysLastCheck = None  # 上个检查持股时点
+    
+    
+    
     
     # 特殊年报时间
     self.ALL_SPECIAL_PAPER = {}
@@ -149,79 +430,78 @@ class TradeUnit:
   
   def Buy(self, date, triggerPrice, sellPrice, price, indexPrice, where, reason=''):
     try:
-      if self.status == HOLD_STOCK:
-        # self.holdStockDate += 1
-        # 如果已经持股，需要根据历年股息调整卖出价格
-        if sellPrice != INVALID_SELL_PRICE:
-          self.sellPrice = sellPrice
+      self.A.Buy(date, triggerPrice, sellPrice, price, indexPrice, where, reason)
+      # if self.status == HOLD_STOCK:
+      #   # self.holdStockDate += 1
+      #   # 如果已经持股，需要根据历年股息调整卖出价格
+      #   if sellPrice != INVALID_SELL_PRICE:
+      #     self.sellPrice = sellPrice
 
       # 如果持币，以固定价格买入
-      if price <= triggerPrice:
-        if self.status == HOLD_MONEY:
-          # 卖出的价格是在建仓的时候决定的
-          self.sellPrice = sellPrice
-          self.oldMoney = self.money
-          number, money = self.buyInner(price, self.money)
-          self.number = number
-          self.money = money
-          # self.number = self.money // (price * 100)
-          # self.money = self.money - self.number*100*price
-          self.costPrice = price
-          self.status = HOLD_STOCK
-
-          # 记录指数变化
-          self.indexBuyPoint = indexPrice
-          #交易次数+1
-          self.tradeCounter += 1
-          
-          # 记录
-          mark = TradeMark()
-          mark.reason('买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
-            price).where(where).extraInfo('{}'.format(reason)).Dump()
-          self.tradeList.append(mark)
-          # print("买入： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price, self.number, self.money, reason))
-        elif self.status == HOLD_STOCK:
-          number, money = self.buyInner(price, self.money)
-          if number > 0:
-            # 追加买入
-            self.number += number
-            self.money = money
-            
-            mark = TradeMark()
-            mark.reason('追加买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
-              price).where(where).extraInfo('剩余资金：{}'.format(self.money)).Dump()
-            self.tradeList.append(mark)
-            # print("买入（追加买入）： 日期：{}, 触发价格：{}, 价格：{}, 追加数量：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price,
-            #                                                                                nm[0], self.number, self.money, reason))
+      # if price <= triggerPrice:
+      #   if self.status == HOLD_MONEY:
+      #     # 卖出的价格是在建仓的时候决定的
+      #     self.sellPrice = sellPrice
+      #     self.oldMoney = self.money
+      #     number, money = self.buyInner(price, self.money)
+      #     self.number = number
+      #     self.money = money
+      #     # self.number = self.money // (price * 100)
+      #     # self.money = self.money - self.number*100*price
+      #     # self.costPrice = price
+      #     self.status = HOLD_STOCK
+      #
+      #     # 记录指数变化
+      #     self.indexBuyPoint = indexPrice
+      #     #交易次数+1
+      #     self.tradeCounter += 1
+      #
+      #     # 记录
+      #     mark = TradeMark()
+      #     mark.reason('买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
+      #       price).where(where).extraInfo('{}'.format(reason)).Dump()
+      #     self.tradeList.append(mark)
+      #     # print("买入： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price, self.number, self.money, reason))
+      #   elif self.status == HOLD_STOCK:
+      #     number, money = self.buyInner(price, self.money)
+      #     if number > 0:
+      #       # 追加买入
+      #       self.number += number
+      #       self.money = money
+      #
+      #       mark = TradeMark()
+      #       mark.reason('追加买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
+      #         price).where(where).extraInfo('剩余资金：{}'.format(self.money)).Dump()
+      #       self.tradeList.append(mark)
     except Exception as e:
       print(e)
   
   def Sell(self, date, sellPrice, price, indexPrice, where, reason=''):
-    if self.status == HOLD_STOCK:
-      if price >= self.sellPrice:
-        self.SellNoCodition(date, price, indexPrice, reason)
-      elif sellPrice == INVALID_SELL_PRICE and where.find('-year') != -1:
-        # 在由年报决定买卖的情况下，如果卖出价格是INVALID_SELL_PRICE
-        # 说明当年没有分红，那就必须无条件卖出了
-        self.SellNoCodition(date, price, indexPrice, '年报未分红')
+    self.A.Sell(date, sellPrice, price, indexPrice, where, reason)
+    # if self.status == HOLD_STOCK:
+    #   if price >= self.sellPrice:
+    #     self.SellNoCodition(date, price, indexPrice, reason)
+    #   elif sellPrice == INVALID_SELL_PRICE and where.find('-year') != -1:
+    #     # 在由年报决定买卖的情况下，如果卖出价格是INVALID_SELL_PRICE
+    #     # 说明当年没有分红，那就必须无条件卖出了
+    #     self.SellNoCodition(date, price, indexPrice, '年报未分红')
   
   def SellNoCodition(self, date, price, indexPrice, reason=''):
-    if self.status == HOLD_STOCK:
-      self.money = self.money + self.number * 100 * price
-      winLoss = (self.money - self.oldMoney) / self.oldMoney
-      self.status = HOLD_MONEY
-      # 计算指数收益
-      self.indexProfit *= indexPrice / self.indexBuyPoint
-      
-      # 记录
-      mark = TradeMark()
-      mark.reason('卖出').date(date).dir(DIR_SELL).total(self.number * 100 * price).number(self.number).price(
-        price).extraInfo(
-        '盈亏：{}, 原因：{}'.format(winLoss, reason)).Dump()
-      self.tradeList.append(mark)
-      # print(mark)
-      # print("卖出： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 盈亏：{}, 现金：{}, 原因：{}".format(date, triggerPrice, price,
-      #                                                                      self.number, winLoss, self.money, reason))
+    self.A.SellNoCodition(date, price, indexPrice, reason)
+    # if self.status == HOLD_STOCK:
+    #   self.money = self.money + self.number * 100 * price
+    #   winLoss = (self.money - self.oldMoney) / self.oldMoney
+    #   self.status = HOLD_MONEY
+    #   # 计算指数收益
+    #   self.indexProfit *= indexPrice / self.indexBuyPoint
+    #
+    #   # 记录
+    #   mark = TradeMark()
+    #   mark.reason('卖出').date(date).dir(DIR_SELL).total(self.number * 100 * price).number(self.number).price(
+    #     price).extraInfo(
+    #     '盈亏：{}, 原因：{}'.format(winLoss, reason)).Dump()
+    #   self.tradeList.append(mark)
+
   
   def CheckPrepare(self):
     # 准备判定条件
@@ -567,55 +847,51 @@ class TradeUnit:
   
   
   def ProcessDividend(self, date, buyPrice, price, indexPrice, dividend):
-    if self.status == HOLD_STOCK:
-      if buyPrice >= price:
-        oldMoney = self.money
-        oldNumber = self.number
-        dividendMoney = self.number * 100 * dividend.dividendAfterTax
-        money = dividendMoney + self.money
+    self.A.ProcessDividend(date, buyPrice, price, indexPrice, dividend)
+    # if self.status == HOLD_STOCK:
+    #   if buyPrice >= price:
+    #     oldMoney = self.money
+    #     oldNumber = self.number
+    #     dividendMoney = self.number * 100 * dividend.dividendAfterTax
+    #     money = dividendMoney + self.money
+    #
+    #     # 如果有转送股，所有的价格，股数需要变动
+    #     if dividend.gift > 0:
+    #       self.number *= 1 + dividend.gift
+    #       oldSellPrice = self.sellPrice
+    #       self.sellPrice /= 1 + dividend.gift
+    #       # 此时价格已经变化，无需处理
+    #       # price /= 1+dividend.gift
+    #       print('发生转送股 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
+    #
+    #     number = money // (price * 100)
+    #     self.money = money - number * 100 * price
+    #     self.number += number
+    #
+    #     # 记录
+    #     mark = TradeMark()
+    #     mark.reason('除权买入').date(date).dir(DIR_BUY).total(number * 100 * price).number(number). \
+    #       price(price).extraInfo('分红金额：{}'.format(dividendMoney)).Dump()
+    #     self.tradeList.append(mark)
+    #   else:
+    #     oldMoney = self.money
+    #     dividendMoney = self.number * 100 * dividend.dividendAfterTax
+    #     self.money += dividendMoney
+    #
+    #     # 如果有转送股，所有的价格，股数需要变动
+    #     if dividend.gift > 0:
+    #       self.number *= 1 + dividend.gift
+    #       oldSellPrice = self.sellPrice
+    #       self.sellPrice /= 1 + dividend.gift
+    #       # price /= 1 + dividend.gift
+    #       print('发生转送股2 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
+    #
+    #     # 记录
+    #     mark = TradeMark()
+    #     mark.reason('除权不买入').date(date).dir(DIR_NONE).total(dividendMoney).number(0).price(0).extraInfo(
+    #       '分红金额：{}'.format(dividendMoney)).Dump()
+    #     self.tradeList.append(mark)
 
-        # 如果有转送股，所有的价格，股数需要变动
-        if dividend.gift > 0:
-          self.number *= 1 + dividend.gift
-          oldSellPrice = self.sellPrice
-          self.sellPrice /= 1 + dividend.gift
-          # 此时价格已经变化，无需处理
-          # price /= 1+dividend.gift
-          print('发生转送股 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
-        
-        number = money // (price * 100)
-        self.money = money - number * 100 * price
-        self.number += number
-
-        # 记录
-        mark = TradeMark()
-        mark.reason('除权买入').date(date).dir(DIR_BUY).total(number * 100 * price).number(number). \
-          price(price).extraInfo('分红金额：{}'.format(dividendMoney)).Dump()
-        self.tradeList.append(mark)
-        # print(mark)
-        # print("除权买入： 日期：{}, 除权日：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 分红：{}".format(date, dividend[0], buyPrice, price, self.number, self.money,
-        #                                                                   dividendMoney))
-      else:
-        oldMoney = self.money
-        dividendMoney = self.number * 100 * dividend.dividendAfterTax
-        self.money += dividendMoney
-        
-        # 如果有转送股，所有的价格，股数需要变动
-        if dividend.gift > 0:
-          self.number *= 1 + dividend.gift
-          oldSellPrice = self.sellPrice
-          self.sellPrice /= 1 + dividend.gift
-          # price /= 1 + dividend.gift
-          print('发生转送股2 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
-        
-        # 记录
-        mark = TradeMark()
-        mark.reason('除权不买入').date(date).dir(DIR_NONE).total(dividendMoney).number(0).price(0).extraInfo(
-          '分红金额：{}'.format(dividendMoney)).Dump()
-        self.tradeList.append(mark)
-        # print(mark)
-        # print("除权不买入： 日期：{}, 除权日：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 分红：{}".format(date, dividend[0], buyPrice, price, self.number, self.money,
-        #                                                               dividendMoney))
   
   def MakeDecisionPrice(self, date):
     # 决定使用哪个年的checkpoit，返回对应的buy和sell
@@ -742,67 +1018,66 @@ class TradeUnit:
   
   
   def processOther(self, date, price):
-    #最大净值
-    if self.status == HOLD_MONEY:
-      pass
-      # if self.money > self.maxValue:
-      #   self.maxValue = self.money
-      #   print('新高, 日期：{}, 净值：{}, 最大不创新高天数：{}'.format(date, self.maxValue, old))
-    elif self.status == HOLD_STOCK:
-      if self.number*100*price + self.money > self.maxValue:
-        self.maxValue = self.number*100*price + self.money
-        old = self.maxRetracementDays
-        if self.maxRetracementDays > self.maxRetracementDaysHistory:
-          self.maxRetracementDaysHistory = self.maxRetracementDays
-        self.maxRetracementDays = 0
-        self.maxRetracementDaysLastCheck = None
-        print('新高, 日期：{}, 净值：{}, 最大不创新高天数：{}'.format(date, self.maxValue, old))
-     
-    #最大回撤
-    if self.status == HOLD_MONEY:
-      pass
-      # if (self.maxValue - self.money) / self.maxValue > self.maxRetracement:
-      #   self.maxRetracement = (self.maxValue - self.money) / self.maxValue
-      #   print('最大回撤, 日期：{}, 回撤：{}'.format(date, self.maxRetracement))
-    elif self.status == HOLD_STOCK:
-      nowValue = self.number*100*price + self.money
-      if  (self.maxValue - nowValue) / self.maxValue > self.maxRetracement:
-        self.maxRetracement = (self.maxValue - nowValue) / self.maxValue
-        if self.maxRetracementDaysLastCheck is None:
-          self.maxRetracementDaysLastCheck = date
-        else:
-          diff = date - self.maxRetracementDaysLastCheck
-          self.maxRetracementDaysLastCheck = date
-          self.maxRetracementDays += diff.days
-        print('最大回撤2, 日期：{}, 回撤：{}, 持续：{}'.format(date, self.maxRetracement, self.maxRetracementDays))
-
-    #持股交易日
-    if self.status == HOLD_STOCK:
-      self.holdStockDate += 1
-      #持股自然日
-      if self.holdStockNatureDateLastCheck is None:
-        self.holdStockNatureDateLastCheck = date
-      else:
-        diff = date - self.holdStockNatureDateLastCheck
-        self.holdStockNatureDateLastCheck = date
-        self.holdStockNatureDate += diff.days
+    self.A.processOther(date, price)
+    # #最大净值
+    # if self.status == HOLD_MONEY:
+    #   pass
+    # elif self.status == HOLD_STOCK:
+    #   #新高
+    #   if self.number*100*price + self.money > self.maxValue.value:
+    #     self.maxValue.value = self.number*100*price + self.money
+    #     self.maxValue.date = date
+    #     old = self.Retracement.Record(date)
+    #     print('新高, 日期：{}, 净值：{}, 最近最大不创新高天数：{}'.format(date, self.maxValue.value, old))
+    #
+    # #最大回撤
+    # if self.status == HOLD_MONEY:
+    #   pass
+    # elif self.status == HOLD_STOCK:
+    #   nowValue = self.number*100*price + self.money
+    #   #回撤创新低
+    #   if  (self.maxValue.value - nowValue) / self.maxValue.value > self.Retracement.current.value:
+    #     self.Retracement.current.value = (self.maxValue.value - nowValue) / self.maxValue.value
+    #     if self.Retracement.maxRetracementDaysLastCheck is None:
+    #       self.Retracement.maxRetracementDaysLastCheck = date
+    #       self.Retracement.current.begin = date
+    #       self.Retracement.current.beginPrice = price
+    #     else:
+    #       diff = date - self.Retracement.maxRetracementDaysLastCheck
+    #       self.Retracement.maxRetracementDaysLastCheck = date
+    #       self.Retracement.current.days += diff.days
+    #     print('最大回撤, 日期：{}, 回撤：{}, 持续：{}'.format(date, self.Retracement.current.value, self.Retracement.current.days))
+    #
+    # #持股交易日
+    # if self.status == HOLD_STOCK:
+    #   self.holdStockDate += 1
+    #   #持股自然日
+    #   if self.holdStockNatureDateLastCheck is None:
+    #     self.holdStockNatureDateLastCheck = date
+    #   else:
+    #     diff = date - self.holdStockNatureDateLastCheck
+    #     self.holdStockNatureDateLastCheck = date
+    #     self.holdStockNatureDate += diff.days
   
   def CloseAccount(self):
-    money = 0
-    if self.status == HOLD_STOCK:
-      money = self.money + self.number * 100 * self.current.price
-      # 计算指数收益
-      self.indexProfit *= self.current.index / self.indexBuyPoint
-    else:
-      money = self.money
-    
-    one = TradeResult()
-    one.beginDate(pd.Timestamp(self.startDate)).endDate(self.current.date).status(self.status).beginMoney(
-      self.BEGIN_MONEY). \
-      total(money).days(self.holdStockDate).hs300Profit(self.indexProfit - 1)
-    one.Calc()
-    self.result = one
-    one.Dump()
+    self.A.CloseAccount(self.current)
+    # money = 0
+    # if self.status == HOLD_STOCK:
+    #   money = self.money + self.number * 100 * self.current.price
+    #   # 计算指数收益
+    #   self.indexProfit *= self.current.index / self.indexBuyPoint
+    #   #可能结束回测的时候，都没有创新高，导致最大回撤记录没有刷新，在这里刷新下
+    #   self.Retracement.Record(self.current.date)
+    # else:
+    #   money = self.money
+    #
+    # one = TradeResult()
+    # one.beginDate(pd.Timestamp(self.startDate)).endDate(self.current.date).status(self.status).beginMoney(
+    #   self.BEGIN_MONEY). \
+    #   total(money).days(self.holdStockDate).hs300Profit(self.indexProfit - 1)
+    # one.Calc()
+    # self.result = one
+    # one.Dump()
     
   
   def Store2DB(self):
@@ -810,16 +1085,16 @@ class TradeUnit:
     out = {"_id": self.code, 'ver': VERSION, 'name': self.name}
     out["beginMoney"] = self.BEGIN_MONEY
     tl = []
-    for one in self.tradeList:
+    for one in self.A.tradeList:
       tl.append(one.ToDB())
     out['tradeMarks'] = tl
-    out.update(self.result.ToDB())
-    out['beforeProfit'] = self.beforeProfit
-    out['tradeCounter'] = self.tradeCounter
-    out['maxValue'] = self.maxValue
-    out['maxRetracement'] = self.maxRetracement
-    out['maxRetracementDays'] = self.maxRetracementDaysHistory
-    out['holdStockNatureDate'] = self.holdStockNatureDate
+    out.update(self.A.result.ToDB())
+    out['beforeProfit'] = self.A.beforeProfit
+    out['tradeCounter'] = self.A.tradeCounter
+    out.update(self.A.maxValue.ToDict('maxValue'))
+    out.update(self.A.Retracement.ToDict('Retracement'))
+
+    out['holdStockNatureDate'] = self.A.holdStockNatureDate
     util.SaveMongoDB(out, 'stock_backtest', self.collectionName)
   
   def ExistCheckResult(self):
@@ -847,10 +1122,10 @@ class TradeUnit:
     
     where = 0
     if self.BEGIN_MONEY == out['beginMoney']:
-      if len(self.tradeList) == len(out['tradeMarks']):
-        if self.result == TradeResult.FromDB(out['result']):
-          for index in range(len(self.tradeList)):
-            if self.tradeList[index] != TradeMark.FromDB(out['tradeMarks'][index]):
+      if len(self.A.tradeList) == len(out['tradeMarks']):
+        if self.A.result == TradeResult.FromDB(out):
+          for index in range(len(self.A.tradeList)):
+            if self.A.tradeList[index] != TradeMark.FromDB(out['tradeMarks'][index]):
               where += 1
               return False
           else:
@@ -1113,6 +1388,33 @@ def TestAll(codes, save, check):
     RunOne(one['code'], one['money'], one['name'], save, check)
 
 
+
+def Digest(collectionName, condition={}):
+  #从一个策略结果里面提取摘要
+  client = MongoClient()
+  db = client["stock_backtest"]
+  collection = db[collectionName]
+  cursor = collection.find(condition)
+  out = []
+  for c in cursor:
+    out.append(c)
+
+  for one in out:
+    tmp = {}
+    tmp['_id'] = one['_id']
+    tmp['name'] = one['name']
+    tmp['beginDate'] = one['beginDate']
+    tmp['endDate'] = one['endDate']
+    tmp['beginMoney'] = one['beginMoney']
+    tmp['total'] = one['total']
+    tmp['percent'] = one['percent']
+    tmp['maxValue:value'] = one['maxValue:value']
+    tmp['Retracement:value'] = one['Retracement:value']
+    tmp['Retracement:days'] = one['Retracement:days']
+    util.SaveMongoDB(tmp, 'stock_backtest', collectionName+"_digest")
+
+
+
 def CompareOne(collectionName, code, name):
   client = MongoClient()
   db = client["stock_backtest"]
@@ -1348,7 +1650,7 @@ if __name__ == '__main__':
   # test
   # TestAll(CODE_AND_MONEY, True, False)
   # save
-  TestAll(VERIFY_CODES, True, False)
+  # TestAll(VERIFY_CODES, True, False)
   # check
   # TestAll(VERIFY_CODES, False, True)
   # compare
