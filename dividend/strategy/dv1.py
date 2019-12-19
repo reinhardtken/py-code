@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '1.0.0.21'
+VERSION = '1.0.0.22'
 
 
 DIR_BUY = 1
@@ -179,6 +179,18 @@ class DayContext:
       else:
         tmp[k] = v
     self.extra = tmp
+  
+  
+  def NewDay(self, date, row):
+    self.year = date.year
+    self.date = date
+    self.price = row['close']
+    self.index = row['close_index']
+    # pb = row['pb']
+    if len(self.priceVec) > 5:
+      self.priceVec = self.priceVec[1:]
+      self.priceVec.append((date, self.price, self.index))
+    self.Clear()
 #########################################################
 #代表账号信息
 class Account:
@@ -226,14 +238,20 @@ class Account:
     restMoney = money - number * 100 * price
     return (number, restMoney)
 
-
+  def Before(self, context: DayContext):
+    pass
+  
+  
+  def After(self, context: DayContext):
+      self.processOther(context.date, context.price)
+      
   def Buy(self, date, triggerPrice, sellPrice, price, indexPrice, where, reason=''):
     try:
-      if self.isHoldStock():
-        # self.holdStockDate += 1
-        # 如果已经持股，需要根据历年股息调整卖出价格
-        if sellPrice != INVALID_SELL_PRICE:
-          self.sellPrice = sellPrice
+      # if self.isHoldStock():
+      #   # self.holdStockDate += 1
+      #   # 如果已经持股，需要根据历年股息调整卖出价格
+      #   if sellPrice != INVALID_SELL_PRICE:
+      #     self.sellPrice = sellPrice
     
       # 如果持币，以固定价格买入
       if price <= triggerPrice:
@@ -275,12 +293,20 @@ class Account:
 
   def Sell(self, date, sellPrice, price, indexPrice, where, reason=''):
     if self.isHoldStock():
+      # 在由年报决定买卖的情况下，如果卖出价格是INVALID_SELL_PRICE
+      # 说明当年没有分红，那就必须无条件卖出了
+      self.SellNoCodition(date, price, indexPrice, '年报未分红')
+      
+      
+  def Loop(self, date, sellPrice, price, indexPrice, where, reason=''):
+    if self.isHoldStock():
+      # 如果已经持股，需要根据历年股息调整卖出价格
+      if sellPrice != INVALID_SELL_PRICE:
+        self.sellPrice = sellPrice
+        
       if price >= self.sellPrice:
         self.SellNoCodition(date, price, indexPrice, reason)
-      elif sellPrice == INVALID_SELL_PRICE and where.find('-year') != -1:
-        # 在由年报决定买卖的情况下，如果卖出价格是INVALID_SELL_PRICE
-        # 说明当年没有分红，那就必须无条件卖出了
-        self.SellNoCodition(date, price, indexPrice, '年报未分红')
+
 
   def SellNoCodition(self, date, price, indexPrice, reason=''):
     if self.isHoldStock():
@@ -458,14 +484,15 @@ class DangerousGenerator:
       # self.SellNoCodition(context.date, context.price, context.index, reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
       # 记录因为扣非为负的区间，在区间内屏蔽开仓
       print('cooldownbegin {}'.format(self.dangerousPoint[0][0]))
-      context.Add(DayContext.DANGEROUS_POINT, DangerousGenerator.Event(self.dangerousPoint[0]))
+      context.Add(DayContext.DANGEROUS_POINT, DangerousGenerator.Event(self.dangerousPoint[0]), self.dangerousPoint[0][1])
       # cooldown = True
       # cooldownEnd = self.dangerousPoint[0][1]
       self.dangerousPoint = self.dangerousPoint[1:]
 #########################################################
 class StrategyDV:
-  def __init__(self, tu, startYear):
+  def __init__(self, tu, startYear, startDate):
     self.startYear = startYear
+    self.startDate = startDate
     self.TU = tu
     self.checkPoint = {}  # 所有的年报季报除权等影响买卖点的特殊时点
     self.dangerousPoint = []  # 利润同比下滑超过10%的位置
@@ -474,7 +501,15 @@ class StrategyDV:
     self.MAXEND = Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
   
     self.dividendAdjust = {}  # 除权日，调整买入卖出价格
-    
+
+
+  def Before(self, context: DayContext):
+    # 处理除权日时，需要调整买入卖出价格
+    if context.date in self.dividendAdjust:
+      self.ProcessDividendAdjust(self.dividendAdjust[context.date])
+
+  def After(self, context: DayContext):
+    pass
     
   def CheckPrepare(self):
     # 准备判定条件
@@ -577,8 +612,16 @@ class StrategyDV:
             self.dividendAdjust[one.date] = tmp
         except Exception as e:
           print(e)
-  
-  
+    
+    #清理所有截止日期早于startDate的cooldown
+    #Test2('601288', 26405, '农业银行', False, True) ，有2010年的cooldown
+    tmp = []
+    for one in self.dangerousPoint:
+      if one[1] < self.startDate:
+        continue
+      else:
+        tmp.append(one)
+    self.dangerousPoint = tmp
   
   def processSong(self, value):
     # 处理送股
@@ -686,7 +729,7 @@ class StrategyDV:
 
   def MakeDecisionPrice(self, date):
     # 决定使用哪个年的checkpoit，返回对应的buy和sell
-  
+
     anchor0 = pd.Timestamp(datetime(date.year, 4, 30))
     anchor1 = pd.Timestamp(datetime(date.year, 8, 31))
     # 特殊年报调整
@@ -695,13 +738,13 @@ class StrategyDV:
         anchor0 = self.TU.specialPaper[date.year][0]
       if 1 in self.TU.specialPaper[date.year]:
         anchor1 = self.TU.specialPaper[date.year][1]
-  
+
     where = None
     try:
       if date <= anchor0:
         # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
-        where = str(date.year) + '-midYear'
-        if self.checkPoint[date.year]['buyPrice2'] > 0:
+        where = str(date.year-1) + '-midYear'
+        if self.checkPoint[date.year-1]['buyPrice2'] > 0:
           return True, self.checkPoint[date.year - 1]['buyPrice2'], self.checkPoint[date.year - 1]['sellPrice2'], where
       elif date <= anchor1:
         # 在8月31日之前，需要使用去年的年报
@@ -721,9 +764,61 @@ class StrategyDV:
             return False, INVALID_BUY_PRICE, INVALID_SELL_PRICE, str(date.year - 1) + '-year3'
     except Exception as e:
       pass
-  
+
     return False, INVALID_BUY_PRICE, INVALID_SELL_PRICE, where
 
+  def MakeDecisionPrice2(self, date):
+    # 决定使用哪个年的checkpoit，返回对应的buy和sell
+  
+    anchor0 = pd.Timestamp(datetime(date.year, 4, 30))
+    anchor1 = pd.Timestamp(datetime(date.year, 8, 31))
+    # 特殊年报调整
+    if date.year in self.TU.specialPaper:
+      if 0 in self.TU.specialPaper[date.year]:
+        anchor0 = self.TU.specialPaper[date.year][0]
+      if 1 in self.TU.specialPaper[date.year]:
+        anchor1 = self.TU.specialPaper[date.year][1]
+  
+    where = None
+    try:
+      if date <= anchor0:
+        # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
+        where = str(date.year) + '-midYear'
+        return self.checkPoint[date.year - 1]['buyPrice2'], self.checkPoint[date.year - 1]['sellPrice2'], where
+      elif date <= anchor1:
+        # 在8月31日之前，需要使用去年的年报
+        where = str(date.year - 1) + '-year'
+        return self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice'], where
+      else:
+        # 在8月31日之后，使用去年的allDividend和今年半年报中dividend中大的那个决定
+        buy = self.checkPoint[date.year]['buyPrice']
+        midBuy = self.checkPoint[date.year]['buyPrice2']
+        if buy > midBuy and buy > 0:
+          return buy, self.checkPoint[date.year]['sellPrice'], str(date.year - 1) + '-year2'
+        else:
+          if midBuy > 0:
+            return midBuy, self.checkPoint[date.year]['sellPrice2'], str(date.year) + '-midYear2'
+          else:
+            return INVALID_BUY_PRICE, INVALID_SELL_PRICE, str(date.year - 1) + '-year3'
+    except Exception as e:
+      pass
+    #should not run here
+    return INVALID_BUY_PRICE, INVALID_SELL_PRICE, where
+
+  
+  def BuySellSignal(self, date, price):
+    buyPrice, sellPrice, where = self.MakeDecisionPrice2(date)
+    buySignal = (False, buyPrice, where)
+    sellSignal = (False, sellPrice, where)
+    #买卖价格有效则都有效，无效则都无效
+    if buyPrice != INVALID_BUY_PRICE:
+      if buyPrice >= price:
+        buySignal = (True, buyPrice, where)
+    elif sellPrice == INVALID_SELL_PRICE and where.find('-year') != -1:
+      sellSignal = (True, sellPrice, where)
+      
+    return buySignal, sellSignal
+  
   def ProcessDividendAdjust(self, data):
     if data['p'] == 'midYear':
       self.checkPoint[data['y']]['buyPrice2'] = data['buyPriceX']
@@ -750,7 +845,7 @@ class TradeUnit:
     # 用户账号
     self.BEGIN_MONEY = beginMoney
     self.A = Account(beginMoney, self.startDate)
-    self.DV = StrategyDV(self, self.startYear)
+    self.DV = StrategyDV(self, self.startYear, self.startDate)
     # self.checkPoint = {}  # 所有的年报季报除权等影响买卖点的特殊时点
     self.code = code  # 代码
     self.name = name
@@ -888,9 +983,9 @@ class TradeUnit:
   #   restMoney = money - number * 100 * price
   #   return (number, restMoney)
   
-  def Buy(self, date, triggerPrice, sellPrice, price, indexPrice, where, reason=''):
-    try:
-      self.A.Buy(date, triggerPrice, sellPrice, price, indexPrice, where, reason)
+  # def Buy(self, date, triggerPrice, sellPrice, price, indexPrice, where, reason=''):
+  #   try:
+  #     self.A.Buy(date, triggerPrice, sellPrice, price, indexPrice, where, reason)
       # if self.status == HOLD_STOCK:
       #   # self.holdStockDate += 1
       #   # 如果已经持股，需要根据历年股息调整卖出价格
@@ -933,11 +1028,11 @@ class TradeUnit:
       #       mark.reason('追加买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
       #         price).where(where).extraInfo('剩余资金：{}'.format(self.money)).Dump()
       #       self.tradeList.append(mark)
-    except Exception as e:
-      print(e)
+    # except Exception as e:
+    #   print(e)
   
-  def Sell(self, date, sellPrice, price, indexPrice, where, reason=''):
-    self.A.Sell(date, sellPrice, price, indexPrice, where, reason)
+  # def Sell(self, date, sellPrice, price, indexPrice, where, reason=''):
+  #   self.A.Sell(date, sellPrice, price, indexPrice, where, reason)
     # if self.status == HOLD_STOCK:
     #   if price >= self.sellPrice:
     #     self.SellNoCodition(date, price, indexPrice, reason)
@@ -946,8 +1041,8 @@ class TradeUnit:
     #     # 说明当年没有分红，那就必须无条件卖出了
     #     self.SellNoCodition(date, price, indexPrice, '年报未分红')
   
-  def SellNoCodition(self, date, price, indexPrice, reason=''):
-    self.A.SellNoCodition(date, price, indexPrice, reason)
+  # def SellNoCodition(self, date, price, indexPrice, reason=''):
+  #   self.A.SellNoCodition(date, price, indexPrice, reason)
     # if self.status == HOLD_STOCK:
     #   self.money = self.money + self.number * 100 * price
     #   winLoss = (self.money - self.oldMoney) / self.oldMoney
@@ -1111,20 +1206,12 @@ class TradeUnit:
           else:
             continue
 
-        # midYear, year = self.MakeDecisionYear(date)
-        context.year = date.year
-        context.date = date
-        context.price = row['close']
-        context.index = row['close_index']
-        # pb = row['pb']
-        if len(context.priceVec) > 5:
-          context.priceVec = context.priceVec[1:]
-        context.priceVec.append((date, context.price, context.index))
-        context.Clear()
+        #环境数据更新
+        context.NewDay(date, row)
         
-        # 处理除权日时，需要调整买入卖出价格
-        if date in self.DV.dividendAdjust:
-          self.DV.ProcessDividendAdjust(self.DV.dividendAdjust[date])
+        #环境处理bofore
+        self.DV.Before(context)
+        self.A.Before(context)
           
           
         #事件生成
@@ -1134,22 +1221,34 @@ class TradeUnit:
         
         #策略生成，处理
         # 根据具体日期，决定使用的年报位置
-        action, buyPrice, sellPrice, where = self.DV.MakeDecisionPrice(date)
-        context.dvInfo = (action, buyPrice, sellPrice, where)
-        if action:
-          self.Buy(date, buyPrice, sellPrice, context.price, context.index, where, reason='低于买点')
+        # action, buyPrice, sellPrice, where = self.DV.MakeDecisionPrice(date)
+        buySignal, sellSignal = self.DV.BuySellSignal(date, context.price)
+        context.dvInfo = (None, buySignal[1], sellSignal[1], None)
+        if buySignal[0]:
+          self.A.Buy(date, buySignal[1], sellSignal[1], context.price, context.index, buySignal[2], reason='低于买点')
+        
+        if sellSignal[0]:
+          self.A.Sell(date, sellSignal[1], context.price, context.index, sellSignal[2], reason='高于卖点')
 
-        self.Sell(date, sellPrice, context.price, context.index, where, reason='高于卖点')
-
+        self.A.Loop(date, sellSignal[1], context.price, context.index, sellSignal[2], reason='高于卖点')
 
         # 事件处理
         for k, v in context.extra.items():
           self.A.Process(context, k, v)
+
+        # 处理季报，检查是否扣非-10%
+        if len(self.DV.dangerousPoint) > 0 and date >= self.DV.dangerousPoint[0][0]:
+          self.A.SellNoCodition(date, context.price, context.index,
+                              reason='扣非卖出: {}'.format(self.DV.dangerousPoint[0][4]))
+          # 记录因为扣非为负的区间，在区间内屏蔽开仓
+          print('cooldownbegin {}'.format(self.DV.dangerousPoint[0][0]))
+          cooldown = True
+          cooldownEnd = self.DV.dangerousPoint[0][1]
+          self.DV.dangerousPoint = self.DV.dangerousPoint[1:]
         
         
-        #事后统计
-        # 记录净值和回撤
-        self.processOther(context.date, context.price)
+        #环境处理after
+        self.A.After(context)
         
         
         # # 处理除权,
@@ -1165,14 +1264,7 @@ class TradeUnit:
         #     self.ProcessDividend(date, buyPrice, context.price, context.index, self.dividendPoint[0])
         #     self.dividendPoint = self.dividendPoint[1:]
         
-        # 处理季报，检查是否扣非-10%
-        if len(self.DV.dangerousPoint) > 0 and date >= self.DV.dangerousPoint[0][0]:
-          self.SellNoCodition(date, context.price, context.index, reason='扣非卖出: {}'.format(self.DV.dangerousPoint[0][4]))
-          # 记录因为扣非为负的区间，在区间内屏蔽开仓
-          print('cooldownbegin {}'.format(self.DV.dangerousPoint[0][0]))
-          cooldown = True
-          cooldownEnd = self.DV.dangerousPoint[0][1]
-          self.DV.dangerousPoint = self.DV.dangerousPoint[1:]
+        
       
         
       
@@ -1184,8 +1276,8 @@ class TradeUnit:
   
   
   
-  def processOther(self, date, price):
-    self.A.processOther(date, price)
+  # def processOther(self, date, price):
+  #   self.A.processOther(date, price)
     # #最大净值
     # if self.status == HOLD_MONEY:
     #   pass
