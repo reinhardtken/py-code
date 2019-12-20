@@ -3,6 +3,7 @@
 # sys
 import datetime
 import re
+import traceback
 
 # thirdpart
 import pandas as pd
@@ -117,3 +118,8 @@ def QueryAll():
     return df
   else:
     return None
+  
+  
+def PrintException(e):
+  msg = traceback.format_exc()
+  print(msg)

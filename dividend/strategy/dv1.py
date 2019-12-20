@@ -4,6 +4,7 @@
 from datetime import datetime
 from dateutil import parser
 import traceback
+from queue import PriorityQueue
 
 # thirdpart
 import pandas as pd
@@ -19,7 +20,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '1.0.0.22'
+VERSION = '1.0.0.23'
 
 
 DIR_BUY = 1
@@ -143,7 +144,36 @@ class DayContext:
   BUY_EVENT = 5
   #sell
   SELL_EVENT = 6
+  #新的卖出目标价格
+  TARGET_SELL_PRICE_EVENT = 7
   
+  
+  #priority##############################
+  PRIORITY_JUMP = 0 #跳过循环，这种必须有util字段
+  PRIORITY_BEFORE_DIVIDEND = 100 #发生在除权前
+  PRIORITY_BEFORE_TRADE = 200# 买卖前
+  PRIORITY_TRADE = 300  #
+  PRIORITY_AFTER_TRADE = 400  #
+  
+  class Task:
+    def __init__(self, priority, key, util=None, *args, **kwargs):
+      self.priority = priority
+      self.key = key
+      self.util = util
+      self.args = args
+      self.kwargs = kwargs
+
+    # def __cmp__(self, other):
+    #   if self.priority < other.priority:
+    #     return -1
+    #   elif self.priority == other.priority:
+    #     return 0
+    #   else:
+    #     return 1
+    def __lt__(self, other):
+      return self.priority < other.priority
+
+    
   def __init__(self):
     self.year = None
     self.date = None
@@ -151,34 +181,57 @@ class DayContext:
     self.price = None
     self.pb = None
     self.priceVec = []
-    # 5日平均线等等，都放在这里
-    self.extra = {}
+    self.H = None #Account注册处理handle
+    
+    # self.extra = {}
+    #带优先级的任务队列
+    self.taskPQ = PriorityQueue()
     #临时存放策略信息，回头挪走
     self.dvInfo = None
     
-  def Add(self, key, value, util=None):
+  def Add(self, priority, key, util=None, *args, **kwargs):
     #util 为None，标示当天有效
     #util 为一个timstamp，表示时间戳之前有效
-    self.extra[key] = (value, util)
-    
-  def Get(self, key):
-    if key in self.extra:
-      return self.extra[key][0]
-    else:
-      return None
+    self.taskPQ.put(DayContext.Task(priority, key, util, *args, **kwargs))
   
-  def Clear(self):
-    tmp = {}
-    for k, v in self.extra.items():
-      if v[1] is None:
+  
+  def Loop(self):
+    tmp = []
+    while self.taskPQ.qsize() != 0:
+      task = self.taskPQ.get_nowait()
+      self.H(self, task)
+      tmp.append(task)
+
+    for one in tmp:
+      if one.util is None:
         #del self.extra[k]
         pass
-      elif self.date > v[1]:
+      elif self.date >= one.util:
         # del self.extra[k]
         pass
       else:
-        tmp[k] = v
-    self.extra = tmp
+        self.taskPQ.put(one)
+
+      
+      
+  # def Get(self, key):
+  #   if key in self.extra:
+  #     return self.extra[key][0]
+  #   else:
+  #     return None
+  
+  # def Clear(self):
+  #   tmp = []
+  #   for k, v in self.extra.items():
+  #     if v[1] is None:
+  #       #del self.extra[k]
+  #       pass
+  #     elif self.date > v[1]:
+  #       # del self.extra[k]
+  #       pass
+  #     else:
+  #       tmp[k] = v
+  #   self.extra = tmp
   
   
   def NewDay(self, date, row):
@@ -189,8 +242,8 @@ class DayContext:
     # pb = row['pb']
     if len(self.priceVec) > 5:
       self.priceVec = self.priceVec[1:]
-      self.priceVec.append((date, self.price, self.index))
-    self.Clear()
+    self.priceVec.append((date, self.price, self.index))
+
 #########################################################
 #代表账号信息
 class Account:
@@ -298,14 +351,9 @@ class Account:
       self.SellNoCodition(date, price, indexPrice, '年报未分红')
       
       
-  def Loop(self, date, sellPrice, price, indexPrice, where, reason=''):
-    if self.isHoldStock():
-      # 如果已经持股，需要根据历年股息调整卖出价格
-      if sellPrice != INVALID_SELL_PRICE:
-        self.sellPrice = sellPrice
-        
-      if price >= self.sellPrice:
-        self.SellNoCodition(date, price, indexPrice, reason)
+  def Loop(self, date, price, indexPrice):
+      if self.isHoldStock() and price >= self.sellPrice:
+        self.SellNoCodition(date, price, indexPrice, reason='高于卖点')
 
 
   def SellNoCodition(self, date, price, indexPrice, reason=''):
@@ -336,7 +384,8 @@ class Account:
         if dividend.gift > 0:
           self.number *= 1 + dividend.gift
           oldSellPrice = self.sellPrice
-          self.sellPrice /= 1 + dividend.gift
+          #因为除权导致的价格变动，checkPoint处已经处理，并会广播，所以无需在此处理
+          # self.sellPrice /= 1 + dividend.gift
           # 此时价格已经变化，无需处理
           # price /= 1+dividend.gift
           print('发生转送股 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
@@ -359,7 +408,8 @@ class Account:
         if dividend.gift > 0:
           self.number *= 1 + dividend.gift
           oldSellPrice = self.sellPrice
-          self.sellPrice /= 1 + dividend.gift
+          # 因为除权导致的价格变动，checkPoint处已经处理，并会广播，所以无需在此处理
+          # self.sellPrice /= 1 + dividend.gift
           # price /= 1 + dividend.gift
           print('发生转送股2 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
       
@@ -429,13 +479,21 @@ class Account:
     self.result = one
     one.Dump()
 
-  def Process(self, context: DayContext, k, v):
-    if k == DayContext.DIVIDEND_POINT:
-      data = context.Get(DayContext.DIVIDEND_POINT)
-      self.ProcessDividend(context.date, context.dvInfo[1], context.price, context.index, data.dividendPointOne)
-    elif k == DayContext.DANGEROUS_POINT:
+  def Process(self, context: DayContext, task):
+    if task.key == DayContext.DIVIDEND_POINT:
+      self.ProcessDividend(context.date, context.dvInfo[1], context.price, context.index, task.args[0].dividendPointOne)
+    elif task.key == DayContext.DANGEROUS_POINT:
       # self.SellNoCodition()
       pass
+    elif task.key == DayContext.BUY_EVENT:
+      self.Buy(context.date, task.args[0], task.args[1], context.price, context.index, task.args[2], reason='低于买点')
+    elif task.key == DayContext.SELL_EVENT:
+      self.Sell(context.date, task.args[1], context.price, context.index, task.args[2])
+    elif task.key == DayContext.TARGET_SELL_PRICE_EVENT:
+      if self.isHoldStock():
+        # 如果已经持股，需要根据历年股息调整卖出价格
+        self.sellPrice = task.args[0]
+        
 #########################################################
 class DividendGenerator:
   class Event:
@@ -460,7 +518,7 @@ class DividendGenerator:
           print(' 弹出除权信息！！！ {}， {}'.format(context.priceVec, self.dividendPoint[0]))
           self.dividendPoint = self.dividendPoint[1:]
       elif len(self.dividendPoint) > 0 and context.date == self.dividendPoint[0].date:
-        context.Add(DayContext.DIVIDEND_POINT, DividendGenerator.Event(self.dividendPoint[0]))
+        context.Add(DayContext.PRIORITY_BEFORE_TRADE, DayContext.DIVIDEND_POINT, None, DividendGenerator.Event(self.dividendPoint[0]))
         #TODO
         # self.ProcessDividend(date, buyPrice, current.price, current.index, self.dividendPoint[0])
         self.dividendPoint = self.dividendPoint[1:]
@@ -484,7 +542,7 @@ class DangerousGenerator:
       # self.SellNoCodition(context.date, context.price, context.index, reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
       # 记录因为扣非为负的区间，在区间内屏蔽开仓
       print('cooldownbegin {}'.format(self.dangerousPoint[0][0]))
-      context.Add(DayContext.DANGEROUS_POINT, DangerousGenerator.Event(self.dangerousPoint[0]), self.dangerousPoint[0][1])
+      context.Add(DayContext.PRIORITY_AFTER_TRADE, DayContext.DANGEROUS_POINT, self.dangerousPoint[0][1], DangerousGenerator.Event(self.dangerousPoint[0]))
       # cooldown = True
       # cooldownEnd = self.dangerousPoint[0][1]
       self.dangerousPoint = self.dangerousPoint[1:]
@@ -501,6 +559,7 @@ class StrategyDV:
     self.MAXEND = Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
   
     self.dividendAdjust = {}  # 除权日，调整买入卖出价格
+    self.oldSellPrice = None #老的卖出目标价，如果年报半年报更新，这个价格可能更新
 
 
   def Before(self, context: DayContext):
@@ -805,6 +864,28 @@ class StrategyDV:
     #should not run here
     return INVALID_BUY_PRICE, INVALID_SELL_PRICE, where
 
+  
+  def Process(self, context: DayContext):
+    buySignal, sellSignal = self.BuySellSignal(context.date, context.price)
+    context.dvInfo = (None, buySignal[1], sellSignal[1], None)
+    if buySignal[0]:
+      context.Add(DayContext.PRIORITY_TRADE, DayContext.BUY_EVENT, None, buySignal[1], sellSignal[1], buySignal[2])
+      # self.A.Buy(date, buySignal[1], sellSignal[1], context.price, context.index, buySignal[2], reason='低于买点')
+  
+    if sellSignal[0]:
+      context.Add(DayContext.PRIORITY_TRADE, DayContext.SELL_EVENT, None, buySignal[1], sellSignal[1], sellSignal[2])
+      # self.A.Sell(date, sellSignal[1], context.price, context.index, sellSignal[2], reason='高于卖点')
+    if sellSignal[1] != INVALID_SELL_PRICE:
+      notify = False
+      if self.oldSellPrice is None:
+        self.oldSellPrice = sellSignal[1]
+        notify = True
+      elif self.oldSellPrice != sellSignal[1]:
+        self.oldSellPrice = sellSignal[1]
+        notify = True
+      if notify:
+        context.Add(DayContext.PRIORITY_BEFORE_DIVIDEND, DayContext.TARGET_SELL_PRICE_EVENT, None, sellSignal[1])
+      
   
   def BuySellSignal(self, date, price):
     buyPrice, sellPrice, where = self.MakeDecisionPrice2(date)
@@ -1196,6 +1277,7 @@ class TradeUnit:
     cooldown = False
     cooldownEnd = None
     context = self.context
+    context.H =  self.A.Process
     for date, row in backtestData.iterrows():
       try:
         if cooldown:
@@ -1222,19 +1304,14 @@ class TradeUnit:
         #策略生成，处理
         # 根据具体日期，决定使用的年报位置
         # action, buyPrice, sellPrice, where = self.DV.MakeDecisionPrice(date)
-        buySignal, sellSignal = self.DV.BuySellSignal(date, context.price)
-        context.dvInfo = (None, buySignal[1], sellSignal[1], None)
-        if buySignal[0]:
-          self.A.Buy(date, buySignal[1], sellSignal[1], context.price, context.index, buySignal[2], reason='低于买点')
+        self.DV.Process(context)
         
-        if sellSignal[0]:
-          self.A.Sell(date, sellSignal[1], context.price, context.index, sellSignal[2], reason='高于卖点')
-
-        self.A.Loop(date, sellSignal[1], context.price, context.index, sellSignal[2], reason='高于卖点')
+        context.Loop()
+        self.A.Loop(date, context.price, context.index)
 
         # 事件处理
-        for k, v in context.extra.items():
-          self.A.Process(context, k, v)
+        # for k, v in context.extra.items():
+        #   self.A.Process(context, k, v)
 
         # 处理季报，检查是否扣非-10%
         if len(self.DV.dangerousPoint) > 0 and date >= self.DV.dangerousPoint[0][0]:
@@ -1249,23 +1326,6 @@ class TradeUnit:
         
         #环境处理after
         self.A.After(context)
-        
-        
-        # # 处理除权,
-        # # 除权日不可能不是交易日
-        # if len(self.dividendPoint) > 0:
-        #   if date > self.dividendPoint[0].date:
-        #     # 比如600900,在除权期间停牌。。。，对于这种目前简化为弹出这些除权，避免影响后续
-        #     # TODO 如何处理停牌？
-        #     while len(self.dividendPoint) > 0 and date > self.dividendPoint[0].date:
-        #       print(' 弹出除权信息！！！ {}， {}'.format(self.lastPriceVec, self.dividendPoint[0]))
-        #       self.dividendPoint = self.dividendPoint[1:]
-        #   elif len(self.dividendPoint) > 0 and date == self.dividendPoint[0].date:
-        #     self.ProcessDividend(date, buyPrice, context.price, context.index, self.dividendPoint[0])
-        #     self.dividendPoint = self.dividendPoint[1:]
-        
-        
-      
         
       
       
