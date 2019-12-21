@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '1.0.0.24'
+VERSION = '1.0.0.25'
 
 
 DIR_BUY = 1
@@ -191,8 +191,8 @@ class DayContext:
     self.price = None
     self.pb = None
     self.priceVec = []
-    self.AH = None #Account注册处理handle
-    self.SH = None  # Account注册处理handle
+    self.AH = [] #Account注册处理handle
+    self.SH = []  # Account注册处理handle
     
     # self.extra = {}
     #带优先级的任务队列，Account
@@ -211,6 +211,12 @@ class DayContext:
     #util 为None，标示当天有效
     #util 为一个timstamp，表示时间戳之前有效
     self.taskPQStrategy.put(DayContext.Task(priority, key, util, *args, **kwargs))
+    
+  def Add_AH(self, handle):
+    self.AH.append(handle)
+    
+  def Add_SH(self, handle):
+    self.SH.append(handle)
 
   def Loop(self):
     #先策略，后账户
@@ -222,7 +228,8 @@ class DayContext:
     tmp = []
     while taskPQ.qsize() != 0:
       task = taskPQ.get_nowait()
-      H(self, task)
+      for handle in H:
+        handle(self, task)
       tmp.append(task)
 
     for one in tmp:
@@ -326,11 +333,6 @@ class Account:
       
   def Buy(self, date, triggerPrice, sellPrice, price, indexPrice, where, reason=''):
     try:
-      # if self.isHoldStock():
-      #   # self.holdStockDate += 1
-      #   # 如果已经持股，需要根据历年股息调整卖出价格
-      #   if sellPrice != INVALID_SELL_PRICE:
-      #     self.sellPrice = sellPrice
     
       # 如果持币，以固定价格买入
       if price <= triggerPrice:
@@ -370,16 +372,12 @@ class Account:
     except Exception as e:
       print(e)
 
-  def Sell(self, date, sellPrice, price, indexPrice, where, reason=''):
+  def Sell(self, date, sellPrice, price, indexPrice, reason=''):
     if self.isHoldStock():
       # 在由年报决定买卖的情况下，如果卖出价格是INVALID_SELL_PRICE
       # 说明当年没有分红，那就必须无条件卖出了
-      self.SellNoCodition(date, price, indexPrice, '年报未分红')
+      self.SellNoCodition(date, price, indexPrice, reason)
       
-      
-  # def Loop(self, date, price, indexPrice):
-  #     if self.isHoldStock() and price >= self.sellPrice:
-  #       self.SellNoCodition(date, price, indexPrice, reason='高于卖点')
 
 
   def SellNoCodition(self, date, price, indexPrice, reason=''):
@@ -514,11 +512,20 @@ class Account:
     elif task.key == DayContext.BUY_EVENT:
       self.Buy(context.date, task.args[0], task.args[1], context.price, context.index, task.args[2], reason='低于买点')
     elif task.key == DayContext.SELL_EVENT:
-      self.Sell(context.date, task.args[1], context.price, context.index, task.args[2])
+      #监控到价格变化的时候，必然符合当前价格高于建仓时候的卖出价格，建仓不应该再需要记录卖出价格
+      #除非策略变化，卖出价格和建仓有关，而非和年报有关
+      reason = '年报未分红'
+      if task.args[0] != INVALID_SELL_PRICE:
+        reason = '高于卖点'
+        if task.args[0] == self.sellPrice:
+          pass
+        else:
+          print("wrong")
+      self.Sell(context.date, task.args[0], context.price, context.index, reason)
     elif task.key == DayContext.TARGET_SELL_PRICE_EVENT:
-      if self.isHoldStock():
+      #if self.isHoldStock():
         # 如果已经持股，需要根据历年股息调整卖出价格
-        self.sellPrice = task.args[0]
+      self.sellPrice = task.args[0]
     elif task.key == DayContext.SELL_ALWAYS_EVENT:
       if self.isHoldStock() and context.price >= self.sellPrice:
         self.SellNoCodition(context.date, context.price, context.index, reason='高于卖点')
@@ -930,7 +937,7 @@ class StrategyDV:
       # self.A.Buy(date, buySignal[1], sellSignal[1], context.price, context.index, buySignal[2], reason='低于买点')
   
     if sellSignal[0]:
-      context.Add_A(DayContext.PRIORITY_TRADE, DayContext.SELL_EVENT, None, buySignal[1], sellSignal[1], sellSignal[2])
+      context.Add_A(DayContext.PRIORITY_TRADE, DayContext.SELL_EVENT, None, sellSignal[1], sellSignal[2])
       # self.A.Sell(date, sellSignal[1], context.price, context.index, sellSignal[2], reason='高于卖点')
     if sellSignal[1] != INVALID_SELL_PRICE:
       notify = False
@@ -952,8 +959,11 @@ class StrategyDV:
     if buyPrice != INVALID_BUY_PRICE:
       if buyPrice >= price:
         buySignal = (True, buyPrice, where)
+      elif sellPrice <= price:
+        sellSignal = (True, sellPrice, where)
     elif sellPrice == INVALID_SELL_PRICE and where.find('-year') != -1:
       sellSignal = (True, sellPrice, where)
+    
       
     return buySignal, sellSignal
   
@@ -1005,6 +1015,10 @@ class TradeUnit:
     # self.tradeCounter = 0  # 交易的次数，建仓次数
     # self.current = DayInfo()  #当前循环的全部信息
     self.context = DayContext() #代表全部的事件
+    self.context.Add_AH(self.A.Process)
+    self.context.Add_SH(self.DV.Process)
+    
+    
     #事件生成函数数组
     self.generator = {
       # 'dividendPoint': DividendGenerator(),
@@ -1117,85 +1131,7 @@ class TradeUnit:
       break
   
     return (first, second, third, forth)
-  # def buyInner(self, price, money):
-  #   # 计算多少钱买多少股，返回股数，钱数
-  #   number = money // (price * 100)
-  #   restMoney = money - number * 100 * price
-  #   return (number, restMoney)
-  
-  # def Buy(self, date, triggerPrice, sellPrice, price, indexPrice, where, reason=''):
-  #   try:
-  #     self.A.Buy(date, triggerPrice, sellPrice, price, indexPrice, where, reason)
-      # if self.status == HOLD_STOCK:
-      #   # self.holdStockDate += 1
-      #   # 如果已经持股，需要根据历年股息调整卖出价格
-      #   if sellPrice != INVALID_SELL_PRICE:
-      #     self.sellPrice = sellPrice
 
-      # 如果持币，以固定价格买入
-      # if price <= triggerPrice:
-      #   if self.status == HOLD_MONEY:
-      #     # 卖出的价格是在建仓的时候决定的
-      #     self.sellPrice = sellPrice
-      #     self.oldMoney = self.money
-      #     number, money = self.buyInner(price, self.money)
-      #     self.number = number
-      #     self.money = money
-      #     # self.number = self.money // (price * 100)
-      #     # self.money = self.money - self.number*100*price
-      #     # self.costPrice = price
-      #     self.status = HOLD_STOCK
-      #
-      #     # 记录指数变化
-      #     self.indexBuyPoint = indexPrice
-      #     #交易次数+1
-      #     self.tradeCounter += 1
-      #
-      #     # 记录
-      #     mark = TradeMark()
-      #     mark.reason('买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
-      #       price).where(where).extraInfo('{}'.format(reason)).Dump()
-      #     self.tradeList.append(mark)
-      #     # print("买入： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price, self.number, self.money, reason))
-      #   elif self.status == HOLD_STOCK:
-      #     number, money = self.buyInner(price, self.money)
-      #     if number > 0:
-      #       # 追加买入
-      #       self.number += number
-      #       self.money = money
-      #
-      #       mark = TradeMark()
-      #       mark.reason('追加买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
-      #         price).where(where).extraInfo('剩余资金：{}'.format(self.money)).Dump()
-      #       self.tradeList.append(mark)
-    # except Exception as e:
-    #   print(e)
-  
-  # def Sell(self, date, sellPrice, price, indexPrice, where, reason=''):
-  #   self.A.Sell(date, sellPrice, price, indexPrice, where, reason)
-    # if self.status == HOLD_STOCK:
-    #   if price >= self.sellPrice:
-    #     self.SellNoCodition(date, price, indexPrice, reason)
-    #   elif sellPrice == INVALID_SELL_PRICE and where.find('-year') != -1:
-    #     # 在由年报决定买卖的情况下，如果卖出价格是INVALID_SELL_PRICE
-    #     # 说明当年没有分红，那就必须无条件卖出了
-    #     self.SellNoCodition(date, price, indexPrice, '年报未分红')
-  
-  # def SellNoCodition(self, date, price, indexPrice, reason=''):
-  #   self.A.SellNoCodition(date, price, indexPrice, reason)
-    # if self.status == HOLD_STOCK:
-    #   self.money = self.money + self.number * 100 * price
-    #   winLoss = (self.money - self.oldMoney) / self.oldMoney
-    #   self.status = HOLD_MONEY
-    #   # 计算指数收益
-    #   self.indexProfit *= indexPrice / self.indexBuyPoint
-    #
-    #   # 记录
-    #   mark = TradeMark()
-    #   mark.reason('卖出').date(date).dir(DIR_SELL).total(self.number * 100 * price).number(self.number).price(
-    #     price).extraInfo(
-    #     '盈亏：{}, 原因：{}'.format(winLoss, reason)).Dump()
-    #   self.tradeList.append(mark)
 
   
   def BuildGenerator(self):
@@ -1275,51 +1211,9 @@ class TradeUnit:
       self.mergeData.fillna(method='ffill', inplace=True)  # 用前面的值来填充
   
   
-  def ProcessDividend(self, date, buyPrice, price, indexPrice, dividend):
-    self.A.ProcessDividend(date, buyPrice, price, indexPrice, dividend)
-    # if self.status == HOLD_STOCK:
-    #   if buyPrice >= price:
-    #     oldMoney = self.money
-    #     oldNumber = self.number
-    #     dividendMoney = self.number * 100 * dividend.dividendAfterTax
-    #     money = dividendMoney + self.money
-    #
-    #     # 如果有转送股，所有的价格，股数需要变动
-    #     if dividend.gift > 0:
-    #       self.number *= 1 + dividend.gift
-    #       oldSellPrice = self.sellPrice
-    #       self.sellPrice /= 1 + dividend.gift
-    #       # 此时价格已经变化，无需处理
-    #       # price /= 1+dividend.gift
-    #       print('发生转送股 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
-    #
-    #     number = money // (price * 100)
-    #     self.money = money - number * 100 * price
-    #     self.number += number
-    #
-    #     # 记录
-    #     mark = TradeMark()
-    #     mark.reason('除权买入').date(date).dir(DIR_BUY).total(number * 100 * price).number(number). \
-    #       price(price).extraInfo('分红金额：{}'.format(dividendMoney)).Dump()
-    #     self.tradeList.append(mark)
-    #   else:
-    #     oldMoney = self.money
-    #     dividendMoney = self.number * 100 * dividend.dividendAfterTax
-    #     self.money += dividendMoney
-    #
-    #     # 如果有转送股，所有的价格，股数需要变动
-    #     if dividend.gift > 0:
-    #       self.number *= 1 + dividend.gift
-    #       oldSellPrice = self.sellPrice
-    #       self.sellPrice /= 1 + dividend.gift
-    #       # price /= 1 + dividend.gift
-    #       print('发生转送股2 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
-    #
-    #     # 记录
-    #     mark = TradeMark()
-    #     mark.reason('除权不买入').date(date).dir(DIR_NONE).total(dividendMoney).number(0).price(0).extraInfo(
-    #       '分红金额：{}'.format(dividendMoney)).Dump()
-    #     self.tradeList.append(mark)
+  # def ProcessDividend(self, date, buyPrice, price, indexPrice, dividend):
+  #   self.A.ProcessDividend(date, buyPrice, price, indexPrice, dividend)
+
 
   
   
@@ -1336,8 +1230,7 @@ class TradeUnit:
     cooldown = False
     cooldownEnd = None
     context = self.context
-    context.AH = self.A.Process
-    context.SH = self.DV.Process
+    
     # 环境处理bofore
     self.DV.Before(context)
     self.A.Before(context)
@@ -1671,6 +1564,13 @@ class TradeResult:
            and self.__percent == obj.__percent and self.__hs300Profit == obj.__hs300Profit
 
 
+#########################################################
+class ListenOne:
+  def __init__(self):
+    actionList = []
+    
+  def Process(self, context: DayContext, task):
+    pass
 #########################################################
 def RunOne(code, beginMoney, name, save=False, check=False):
   stock = TradeUnit(code, name, beginMoney)
