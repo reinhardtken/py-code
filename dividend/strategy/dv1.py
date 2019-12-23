@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '1.0.0.25'
+VERSION = '1.0.0.26'
 
 
 DIR_BUY = 1
@@ -285,7 +285,7 @@ class Account:
     self.BEGIN_MONEY = beginMoney
     self.money = self.BEGIN_MONEY
     self.oldMoney = self.money
-
+    self.oldPrice = None #建仓价格，不包括追加买入除权买入，等于当初广播的买点价格triggerPrice
     self.number = 0  # 持仓的时候表示持仓数目(手)
 
     self.indexBuyPoint = None
@@ -333,13 +333,14 @@ class Account:
       
   def Buy(self, date, triggerPrice, sellPrice, price, indexPrice, where, reason=''):
     try:
-    
       # 如果持币，以固定价格买入
+      self.oldPrice = triggerPrice
       if price <= triggerPrice:
         if self.isHoldMoney():
           # 卖出的价格是在建仓的时候决定的
           self.sellPrice = sellPrice
           self.oldMoney = self.money
+          
           number, money = self.buyInner(price, self.money)
           self.number = number
           self.money = money
@@ -362,7 +363,7 @@ class Account:
             # 追加买入
             self.number += number
             self.money = money
-          
+            
             mark = TradeMark()
             mark.reason('追加买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
               price).where(where).extraInfo('剩余资金：{}'.format(self.money)).Dump()
@@ -399,6 +400,7 @@ class Account:
   def ProcessDividend(self, date, buyPrice, price, indexPrice, dividend):
     if self.isHoldStock():
       if buyPrice >= price:
+        self.oldPrice = buyPrice
         oldMoney = self.money
         oldNumber = self.number
         dividendMoney = self.number * 100 * dividend.dividendAfterTax
@@ -584,6 +586,7 @@ class DangerousGenerator:
 #########################################################
 class StrategyDV:
   def __init__(self, tu, startYear, startDate, endDate):
+    self.strategyName = 'dv1'
     self.startYear = startYear
     self.startDate = startDate
     self.endDate = endDate
@@ -597,6 +600,8 @@ class StrategyDV:
     self.dividendAdjust = {}  # 除权日，调整买入卖出价格
     self.oldSellPrice = None #老的卖出目标价，如果年报半年报更新，这个价格可能更新
     self.decisionCache = None
+    self.statisticsYears = None #参与统计的总年数
+    self.dividendYears = 0 #有过分红的年数
 
 
   def Before(self, context: DayContext):
@@ -641,9 +646,14 @@ class StrategyDV:
       self.checkPoint[year]['third'] = quarterPaper[2]
       self.checkPoint[year]['forth'] = quarterPaper[3]
     
+    
+    self.statisticsYears = len(self.checkPoint)
     # 对加载出来的数据做初步处理
     for k, v in self.checkPoint.items():
       try:
+        if 'notExist' in v['year'] and 'notExist' in v['midYear']:
+          #没有查到年报数据的年份，可能是公司就没上市，需要扣减
+          self.statisticsYears -= 1
         # 计算分红
         v['midYear']['dividend'] = 0
         v['year']['dividend'] = 0
@@ -656,6 +666,8 @@ class StrategyDV:
         # TODO 如果发生派股，派股的第二天买入卖出价格要变
         # allDividend影响下一年
         if v['year']['allDividend'] > 0:
+          #统计分红过的年数
+          self.dividendYears += 1
           self.checkPoint[k + 1]['buyPrice'] = v['year']['allDividend'] / BUY_PERCENT
           self.checkPoint[k + 1]['sellPrice'] = v['year']['allDividend'] / SELL_PERCENT
         else:
@@ -805,6 +817,7 @@ class StrategyDV:
       try:
         # 存在这个值为“-”的情形
         speed = float(self.checkPoint[year][position]['sjltz'])
+        self.checkPoint[year][position]['sjltz'] = speed
       except Exception as e:
         pass
       
@@ -934,11 +947,10 @@ class StrategyDV:
     context.dvInfo = (None, buySignal[1], sellSignal[1], None)
     if buySignal[0]:
       context.Add_A(DayContext.PRIORITY_TRADE, DayContext.BUY_EVENT, None, buySignal[1], sellSignal[1], buySignal[2])
-      # self.A.Buy(date, buySignal[1], sellSignal[1], context.price, context.index, buySignal[2], reason='低于买点')
   
     if sellSignal[0]:
       context.Add_A(DayContext.PRIORITY_TRADE, DayContext.SELL_EVENT, None, sellSignal[1], sellSignal[2])
-      # self.A.Sell(date, sellSignal[1], context.price, context.index, sellSignal[2], reason='高于卖点')
+      
     if sellSignal[1] != INVALID_SELL_PRICE:
       notify = False
       if self.oldSellPrice is None:
@@ -982,9 +994,7 @@ class TradeUnit:
   DF_HS300 = None
   # 代表一个交易单元，比如10万本金
   def __init__(self, code, name, beginMoney):
-    # self.tradeList = []  # 交易记录
-    
-    
+  
     self.startYear = 2011  # 起始年份
     start = str(self.startYear) + '-01-01T00:00:00Z'
     self.startDate = parser.parse(start, ignoretz=True)
@@ -1000,23 +1010,20 @@ class TradeUnit:
     self.code = code  # 代码
     self.name = name
     self.mongoClient = MongoClient()
-    # self.dangerousPoint = []  # 利润同比下滑超过10%的位置
-    # self.dividendPoint = []  # 除权的日期
+
     self.data = None  # 行情
     self.MAXEND = Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
-    
-    # self.dividendAdjust = {}  # 除权日，调整买入卖出价格
-    # self.lastPriceVec = []  # 最后5天价格，用于调试
+
     self.index = None  # 沪深300指数
     
-    # self.lastIndex = None
+
     self.collectionName = 'dv1'  # 存盘表名
-    # self.beforeProfit = None  # 前复权行情，用于计算从头到尾持有股票的收益
-    # self.tradeCounter = 0  # 交易的次数，建仓次数
-    # self.current = DayInfo()  #当前循环的全部信息
+
     self.context = DayContext() #代表全部的事件
     self.context.Add_AH(self.A.Process)
     self.context.Add_SH(self.DV.Process)
+    self.listen = ListenOne(self.code, self.name, self.DV.strategyName)
+    self.context.Add_AH(self.listen.Process)
     
     
     #事件生成函数数组
@@ -1087,6 +1094,8 @@ class TradeUnit:
       midYear[const.GPFH_KEYWORD.KEY_NAME['CQCXR']] = c[const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
       midYear[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']] = c[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
       break
+    else:
+      midYear.update({'notExist': 1})
   
     collection = db["gpfh-" + str(y) + "-12-31"]
     cursor = collection.find({"_id": self.code})
@@ -1094,6 +1103,9 @@ class TradeUnit:
       year[const.GPFH_KEYWORD.KEY_NAME['CQCXR']] = c[const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
       year[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']] = c[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
       break
+    else:
+      year.update({'notExist': 1})
+      
   
     return (midYear, year)
 
@@ -1143,7 +1155,7 @@ class TradeUnit:
   def loadData(self, dbName, collectionName, condition):
     db = self.mongoClient[dbName]
     collection = db[collectionName]
-    cursor = collection.find(condition)
+    cursor = collection.find(condition).sort([('_id', 1)])
     out = []
     for c in cursor:
       out.append(c)
@@ -1209,13 +1221,6 @@ class TradeUnit:
       except Exception as e:
         pass
       self.mergeData.fillna(method='ffill', inplace=True)  # 用前面的值来填充
-  
-  
-  # def ProcessDividend(self, date, buyPrice, price, indexPrice, dividend):
-  #   self.A.ProcessDividend(date, buyPrice, price, indexPrice, dividend)
-
-
-  
   
   
   def BackTest(self):
@@ -1293,6 +1298,7 @@ class TradeUnit:
   
   def CloseAccount(self):
     self.A.CloseAccount(self.context)
+    self.listen.Dump()
 
   
   def Store2DB(self):
@@ -1566,11 +1572,59 @@ class TradeResult:
 
 #########################################################
 class ListenOne:
-  def __init__(self):
-    actionList = []
+  def __init__(self, code, name, strategyName):
+    self.actionList = []
+    self.code = code
+    self.name = name
+    self.strategyName = strategyName
+    
+    self.lastBuyPrice = None
+    self.lastSellPrice = None
+    
     
   def Process(self, context: DayContext, task):
-    pass
+    if task.key == DayContext.BUY_EVENT:
+      diff = task.args[0] - context.price
+      self.actionList.append((context.date, 1, context.price, diff, diff/context.price))
+      self.lastBuyPrice = task.args[0]
+    elif task.key == DayContext.SELL_EVENT:
+      if task.args[0] != INVALID_SELL_PRICE:
+        diff = task.args[0] - context.price
+        percent = diff/context.price
+        self.lastSellPrice = task.args[0]
+      else:
+        diff = np.nan
+        percent = np.nan
+        self.lastSellPrice = None
+      self.actionList.append((context.date, -1, context.price, diff, percent))
+      
+    # elif task.key == DayContext.SELL_ALWAYS_EVENT:
+    #   if len(self.actionList) and self.actionList[-1][0] == context.date:
+    #     pass
+    #   else:
+    #     self.actionList.append((context.date, context.price, 0))
+  def DumpOne(self, one):
+    return '日期：{}, 操作：{}, 价格：{}, 价差：{:.3}, 百分比：{:.2%}'.format(one[0], one[1], one[2], one[3], one[4])
+  
+  def ToDB(self):
+    out = {}
+    date = None
+    if len(self.actionList):
+      date = self.actionList[-1][0]
+      out['_id'] = self.code
+      out['name'] = self.name
+      out['操作'] = self.actionList[-1][1]
+      out['价格'] = self.actionList[-1][2]
+      out['价差'] = self.actionList[-1][3]
+      out['百分比'] = self.actionList[-1][4]
+      out['策略'] = self.strategyName
+    return date, out
+  
+  def Dump(self):
+    print('####{}， {}#############################'.format(self.code, self.name))
+    print('####{}， {}####'.format(self.lastBuyPrice, self.lastSellPrice))
+    for one in self.actionList[-10:]:
+      print(self.DumpOne(one))
 #########################################################
 def RunOne(code, beginMoney, name, save=False, check=False):
   stock = TradeUnit(code, name, beginMoney)
@@ -1579,9 +1633,9 @@ def RunOne(code, beginMoney, name, save=False, check=False):
   stock.Merge()
   stock.CheckPrepare()
   
-  print(stock.checkPoint)
-  print(stock.dangerousPoint)
-  for one in stock.dividendPoint:
+  print(stock.DV.checkPoint)
+  print(stock.DV.dangerousPoint)
+  for one in stock.DV.dividendPoint:
     print(one)
   
   stock.BackTest()
@@ -1591,9 +1645,36 @@ def RunOne(code, beginMoney, name, save=False, check=False):
   
   if check:
     assert stock.CheckResult()
-  print(stock.checkPoint)
-  print(stock.dangerousPoint)
-  print(stock.dividendPoint)
+  # print(stock.checkPoint)
+  # print(stock.dangerousPoint)
+  # print(stock.dividendPoint)
+  return stock
+
+
+def RunOne2(code, beginMoney, name, args):
+  stock = TradeUnit(code, name, beginMoney)
+  stock.LoadQuotations()
+  stock.LoadIndexs()
+  stock.Merge()
+  stock.CheckPrepare()
+  
+  print(stock.DV.checkPoint)
+  print(stock.DV.dangerousPoint)
+  for one in stock.DV.dividendPoint:
+    print(one)
+  
+  if 'backtest' in args:
+    stock.BackTest()
+    stock.CloseAccount()
+    
+  if 'save' in args:
+    stock.Store2DB()
+  
+  if 'check' in args:
+    return stock.CheckResult()
+
+
+  return stock
 
 
 def TestAll(codes, save, check):
@@ -1723,6 +1804,94 @@ def CompareAll(collectionName, codes):
     print(one)
 
 
+#对传入的标的，测算最后行情是否可以执行买卖操作
+#可以执行买卖操作存db，如果最后一天没有买卖信号，但一个自然月内有信号，也存入
+def SignalDV(codes):
+  #要求行情是最新的
+  buyList = []
+  sellList = []
+  toDBList = []
+  now = datetime.now()
+  collectionName = now.strftime('%Y-%m-%d')
+  # 只有比anchor ge的数据才需要写入db
+  anchor = pd.Timestamp(datetime(now.year, now.month, 1))
+
+  
+  for one in codes:
+    re = RunOne(one['_id'], 100000, one['name'], False, False)
+    if len(re.listen.actionList):
+      if re.listen.actionList[-1][1] == 1:
+        buyList.append((re.code, re.name, re.listen.DumpOne(re.listen.actionList[-1])))
+      elif re.listen.actionList[-1][1] == -1:
+        sellList.append((re.code, re.name, re.listen.DumpOne(re.listen.actionList[-1])))
+      toDBList.append(re.listen.ToDB())
+  print('buy list##################')
+  for one in buyList:
+    print(one)
+  
+  print('sell list##################')
+  for one in sellList:
+    print(one)
+  
+  for one in toDBList:
+    #TODO 这个和月初的比较有问题，如果这一个月股价涨幅很大，那其实信息已经没意义了
+    if one[0] is not None and one[0] >= anchor:
+      util.SaveMongoDB(one[1], 'stock_signal', collectionName)
+
+
+def CalcDV(codes):
+  for one in codes:
+    stock = RunOne2(one['_id'], 100000, one['name'], {})
+    percent = np.nan
+    if stock.DV.statisticsYears is not None and stock.DV.statisticsYears > 0:
+      percent = stock.DV.dividendYears/stock.DV.statisticsYears
+    util.SaveMongoDB({'_id': one['_id'], 'name': one['name'], '统计年数': stock.DV.statisticsYears,
+                      '分红年数': stock.DV.dividendYears, '百分比': percent},
+                     'stock_statistcs', 'dvYears')
+
+
+
+def CalcQuarterSpeed(codes, year):
+  for one in codes:
+    stock = RunOne2(one['_id'], 100000, one['name'], {})
+    out = {'_id': stock.code, 'name': stock.name}
+    if year in stock.DV.checkPoint:
+      counter = 0
+      total = 0
+      dictData = ['first', 'second', 'third', 'forth']
+      for quarter in dictData:
+        if quarter in stock.DV.checkPoint[year]:
+          try:
+            out[quarter] = stock.DV.checkPoint[year][quarter]['sjltz']
+            counter += 1
+            total += stock.DV.checkPoint[year][quarter]['sjltz']
+          except Exception as e:
+            pass
+          
+      if counter > 0:
+        out['avg'] = total / counter
+      else:
+        out['avg'] = np.nan
+
+    util.SaveMongoDB(out, 'stock_statistcs', 'quarterSpeed')
+
+
+#对于已经持仓的股票，看看现价和买点的差距
+def HoldDV(codes):
+  # 要求行情是最新的
+  for one in codes:
+    re = RunOne(one['_id'], 100000, one['name'], False, False)
+    if re.A.isHoldStock():
+      out = {'_id': one['_id'], 'name': one['name']}
+      out['triggerPrice'] = re.A.oldPrice
+      out['lastPrice'] = re.context.price
+      out['diff'] = (re.context.price-re.A.oldPrice)/re.A.oldPrice
+      out['date'] = re.context.date
+      
+      util.SaveMongoDB(out, 'stock_hold', 'dv1')
+    
+
+#########################################################
 if __name__ == '__main__':
   CODE_AND_MONEY = [
     # # # 皖通高速

@@ -123,3 +123,63 @@ def QueryAll():
 def PrintException(e):
   msg = traceback.format_exc()
   print(msg)
+
+
+
+def LoadData(dbName, collectionName, condition={}, sort=[('_id', 1)]):
+  client = MongoClient()
+  db = client[dbName]
+  collection = db[collectionName]
+  cursor = collection.find(condition).sort(sort)
+  out = []
+  for c in cursor:
+    out.append(c)
+
+  if len(out):
+    df = pd.DataFrame(out)
+    # df.drop('date', axis=1, inplace=True)
+    df.set_index('_id', inplace=True)
+    return df
+
+  return None
+
+
+def LoadData2(dbName, collectionName, codes):
+  client = MongoClient()
+  db = client[dbName]
+  collection = db[collectionName]
+  out = []
+  for code in codes:
+    cursor = collection.find({'_id': code})
+    for c in cursor:
+      out.append(c)
+      break
+
+  if len(out):
+    df = pd.DataFrame(out)
+    try:
+      df.drop('name', axis=1, inplace=True)
+    except Exception as e:
+      pass
+    df.set_index('_id', inplace=True)
+    return df
+
+def LastPriceNone(codes):
+  client = MongoClient()
+  
+  out = []
+  for code in codes:
+    db = client['stock_all_kdata_none']
+    collection = db[code]
+    cursor = collection.find().sort([('_id', -1)]).limit(1)
+    for c in cursor:
+      out.append({'_id': code, 'price': c['close']})
+      break
+
+  if len(out):
+    df = pd.DataFrame(out)
+    df.set_index('_id', inplace=True)
+    return df
+
+
+  return None
