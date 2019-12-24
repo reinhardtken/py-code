@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '2.0.0.2'
+VERSION = '2.0.0.3'
 
 DIR_BUY = 1
 DIR_NONE = 0
@@ -1017,7 +1017,7 @@ class TradeManager:
     start = str(self.startYear) + '-01-01T00:00:00Z'
     self.startDate = parser.parse(start, ignoretz=True)
     self.endYear = 2019  # 结束年份
-    end = str(self.endYear) + '-12-13T00:00:00Z'
+    end = str(self.endYear) + '-12-20T00:00:00Z'
     self.endDate = parser.parse(end, ignoretz=True)
 
     self.MAXEND = Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
@@ -1244,8 +1244,15 @@ class TradeManager:
   
   def LoadIndexs(self):
     if TradeManager.DF_HS300 is None:
-      TradeManager.DF_HS300 = self.loadData("stock_all_kdata_none", '000300', {"_id": {"$gte": self.startDate, "$lte": self.endDate}})
+      #引入每天的日程坐标，这样就不会遗漏任何一个非交易日信息，可以用精准的日期匹配触发事件了
+      index = pd.date_range(start=self.startDate, end=self.endDate)
+      tmp = pd.DataFrame(np.random.randn(len(index)), index=index, columns=['willDrop'])
+      hs300 = self.loadData("stock_all_kdata_none", '000300', {"_id": {"$gte": self.startDate, "$lte": self.endDate}})
+      tmp = tmp.join(hs300, how='left', lsuffix='_index')
+      tmp.drop(['willDrop', 'high', 'open', 'low', 'volume'], axis=1, inplace=True)
+      TradeManager.DF_HS300 = tmp
     self.index = TradeManager.DF_HS300
+    
   
   
   def Merge(self):
@@ -1258,7 +1265,10 @@ class TradeManager:
         pass
       except Exception as e:
         pass
-      self.mergeData.fillna(method='ffill', inplace=True)  # 用前面的值来填充
+      #填充股票的空值，但是不处理沪深300指数的空值
+      for one in self.codes:
+        self.mergeData[one].fillna(method='ffill', inplace=True)
+      # self.mergeData.fillna(method='ffill', inplace=True)  # 用前面的值来填充
   
   def BackTest(self):
     self.backTestInner(self.mergeData)
@@ -1312,6 +1322,8 @@ class TradeManager:
       self.accountMap[one].Before(context[one])
     
     for date, row in backtestData.iterrows():
+      if np.isnan(row['close']):
+        continue
       try:
         for code in self.codes:
           self.backTestOne(date, row, code)
