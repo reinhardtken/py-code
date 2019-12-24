@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '2.0.0.4'
+VERSION = '2.0.0.5'
 
 DIR_BUY = 1
 DIR_NONE = 0
@@ -509,7 +509,12 @@ class Account:
       self.ProcessDividend(context.date, context.dvInfo[1], context.price, context.index, task.args[0].dividendPointOne)
     elif task.key == DayContext.DANGEROUS_POINT:
       # self.SellNoCodition()
-      pass
+      self.SellNoCodition(context.date, context.price, context.index,
+                     reason='扣非卖出: {}'.format(task.args[0].point[4]))
+      print('cooldownbegin2 {}'.format(task.args[0].point[0]))
+      context.cooldown = True
+      context.cooldownEnd = task.args[0].point[1]
+      
     elif task.key == DayContext.BUY_EVENT:
       self.Buy(context.date, task.args[0], task.args[1], context.price, context.index, task.args[2], reason='低于买点')
     elif task.key == DayContext.SELL_EVENT:
@@ -583,7 +588,11 @@ class DangerousGenerator:
     # 处理季报，检查是否扣非-10%
     if not np.isnan(self.DV.eventDF.loc[context.date, 'dangerousPoint']):
       print('cooldownbegin {}'.format(self.DV.dangerousQuarterMap[context.date][0]))
-      context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.DANGEROUS_POINT, self.DV.dangerousQuarterMap[context.date][1],
+      # context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.DANGEROUS_POINT, self.DV.dangerousQuarterMap[context.date][1],
+      #               DangerousGenerator.Event(self.DV.dangerousQuarterMap[context.date]))
+
+      context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.DANGEROUS_POINT,
+                    None,
                     DangerousGenerator.Event(self.DV.dangerousQuarterMap[context.date]))
     
     # if len(self.dangerousPoint) > 0 and context.date >= self.dangerousPoint[0][0]:
@@ -1354,14 +1363,14 @@ class TradeManager:
     # self.A.Loop(date, context.price, context.index)
   
     # 处理季报，检查是否扣非-10%
-    if len(DV.dangerousPoint) > 0 and date >= DV.dangerousPoint[0][0]:
-      A.SellNoCodition(date, context.price, context.index,
-                            reason='扣非卖出: {}'.format(DV.dangerousPoint[0][4]))
-      # 记录因为扣非为负的区间，在区间内屏蔽开仓
-      print('cooldownbegin {}'.format(DV.dangerousPoint[0][0]))
-      context.cooldown = True
-      context.cooldownEnd = DV.dangerousPoint[0][1]
-      DV.dangerousPoint = DV.dangerousPoint[1:]
+    # if len(DV.dangerousPoint) > 0 and date >= DV.dangerousPoint[0][0]:
+    #   A.SellNoCodition(date, context.price, context.index,
+    #                         reason='扣非卖出: {}'.format(DV.dangerousPoint[0][4]))
+    #   # 记录因为扣非为负的区间，在区间内屏蔽开仓
+    #   print('cooldownbegin {}'.format(DV.dangerousPoint[0][0]))
+    #   context.cooldown = True
+    #   context.cooldownEnd = DV.dangerousPoint[0][1]
+    #   DV.dangerousPoint = DV.dangerousPoint[1:]
       
       
   def backTestInner(self, backtestData):
