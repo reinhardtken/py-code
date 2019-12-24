@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '2.0.0.1'
+VERSION = '2.0.0.2'
 
 DIR_BUY = 1
 DIR_NONE = 0
@@ -34,7 +34,7 @@ INVALID_BUY_PRICE = -10000
 YEAR_POSITION = 2
 MIDYEAR_POSITION = 1
 
-
+GPFH_KEY = const.GPFH_KEYWORD.KEY_NAME
 #########################################################
 def Quater2Date(year, quarter):
   # 从某个季度，转换到具体日期
@@ -674,6 +674,13 @@ class StrategyDV:
         self.CalcDividend(k, 'midYear')
         self.CalcDividend(k, 'year')
         v['year']['allDividend'] = v['midYear']['dividend'] + v['year']['dividend']
+        #计算分红是不是大于每股收益，如果大于每股收益，显然不可持续
+        if GPFH_KEY['EarningsPerShare'] in v['midYear']:
+          if 0.8*v['midYear'][GPFH_KEY['EarningsPerShare']] < v['midYear']['dividend']:
+            v['unsustainable'] = True
+        if GPFH_KEY['EarningsPerShare'] in v['year']:
+          if 0.8*v['year'][GPFH_KEY['EarningsPerShare']] < v['year']['dividend']:
+            v['unsustainable'] = True
         
         # 根据分红计算全年和半年的买入卖出价格
         # TODO 如果发生了派股，买入和卖出价格需要根据派股做出调整
@@ -1010,7 +1017,7 @@ class TradeManager:
     start = str(self.startYear) + '-01-01T00:00:00Z'
     self.startDate = parser.parse(start, ignoretz=True)
     self.endYear = 2019  # 结束年份
-    end = str(self.endYear) + '-12-31T00:00:00Z'
+    end = str(self.endYear) + '-12-13T00:00:00Z'
     self.endDate = parser.parse(end, ignoretz=True)
 
     self.MAXEND = Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
@@ -1111,6 +1118,7 @@ class TradeManager:
     for c in cursor:
       midYear[const.GPFH_KEYWORD.KEY_NAME['CQCXR']] = c[const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
       midYear[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']] = c[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
+      midYear[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']] = c[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']]
       break
     else:
       midYear.update({'notExist': 1})
@@ -1120,6 +1128,7 @@ class TradeManager:
     for c in cursor:
       year[const.GPFH_KEYWORD.KEY_NAME['CQCXR']] = c[const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
       year[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']] = c[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
+      year[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']] = c[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']]
       break
     else:
       year.update({'notExist': 1})
@@ -1161,7 +1170,6 @@ class TradeManager:
       break
     
     return (first, second, third, forth)
-  
   
   
   def loadData(self, dbName, collectionName, condition):
@@ -1236,7 +1244,7 @@ class TradeManager:
   
   def LoadIndexs(self):
     if TradeManager.DF_HS300 is None:
-      TradeManager.DF_HS300 = self.loadData("stock_all_kdata_none", '000300', {"_id": {"$gte": self.startDate}})
+      TradeManager.DF_HS300 = self.loadData("stock_all_kdata_none", '000300', {"_id": {"$gte": self.startDate, "$lte": self.endDate}})
     self.index = TradeManager.DF_HS300
   
   
@@ -1326,7 +1334,15 @@ class TradeManager:
       self.listen[one].Dump()
   
   
-  def Store2DB(self):
+  
+  def StorePrepare2DB(self):
+    for one in self.stocks:
+      code = one['_id']
+      name = one['name']
+      
+    pass
+  
+  def StoreResult2DB(self):
     # 保存交易记录到db，用于回测验证
     for one in self.stocks:
       code = one['_id']
@@ -1374,6 +1390,13 @@ class TradeManager:
       for c in cursor:
         out = c
         break
+      else:
+        collection = db['all_dv1']
+        cursor = collection.find({"_id": code})
+        out = None
+        for c in cursor:
+          out = c
+          break
       
       where = 0
       tmp = TradeResult.FromDB(out)
