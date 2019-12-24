@@ -2,6 +2,7 @@
 
 # sys
 from datetime import datetime
+from datetime import timedelta
 from dateutil import parser
 import traceback
 from queue import PriorityQueue
@@ -20,7 +21,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '2.0.0.3'
+VERSION = '2.0.0.4'
 
 DIR_BUY = 1
 DIR_NONE = 0
@@ -538,7 +539,8 @@ class DividendGenerator:
       self.dividendPointOne = dp
       pass
   
-  def __init__(self, dp):
+  def __init__(self, dv, dp):
+    self.DV = dv
     self.dividendPoint = dp
     pass
   
@@ -546,19 +548,21 @@ class DividendGenerator:
     # 处理除权,
     # 除权日不可能不是交易日
     context = args[0]
-    if len(self.dividendPoint) > 0:
-      if context.date > self.dividendPoint[0].date:
-        # 比如600900,在除权期间停牌。。。，对于这种目前简化为弹出这些除权，避免影响后续
-        # TODO 如何处理停牌？
-        while len(self.dividendPoint) > 0 and context.date > self.dividendPoint[0].date:
-          print(' 弹出除权信息！！！ {}， {}'.format(context.priceVec, self.dividendPoint[0]))
-          self.dividendPoint = self.dividendPoint[1:]
-      elif len(self.dividendPoint) > 0 and context.date == self.dividendPoint[0].date:
-        context.Add_A(DayContext.PRIORITY_BEFORE_TRADE, DayContext.DIVIDEND_POINT, None,
-                      DividendGenerator.Event(self.dividendPoint[0]))
-        # TODO
-        # self.ProcessDividend(date, buyPrice, current.price, current.index, self.dividendPoint[0])
-        self.dividendPoint = self.dividendPoint[1:]
+    if not np.isnan(self.DV.eventDF.loc[context.date, 'dividend']):
+      context.Add_A(DayContext.PRIORITY_BEFORE_TRADE, DayContext.DIVIDEND_POINT, None,
+                    DividendGenerator.Event(self.DV.dividendMap[context.date]))
+      
+    # if len(self.dividendPoint) > 0:
+    #   if context.date > self.dividendPoint[0].date:
+    #     # 比如600900,在除权期间停牌。。。，对于这种目前简化为弹出这些除权，避免影响后续
+    #     # TODO 如何处理停牌？
+    #     while len(self.dividendPoint) > 0 and context.date > self.dividendPoint[0].date:
+    #       print(' 弹出除权信息！！！ {}， {}'.format(context.priceVec, self.dividendPoint[0]))
+    #       self.dividendPoint = self.dividendPoint[1:]
+    #   elif len(self.dividendPoint) > 0 and context.date == self.dividendPoint[0].date:
+    #     context.Add_A(DayContext.PRIORITY_BEFORE_TRADE, DayContext.DIVIDEND_POINT, None,
+    #                   DividendGenerator.Event(self.dividendPoint[0]))
+    #     self.dividendPoint = self.dividendPoint[1:]
 
 
 #########################################################
@@ -567,25 +571,29 @@ class DangerousGenerator:
     def __init__(self, point):
       self.cooldown = True
       self.point = point
-      pass
+
   
-  def __init__(self, dp):
+  def __init__(self, dv, dp):
+    self.DV = dv
     self.dangerousPoint = dp
-    pass
+
   
   def __call__(self, *args, **kwargs):  # (self, context : DayContext):
     context = args[0]
     # 处理季报，检查是否扣非-10%
-    if len(self.dangerousPoint) > 0 and context.date >= self.dangerousPoint[0][0]:
-      # TODO
-      # self.SellNoCodition(context.date, context.price, context.index, reason='扣非卖出: {}'.format(self.dangerousPoint[0][4]))
-      # 记录因为扣非为负的区间，在区间内屏蔽开仓
-      print('cooldownbegin {}'.format(self.dangerousPoint[0][0]))
-      context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.DANGEROUS_POINT, self.dangerousPoint[0][1],
-                    DangerousGenerator.Event(self.dangerousPoint[0]))
-      # cooldown = True
-      # cooldownEnd = self.dangerousPoint[0][1]
-      self.dangerousPoint = self.dangerousPoint[1:]
+    if not np.isnan(self.DV.eventDF.loc[context.date, 'dangerousPoint']):
+      print('cooldownbegin {}'.format(self.DV.dangerousQuarterMap[context.date][0]))
+      context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.DANGEROUS_POINT, self.DV.dangerousQuarterMap[context.date][1],
+                    DangerousGenerator.Event(self.DV.dangerousQuarterMap[context.date]))
+    
+    # if len(self.dangerousPoint) > 0 and context.date >= self.dangerousPoint[0][0]:
+    #   # 记录因为扣非为负的区间，在区间内屏蔽开仓
+    #   print('cooldownbegin {}'.format(self.dangerousPoint[0][0]))
+    #   context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.DANGEROUS_POINT, self.dangerousPoint[0][1],
+    #                 DangerousGenerator.Event(self.dangerousPoint[0]))
+    #   # cooldown = True
+    #   # cooldownEnd = self.dangerousPoint[0][1]
+    #   self.dangerousPoint = self.dangerousPoint[1:]
 
 
 #########################################################
@@ -614,11 +622,14 @@ class StrategyDV:
     self.generator = {
       # 'dividendPoint': DividendGenerator(),
     }
-  
+    #事件发生dataFrame
+    self.eventDF = None
+    self.dividendMap = {}  # 除权的详细信息，和eventDF配合使用
+    self.dangerousQuarterMap = {}  # 危险季报详细信息，和eventDF配合使用
   
   def BuildGenerator(self):
-    self.generator['dividendPoint'] = DividendGenerator(self.dividendPoint)
-    self.generator['dangerousPoint'] = DangerousGenerator(self.dangerousPoint)
+    self.generator['dividendPoint'] = DividendGenerator(self, self.dividendPoint)
+    self.generator['dangerousPoint'] = DangerousGenerator(self, self.dangerousPoint)
     
     
   def Before(self, context: DayContext):
@@ -640,7 +651,42 @@ class StrategyDV:
     elif task.key == DayContext.MAKE_DECISION:
       self.MakeDecision(context)
   
+  
+  def genEventDF(self):
+    self.eventDF = pd.concat([self.TU.baseIndex2, pd.DataFrame(columns=[
+      'buyPrice', 'sellPrice',
+      'dividend', 'dangerousPoint',
+      # 'yearGift', 'yearDividend', 'midYearGift', 'midYearDividend', 'allDividend', 'yearDividendDate',
+      # 'midYearDividendDate', 'earningsPerShare',
+    ])])
+    # self.eventDF.drop(['willDrop', ], axis=1, inplace=True)
+    
+    #登记除权信息
+    for one in self.dividendPoint:
+      if one.date in self.eventDF.index:
+        row = self.eventDF.loc[one.date]
+        #除权日肯定是交易日
+        self.eventDF.loc[one.date, 'dividend'] = True
+        self.dividendMap[one.date] = one
+        
+    for one in self.dangerousPoint:
+      if one[0] in self.eventDF.index:
+        row = self.eventDF.loc[one[0]]
+        # #not work
+        # row['dangerousPoint'] = True
+        # # not work
+        # self.eventDF.loc[one[0]]['dangerousPoint'] = True
+        #季报日期未必是交易日，需要找到下一个最近的交易日
+        index = one[0]
+        while np.isnan(self.eventDF.loc[index, 'close']):
+          index += timedelta(days=1)
+          
+        self.eventDF.loc[index, 'dangerousPoint'] = True
+        self.dangerousQuarterMap[index] = one
+    
+    
   def CheckPrepare(self):
+    
     # 准备判定条件
     now = datetime.now()
     stopYear = now.year
@@ -710,6 +756,7 @@ class StrategyDV:
         self.ProcessQuarterPaper(k, 'forth')
       except KeyError as e:
         print(e)
+  
     
     # 针对dangerousPoint清理dividendPoint
     tmp = []
@@ -764,6 +811,11 @@ class StrategyDV:
       else:
         tmp.append(one)
     self.dangerousPoint = tmp
+    
+    #根据分析数据生成eventDF
+    self.genEventDF()
+    
+    
   
   def processSong(self, value):
     # 处理送股
@@ -1027,6 +1079,8 @@ class TradeManager:
     self.stocks = stocks
     self.data = []  # 行情
     self.index = None  # 沪深300指数
+    self.baseIndex = None #自然日index
+    self.baseIndex2 = None  # 自然日index，带了hs300数据，也就是知道那些日子是交易日
 
     self.collectionName = 'dv2'  # 存盘表名
     
@@ -1246,11 +1300,11 @@ class TradeManager:
     if TradeManager.DF_HS300 is None:
       #引入每天的日程坐标，这样就不会遗漏任何一个非交易日信息，可以用精准的日期匹配触发事件了
       index = pd.date_range(start=self.startDate, end=self.endDate)
-      tmp = pd.DataFrame(np.random.randn(len(index)), index=index, columns=['willDrop'])
+      self.baseIndex = pd.DataFrame(np.random.randn(len(index)), index=index, columns=['willDrop'])
       hs300 = self.loadData("stock_all_kdata_none", '000300', {"_id": {"$gte": self.startDate, "$lte": self.endDate}})
-      tmp = tmp.join(hs300, how='left', lsuffix='_index')
-      tmp.drop(['willDrop', 'high', 'open', 'low', 'volume'], axis=1, inplace=True)
-      TradeManager.DF_HS300 = tmp
+      self.baseIndex2 = self.baseIndex.join(hs300, how='left', lsuffix='_index')
+      self.baseIndex2.drop(['willDrop', 'high', 'open', 'low', 'volume'], axis=1, inplace=True)
+      TradeManager.DF_HS300 = self.baseIndex2
     self.index = TradeManager.DF_HS300
     
   
