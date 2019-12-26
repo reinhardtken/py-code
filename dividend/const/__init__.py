@@ -1,3 +1,24 @@
+# -*- coding: utf-8 -*-
+
+
+
+
+
+class DV2:
+  DIR_BUY = 1
+  DIR_NONE = 0
+  DIR_SELL = -1
+  HOLD_MONEY = 1
+  HOLD_STOCK = 2
+  BUY_PERCENT = 0.04
+  SELL_PERCENT = 0.03
+  INVALID_SELL_PRICE = 10000
+  INVALID_BUY_PRICE = -10000
+  YEAR_POSITION = 2
+  MIDYEAR_POSITION = 1
+
+
+
 class GPFH_KEYWORD:
   ID_NAME = 'Code'
   DB_NAME = 'stock'

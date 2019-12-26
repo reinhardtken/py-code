@@ -14,6 +14,7 @@ import numpy as np
 
 import const
 import util
+from index import dv2
 
 # this project
 if __name__ == '__main__':
@@ -21,33 +22,22 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '2.0.0.6'
+VERSION = '2.0.0.7'
 
-DIR_BUY = 1
-DIR_NONE = 0
-DIR_SELL = -1
-HOLD_MONEY = 1
-HOLD_STOCK = 2
-BUY_PERCENT = 0.04
-SELL_PERCENT = 0.03
-INVALID_SELL_PRICE = 10000
-INVALID_BUY_PRICE = -10000
-YEAR_POSITION = 2
-MIDYEAR_POSITION = 1
+DIR_BUY = const.DV2.DIR_BUY
+DIR_NONE = const.DV2.DIR_NONE
+DIR_SELL = const.DV2.DIR_SELL
+HOLD_MONEY = const.DV2.HOLD_MONEY
+HOLD_STOCK = const.DV2.HOLD_STOCK
+BUY_PERCENT = const.DV2.BUY_PERCENT
+SELL_PERCENT = const.DV2.SELL_PERCENT
+INVALID_SELL_PRICE = const.DV2.INVALID_SELL_PRICE
+INVALID_BUY_PRICE = const.DV2.INVALID_BUY_PRICE
+YEAR_POSITION = const.DV2.YEAR_POSITION
+MIDYEAR_POSITION = const.DV2.MIDYEAR_POSITION
 
 GPFH_KEY = const.GPFH_KEYWORD.KEY_NAME
-#########################################################
-def Quater2Date(year, quarter):
-  # 从某个季度，转换到具体日期
-  if quarter == 'first':
-    return pd.to_datetime(np.datetime64(str(year) + '-04-30T00:00:00Z'))
-  elif quarter == 'second':
-    return pd.to_datetime(np.datetime64(str(year) + '-08-31T00:00:00Z'))
-  elif quarter == 'third':
-    return pd.to_datetime(np.datetime64(str(year) + '-10-31T00:00:00Z'))
-  elif quarter == 'forth':
-    # 来年一季度,这里反正有问题，用29号变通下
-    return pd.to_datetime(np.datetime64(str(year + 1) + '-04-29T00:00:00Z'))
+
 
 
 # #交易日当天的信息##########################################
@@ -599,17 +589,18 @@ class StrategyDV:
     self.startDate = startDate
     self.endDate = endDate
     self.TU = tu
-    self.checkPoint = {}  # 所有的年报季报除权等影响买卖点的特殊时点
-    self.dangerousPoint = []  # 利润同比下滑超过10%的位置
-    self.dividendPoint = []  # 除权的日期
-    self.data = None  # 行情
-    self.MAXEND = Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
+    self.dv2Index = dv2.DV2Index(code, startYear, startDate, endDate)
+    # self.dv2Index.checkPoint = {}  # 所有的年报季报除权等影响买卖点的特殊时点
+    # self.dangerousPoint = []  # 利润同比下滑超过10%的位置
+    # self.dv2Index.dividendPoint = []  # 除权的日期
+    # self.data = None  # 行情
+    # self.MAXEND = Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
     
-    self.dividendAdjust = {}  # 除权日，调整买入卖出价格
+    # self.dividendAdjust = {}  # 除权日，调整买入卖出价格
     self.oldSellPrice = None  # 老的卖出目标价，如果年报半年报更新，这个价格可能更新
     # self.decisionCache = None
-    self.statisticsYears = None  # 参与统计的总年数
-    self.dividendYears = 0  # 有过分红的年数
+    # self.statisticsYears = None  # 参与统计的总年数
+    # self.dividendYears = 0  # 有过分红的年数
     # 特殊年报时间
     self.specialPaper = {}
     # 事件生成函数数组
@@ -623,8 +614,8 @@ class StrategyDV:
   
   
   def BuildGenerator(self):
-    self.generator['dividendPoint'] = DividendGenerator(self, self.dividendPoint)
-    self.generator['dangerousPoint'] = DangerousGenerator(self, self.dangerousPoint)
+    self.generator['dividendPoint'] = DividendGenerator(self, self.dv2Index.dividendPoint)
+    self.generator['dangerousPoint'] = DangerousGenerator(self, self.dv2Index.dangerousPoint)
     
     
   def Before(self, context: DayContext):
@@ -658,14 +649,14 @@ class StrategyDV:
     # self.eventDF.drop(['willDrop', ], axis=1, inplace=True)
     
     #登记除权信息
-    for one in self.dividendPoint:
+    for one in self.dv2Index.dividendPoint:
       if one.date in self.eventDF.index:
         row = self.eventDF.loc[one.date]
         #除权日肯定是交易日
         self.eventDF.loc[one.date, 'dividend'] = True
         self.dividendMap[one.date] = one
         
-    for one in self.dangerousPoint:
+    for one in self.dv2Index.dangerousPoint:
       if one[0] in self.eventDF.index:
         row = self.eventDF.loc[one[0]]
         # #not work
@@ -683,247 +674,120 @@ class StrategyDV:
     self.checkPoint2DF()
     
   def CheckPrepare(self):
-    
-    # 准备判定条件
-    now = datetime.now()
-    stopYear = now.year
-    for year in range(self.startYear - 1, stopYear + 1):
-      if year not in self.checkPoint:
-        self.checkPoint[year] = {}
-      if year + 1 not in self.checkPoint:
-        self.checkPoint[year + 1] = {}
-      # 加载对应年的年报中报
-      yearPaper = self.TU.LoadYearPaper(year, self.code)
-      self.checkPoint[year]['midYear'] = yearPaper[0]
-      self.checkPoint[year]['year'] = yearPaper[1]
-      
-      # 加载对应的季报
-      quarterPaper = self.TU.LoadQuaterPaper(year, self.code)
-      self.checkPoint[year]['first'] = quarterPaper[0]
-      self.checkPoint[year]['second'] = quarterPaper[1]
-      self.checkPoint[year]['third'] = quarterPaper[2]
-      self.checkPoint[year]['forth'] = quarterPaper[3]
-    
-    self.statisticsYears = len(self.checkPoint)
-    # 对加载出来的数据做初步处理
-    for k, v in self.checkPoint.items():
-      try:
-        if 'notExist' in v['year'] and 'notExist' in v['midYear']:
-          # 没有查到年报数据的年份，可能是公司就没上市，需要扣减
-          self.statisticsYears -= 1
-        # 计算分红
-        v['midYear']['dividend'] = 0
-        v['year']['dividend'] = 0
-        self.CalcDividend(k, 'midYear')
-        self.CalcDividend(k, 'year')
-        v['year']['allDividend'] = v['midYear']['dividend'] + v['year']['dividend']
-        #计算分红是不是大于每股收益，如果大于每股收益，显然不可持续
-        if GPFH_KEY['EarningsPerShare'] in v['midYear']:
-          if 0.8*v['midYear'][GPFH_KEY['EarningsPerShare']] < v['midYear']['dividend']:
-            v['unsustainable'] = True
-        if GPFH_KEY['EarningsPerShare'] in v['year']:
-          if 0.8*v['year'][GPFH_KEY['EarningsPerShare']] < v['year']['dividend']:
-            v['unsustainable'] = True
-        
-        # 根据分红计算全年和半年的买入卖出价格
-        # allDividend影响下一年
-        if v['year']['allDividend'] > 0:
-          # 统计分红过的年数
-          self.dividendYears += 1
-          self.checkPoint[k + 1]['buyPrice'] = v['year']['allDividend'] / BUY_PERCENT
-          self.checkPoint[k + 1]['sellPrice'] = v['year']['allDividend'] / SELL_PERCENT
-        else:
-          self.checkPoint[k + 1]['buyPrice'] = INVALID_BUY_PRICE
-          self.checkPoint[k + 1]['sellPrice'] = INVALID_SELL_PRICE
-        
-        # midYear的dividend影响8月31号以后的当年
-        if v['midYear']['dividend'] > 0:
-          self.checkPoint[k]['buyPrice2'] = v['midYear']['dividend'] / BUY_PERCENT
-          self.checkPoint[k]['sellPrice2'] = v['midYear']['dividend'] / SELL_PERCENT
-        else:
-          self.checkPoint[k]['buyPrice2'] = INVALID_BUY_PRICE
-          self.checkPoint[k]['sellPrice2'] = INVALID_SELL_PRICE
-        
-        # 检查净利润同比下降10%以上的位置
-        self.ProcessQuarterPaper(k, 'first')
-        self.ProcessQuarterPaper(k, 'second')
-        self.ProcessQuarterPaper(k, 'third')
-        self.ProcessQuarterPaper(k, 'forth')
-      except KeyError as e:
-        print(e)
-  
-    
-    # 针对dangerousPoint清理dividendPoint
-    tmp = []
-    have = set()
-    for one in self.dividendPoint:
-      for two in self.dangerousPoint:
-        if two[0] <= one.date and two[1] >= one.date:
-          print("清理除权 {} {} {}".format(one.date, two[0], two[1]))
-          break
-      else:
-        if one.date not in have:
-          tmp.append(one)
-          have.add(one.date)
-    self.dividendPoint = tmp
-    
-    # 对所有派股的情况，记录除权日，并调整买卖价格
-    for one in self.dividendPoint:
-      tmp = {}
-      # 有派股
-      if one.gift > 0:
-        try:
-          if one.position == 'midYear' and self.checkPoint[one.year]['buyPrice2'] != INVALID_BUY_PRICE:
-            tmp['buyPriceX'] = self.checkPoint[one.year]['buyPrice2'] / (1 + one.gift)
-            tmp['sellPriceX'] = self.checkPoint[one.year]['sellPrice2'] / (1 + one.gift)
-            tmp['y'] = one.year
-            tmp['p'] = 'midYear'
-            tmp['date'] = one.date
-            self.checkPoint[one.year]['midYear']['dividendAdjust'] = tmp
-          elif one.position == 'year' and self.checkPoint[one.year + 1]['buyPrice'] != INVALID_BUY_PRICE:
-            # 送股調整的時候，年报的调整需要囊括半年报的送股
-            #TODO 年报调整为何要包括半年报？感觉此处有问题。。。
-            midYearGift = 0
-            try:
-              midYearGift = self.checkPoint[one.year]['midYear']['gift']
-            except Exception as e:
-              pass
-            if midYearGift != 0:
-              assert 0
-            tmp['buyPriceX'] = self.checkPoint[one.year + 1]['buyPrice'] / ((1 + one.gift) * (1 + midYearGift))
-            tmp['sellPriceX'] = self.checkPoint[one.year + 1]['sellPrice'] / ((1 + one.gift) * (1 + midYearGift))
-            tmp['y'] = one.year + 1
-            tmp['p'] = 'year'
-            tmp['date'] = one.date
-            self.checkPoint[one.year+1]['year']['dividendAdjust'] = tmp
-          if len(tmp) > 0:
-            # 有配股有分红才调整价格
-            self.dividendAdjust[one.date] = tmp
-        except Exception as e:
-          print(e)
-
-    # 清理所有截止日期早于startDate的cooldown
-    # Test2('601288', 26405, '农业银行', False, True) ，有2010年的cooldown
-    tmp = []
-    for one in self.dangerousPoint:
-      if one[1] < self.startDate:
-        continue
-      else:
-        tmp.append(one)
-    self.dangerousPoint = tmp
+    self.dv2Index.Run()
     
     #根据分析数据生成eventDF
     self.genEventDF()
     #作废原始数据
-    self.checkPoint = {}
-    self.dangerousPoint = []
-    self.dividendPoint = []
-    self.dividendAdjust = {}
+    # self.dv2Index.checkPoint = {}
+    # self.dangerousPoint = []
+    # self.dv2Index.dividendPoint = []
+    # self.dividendAdjust = {}
     
     
   
-  def processSong(self, value):
-    # 处理送股
-    index = value.find('送')
-    index2 = value.find('转')
-    if index != -1:
-      newValue = value[index + 1:]
-      out = util.String2Number(newValue)
-      return out
-    elif index2 != -1:
-      newValue = value[index2 + 1:]
-      out = util.String2Number(newValue)
-      return out
-    else:
-      return 0
-  
-  def processPai(self, value):
-    # 处理派息
-    index = value.find('派')
-    if index != -1:
-      newValue = value[index + 1:]
-      out = util.String2Number(newValue)
-      return out
-    else:
-      return 0
-  
-  def processPai2(self, value):
-    # 处理派息，税后
-    index = value.find('扣税后')
-    if index != -1:
-      newValue = value[index + 1:]
-      out = util.String2Number(newValue)
-      return out
-    else:
-      return 0
-  
-  def CalcDividend(self, year, position):
-    # '10送3.00派4.00元(含税,扣税后3.30元)'
-    if const.GPFH_KEYWORD.KEY_NAME['AllocationPlan'] in self.checkPoint[year][position]:
-      value = self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
-      number = util.String2Number(value)
-      profit = self.processPai(value)
-      self.checkPoint[year][position]['dividend'] = profit / number
-      profit2 = self.processPai2(value)
-      self.checkPoint[year][position]['dividend_aftertax'] = profit2 / number
-      gift = self.processSong(value)
-      self.checkPoint[year][position]['gift'] = gift / number
-      
-      if const.GPFH_KEYWORD.KEY_NAME['CQCXR'] in self.checkPoint[year][position]:
-        tmpDate = self.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
-        # 农业银行，2010年
-        if tmpDate == '-':
-          if position == 'midYear':
-            # 半年默认在当年年底除权
-            tmpDate = pd.Timestamp(datetime(year, 12, 1))
-          else:
-            tmpDate = pd.Timestamp(datetime(year + 1, 6, 30))
-        else:
-          tmpDate = pd.to_datetime(np.datetime64(tmpDate))
-        self.dividendPoint.append(DividendPoint(
-          tmpDate,
-          self.checkPoint[year][position]['dividend'],
-          self.checkPoint[year][position]['dividend_aftertax'],
-          self.checkPoint[year][position]['gift'],
-          year, position))
-  
-  def ProcessQuarterPaper(self, year, position):
-    if 'sjltz' in self.checkPoint[year][position]:
-      speed = -11
-      try:
-        # 存在这个值为“-”的情形
-        speed = float(self.checkPoint[year][position]['sjltz'])
-        self.checkPoint[year][position]['sjltz'] = speed
-      except Exception as e:
-        pass
-      
-      if speed < -10:
-        self.dangerousPoint.append((Quater2Date(year, position), self.MAXEND, year, position, speed))
-      elif speed > 0:
-        # 增速转正，如果之前有负的，要结合负的计算出冷冻区间（此区间不开仓）
-        if len(self.dangerousPoint) > 0:
-          # 找到所有没有填充终止的条目，全部填上当前时间点
-          dirtyFlag = False
-          for index in range(len(self.dangerousPoint)):
-            if self.dangerousPoint[index][1] == self.MAXEND:
-              dirtyFlag = True
-              self.dangerousPoint[index] = (
-                self.dangerousPoint[index][0], Quater2Date(year, position), self.dangerousPoint[index][2],
-                self.dangerousPoint[index][3], self.dangerousPoint[index][4])
-          
-          # 清理在起始时间小于终止时间的区间（比如从2011年2季度开始，2,3,4季度都是负，2012年一季度转正）
-          # 此时dangerousPoint里面有多个条目：（2011-2，2012-1），（2011-3，2012-1），（2011-4，2012-1）
-          # 其中（2011-3，2012-1），（2011-4，2012-1）是没有意义的，需要删除
-          if dirtyFlag:
-            tmp = []
-            have = set()
-            for index in range(len(self.dangerousPoint)):
-              if self.dangerousPoint[index][1] not in have:
-                have.add(self.dangerousPoint[index][1])
-                tmp.append(self.dangerousPoint[index])
-              else:
-                pass
-            self.dangerousPoint = tmp
+  # def processSong(self, value):
+  #   # 处理送股
+  #   index = value.find('送')
+  #   index2 = value.find('转')
+  #   if index != -1:
+  #     newValue = value[index + 1:]
+  #     out = util.String2Number(newValue)
+  #     return out
+  #   elif index2 != -1:
+  #     newValue = value[index2 + 1:]
+  #     out = util.String2Number(newValue)
+  #     return out
+  #   else:
+  #     return 0
+  #
+  # def processPai(self, value):
+  #   # 处理派息
+  #   index = value.find('派')
+  #   if index != -1:
+  #     newValue = value[index + 1:]
+  #     out = util.String2Number(newValue)
+  #     return out
+  #   else:
+  #     return 0
+  #
+  # def processPai2(self, value):
+  #   # 处理派息，税后
+  #   index = value.find('扣税后')
+  #   if index != -1:
+  #     newValue = value[index + 1:]
+  #     out = util.String2Number(newValue)
+  #     return out
+  #   else:
+  #     return 0
+  #
+  # def CalcDividend(self, year, position):
+  #   # '10送3.00派4.00元(含税,扣税后3.30元)'
+  #   if const.GPFH_KEYWORD.KEY_NAME['AllocationPlan'] in self.dv2Index.checkPoint[year][position]:
+  #     value = self.dv2Index.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
+  #     number = util.String2Number(value)
+  #     profit = self.processPai(value)
+  #     self.dv2Index.checkPoint[year][position]['dividend'] = profit / number
+  #     profit2 = self.processPai2(value)
+  #     self.dv2Index.checkPoint[year][position]['dividend_aftertax'] = profit2 / number
+  #     gift = self.processSong(value)
+  #     self.dv2Index.checkPoint[year][position]['gift'] = gift / number
+  #
+  #     if const.GPFH_KEYWORD.KEY_NAME['CQCXR'] in self.dv2Index.checkPoint[year][position]:
+  #       tmpDate = self.dv2Index.checkPoint[year][position][const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
+  #       # 农业银行，2010年
+  #       if tmpDate == '-':
+  #         if position == 'midYear':
+  #           # 半年默认在当年年底除权
+  #           tmpDate = pd.Timestamp(datetime(year, 12, 1))
+  #         else:
+  #           tmpDate = pd.Timestamp(datetime(year + 1, 6, 30))
+  #       else:
+  #         tmpDate = pd.to_datetime(np.datetime64(tmpDate))
+  #       self.dv2Index.dividendPoint.append(DividendPoint(
+  #         tmpDate,
+  #         self.dv2Index.checkPoint[year][position]['dividend'],
+  #         self.dv2Index.checkPoint[year][position]['dividend_aftertax'],
+  #         self.dv2Index.checkPoint[year][position]['gift'],
+  #         year, position))
+  #
+  # def ProcessQuarterPaper(self, year, position):
+  #   if 'sjltz' in self.dv2Index.checkPoint[year][position]:
+  #     speed = -11
+  #     try:
+  #       # 存在这个值为“-”的情形
+  #       speed = float(self.dv2Index.checkPoint[year][position]['sjltz'])
+  #       self.dv2Index.checkPoint[year][position]['sjltz'] = speed
+  #     except Exception as e:
+  #       pass
+  #
+  #     if speed < -10:
+  #       self.dangerousPoint.append((Quater2Date(year, position), self.MAXEND, year, position, speed))
+  #     elif speed > 0:
+  #       # 增速转正，如果之前有负的，要结合负的计算出冷冻区间（此区间不开仓）
+  #       if len(self.dangerousPoint) > 0:
+  #         # 找到所有没有填充终止的条目，全部填上当前时间点
+  #         dirtyFlag = False
+  #         for index in range(len(self.dangerousPoint)):
+  #           if self.dangerousPoint[index][1] == self.MAXEND:
+  #             dirtyFlag = True
+  #             self.dangerousPoint[index] = (
+  #               self.dangerousPoint[index][0], Quater2Date(year, position), self.dangerousPoint[index][2],
+  #               self.dangerousPoint[index][3], self.dangerousPoint[index][4])
+  #
+  #         # 清理在起始时间小于终止时间的区间（比如从2011年2季度开始，2,3,4季度都是负，2012年一季度转正）
+  #         # 此时dangerousPoint里面有多个条目：（2011-2，2012-1），（2011-3，2012-1），（2011-4，2012-1）
+  #         # 其中（2011-3，2012-1），（2011-4，2012-1）是没有意义的，需要删除
+  #         if dirtyFlag:
+  #           tmp = []
+  #           have = set()
+  #           for index in range(len(self.dangerousPoint)):
+  #             if self.dangerousPoint[index][1] not in have:
+  #               have.add(self.dangerousPoint[index][1])
+  #               tmp.append(self.dangerousPoint[index])
+  #             else:
+  #               pass
+  #           self.dangerousPoint = tmp
   
   # def MakeDecisionPrice(self, date):
   #   # 决定使用哪个年的checkpoit，返回对应的buy和sell
@@ -942,22 +806,22 @@ class StrategyDV:
   #     if date <= anchor0:
   #       # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
   #       where = str(date.year - 1) + '-midYear'
-  #       if self.checkPoint[date.year - 1]['buyPrice2'] > 0:
-  #         return True, self.checkPoint[date.year - 1]['buyPrice2'], self.checkPoint[date.year - 1]['sellPrice2'], where
+  #       if self.dv2Index.checkPoint[date.year - 1]['buyPrice2'] > 0:
+  #         return True, self.dv2Index.checkPoint[date.year - 1]['buyPrice2'], self.dv2Index.checkPoint[date.year - 1]['sellPrice2'], where
   #     elif date <= anchor1:
   #       # 在8月31日之前，需要使用去年的年报
   #       where = str(date.year - 1) + '-year'
-  #       if self.checkPoint[date.year]['buyPrice'] > 0:
-  #         return True, self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice'], where
+  #       if self.dv2Index.checkPoint[date.year]['buyPrice'] > 0:
+  #         return True, self.dv2Index.checkPoint[date.year]['buyPrice'], self.dv2Index.checkPoint[date.year]['sellPrice'], where
   #     else:
   #       # 在8月31日之后，使用去年的allDividend和今年半年报中dividend中大的那个决定
-  #       buy = self.checkPoint[date.year]['buyPrice']
-  #       midBuy = self.checkPoint[date.year]['buyPrice2']
+  #       buy = self.dv2Index.checkPoint[date.year]['buyPrice']
+  #       midBuy = self.dv2Index.checkPoint[date.year]['buyPrice2']
   #       if buy > midBuy and buy > 0:
-  #         return True, buy, self.checkPoint[date.year]['sellPrice'], str(date.year - 1) + '-year2'
+  #         return True, buy, self.dv2Index.checkPoint[date.year]['sellPrice'], str(date.year - 1) + '-year2'
   #       else:
   #         if midBuy > 0:
-  #           return True, midBuy, self.checkPoint[date.year]['sellPrice2'], str(date.year) + '-midYear2'
+  #           return True, midBuy, self.dv2Index.checkPoint[date.year]['sellPrice2'], str(date.year) + '-midYear2'
   #         else:
   #           return False, INVALID_BUY_PRICE, INVALID_SELL_PRICE, str(date.year - 1) + '-year3'
   #   except Exception as e:
@@ -989,25 +853,25 @@ class StrategyDV:
     #   if date <= anchor0:
     #     # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
     #     where = str(date.year) + '-midYear'
-    #     tmp = self.checkPoint[date.year - 1]['buyPrice2'], self.checkPoint[date.year - 1]['sellPrice2'], where
+    #     tmp = self.dv2Index.checkPoint[date.year - 1]['buyPrice2'], self.dv2Index.checkPoint[date.year - 1]['sellPrice2'], where
     #     self.decisionCache = (anchor0, tmp)
     #     return tmp
     #   elif date <= anchor1:
     #     # 在8月31日之前，需要使用去年的年报
     #     where = str(date.year - 1) + '-year'
-    #     tmp = self.checkPoint[date.year]['buyPrice'], self.checkPoint[date.year]['sellPrice'], where
+    #     tmp = self.dv2Index.checkPoint[date.year]['buyPrice'], self.dv2Index.checkPoint[date.year]['sellPrice'], where
     #     self.decisionCache = (anchor1, tmp)
     #     return tmp
     #   else:
     #     # 在8月31日之后，使用去年的allDividend和今年半年报中dividend中大的那个决定
-    #     buy = self.checkPoint[date.year]['buyPrice']
-    #     midBuy = self.checkPoint[date.year]['buyPrice2']
+    #     buy = self.dv2Index.checkPoint[date.year]['buyPrice']
+    #     midBuy = self.dv2Index.checkPoint[date.year]['buyPrice2']
     #     tmp = None
     #     if buy > midBuy and buy > 0:
-    #       tmp = buy, self.checkPoint[date.year]['sellPrice'], str(date.year - 1) + '-year2'
+    #       tmp = buy, self.dv2Index.checkPoint[date.year]['sellPrice'], str(date.year - 1) + '-year2'
     #     else:
     #       if midBuy > 0:
-    #         tmp = midBuy, self.checkPoint[date.year]['sellPrice2'], str(date.year) + '-midYear2'
+    #         tmp = midBuy, self.dv2Index.checkPoint[date.year]['sellPrice2'], str(date.year) + '-midYear2'
     #       else:
     #         tmp = INVALID_BUY_PRICE, INVALID_SELL_PRICE, str(date.year - 1) + '-year3'
     #     self.decisionCache = (anchor2, tmp)
@@ -1036,17 +900,17 @@ class StrategyDV:
 
       # TODO wrong should year-1
       self.eventDF.loc[anchor0:anchor1, 'where'] = str(year) + '-midYear'
-      self.eventDF.loc[anchor0:anchor1, 'buyPrice'] = self.checkPoint[year-1]['buyPrice2']
-      self.eventDF.loc[anchor0:anchor1, 'sellPrice'] = self.checkPoint[year - 1]['sellPrice2']
+      self.eventDF.loc[anchor0:anchor1, 'buyPrice'] = self.dv2Index.checkPoint[year-1]['buyPrice2']
+      self.eventDF.loc[anchor0:anchor1, 'sellPrice'] = self.dv2Index.checkPoint[year - 1]['sellPrice2']
 
       self.eventDF.loc[anchor1 + timedelta(days=1):anchor2, 'where'] = str(year - 1) + '-year'
-      self.eventDF.loc[anchor1+timedelta(days=1):anchor2, 'buyPrice'] = self.checkPoint[year]['buyPrice']
-      self.eventDF.loc[anchor1+timedelta(days=1):anchor2, 'sellPrice'] = self.checkPoint[year]['sellPrice']
+      self.eventDF.loc[anchor1+timedelta(days=1):anchor2, 'buyPrice'] = self.dv2Index.checkPoint[year]['buyPrice']
+      self.eventDF.loc[anchor1+timedelta(days=1):anchor2, 'sellPrice'] = self.dv2Index.checkPoint[year]['sellPrice']
       
-      buy = self.checkPoint[year]['buyPrice']
-      sell = self.checkPoint[year]['sellPrice']
+      buy = self.dv2Index.checkPoint[year]['buyPrice']
+      sell = self.dv2Index.checkPoint[year]['sellPrice']
       where = str(year-1) + '-year2'
-      midBuy = self.checkPoint[year]['buyPrice2']
+      midBuy = self.dv2Index.checkPoint[year]['buyPrice2']
       tmp = None
       flag = 1
       if buy > midBuy and buy > 0:
@@ -1055,7 +919,7 @@ class StrategyDV:
         if midBuy > 0:
           flag = 2
           buy = midBuy
-          sell = self.checkPoint[year]['sellPrice2']
+          sell = self.dv2Index.checkPoint[year]['sellPrice2']
           where = str(year) + '-midYear2'
 
       self.eventDF.loc[anchor2 + timedelta(days=1):anchor3, 'buyPrice'] = buy
@@ -1064,18 +928,18 @@ class StrategyDV:
       
       #除权调整
       #1 去年半年报的除权，要影响今年一阶段
-      if 'dividendAdjust' in self.checkPoint[year-1]['midYear']:
-        tmp = self.checkPoint[year-1]['midYear']['dividendAdjust']
+      if 'dividendAdjust' in self.dv2Index.checkPoint[year-1]['midYear']:
+        tmp = self.dv2Index.checkPoint[year-1]['midYear']['dividendAdjust']
         self.eventDF.loc[anchor0:anchor1, 'buyPrice'] = tmp['buyPriceX']
         self.eventDF.loc[anchor0:anchor1, 'sellPrice'] = tmp['sellPriceX']
         # 如果用了今年半年报，今年半年报除权影响三阶段部分
-        if flag == 2 and 'dividendAdjust' in self.checkPoint[year]['midYear']:
-          tmp = self.checkPoint[year]['midYear']['dividendAdjust']
+        if flag == 2 and 'dividendAdjust' in self.dv2Index.checkPoint[year]['midYear']:
+          tmp = self.dv2Index.checkPoint[year]['midYear']['dividendAdjust']
           self.eventDF.loc[tmp['date']:anchor3, 'buyPrice'] = tmp['buyPriceX']
           self.eventDF.loc[tmp['date']:anchor3, 'sellPrice'] = tmp['sellPriceX']
       #2 去年年报除权，影响今年二阶段部分
-      if 'dividendAdjust' in self.checkPoint[year]['year']:
-        tmp = self.checkPoint[year]['year']['dividendAdjust']
+      if 'dividendAdjust' in self.dv2Index.checkPoint[year]['year']:
+        tmp = self.dv2Index.checkPoint[year]['year']['dividendAdjust']
         self.eventDF.loc[tmp['date']:anchor2, 'buyPrice'] = tmp['buyPriceX']
         self.eventDF.loc[tmp['date']:anchor2, 'sellPrice'] = tmp['sellPriceX']
         #如果今年三阶段用了去年年报
@@ -1123,11 +987,11 @@ class StrategyDV:
   #   # checkPoint发生调整，缓存清掉
   #   self.decisionCache = None
   #   if data['p'] == 'midYear':
-  #     self.checkPoint[data['y']]['buyPrice2'] = data['buyPriceX']
-  #     self.checkPoint[data['y']]['sellPrice2'] = data['sellPriceX']
+  #     self.dv2Index.checkPoint[data['y']]['buyPrice2'] = data['buyPriceX']
+  #     self.dv2Index.checkPoint[data['y']]['sellPrice2'] = data['sellPriceX']
   #   elif data['p'] == 'year':
-  #     self.checkPoint[data['y']]['buyPrice'] = data['buyPriceX']
-  #     self.checkPoint[data['y']]['sellPrice'] = data['sellPriceX']
+  #     self.dv2Index.checkPoint[data['y']]['buyPrice'] = data['buyPriceX']
+  #     self.dv2Index.checkPoint[data['y']]['sellPrice'] = data['sellPriceX']
 
 
 #########################################################
@@ -1145,7 +1009,7 @@ class TradeManager:
     end = str(self.endYear) + '-12-20T00:00:00Z'
     self.endDate = parser.parse(end, ignoretz=True)
 
-    self.MAXEND = Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
+    # self.MAXEND = Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
     self.BEGIN_MONEY = beginMoney
     
     self.mongoClient = MongoClient()
@@ -1155,7 +1019,7 @@ class TradeManager:
     self.baseIndex = None #自然日index
     self.baseIndex2 = None  # 自然日index，带了hs300数据，也就是知道那些日子是交易日
 
-    self.collectionName = 'dv1'  # 存盘表名
+    self.collectionName = 'dv2'  # 存盘表名
     
     #支持多个品种测试，每个品种一个dv和一个account
     self.dvMap = {}
@@ -1235,68 +1099,68 @@ class TradeManager:
       self.dvMap[one].BuildGenerator()
   
   
-  def LoadYearPaper(self, y, code):
-    # 加载年报，中报
-    midYear = {}
-    year = {}
-    db = self.mongoClient["stock"]
-    collection = db["gpfh-" + str(y) + "-06-30"]
-    cursor = collection.find({"_id": code})
-    for c in cursor:
-      midYear[const.GPFH_KEYWORD.KEY_NAME['CQCXR']] = c[const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
-      midYear[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']] = c[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
-      midYear[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']] = c[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']]
-      break
-    else:
-      midYear.update({'notExist': 1})
-    
-    collection = db["gpfh-" + str(y) + "-12-31"]
-    cursor = collection.find({"_id": code})
-    for c in cursor:
-      year[const.GPFH_KEYWORD.KEY_NAME['CQCXR']] = c[const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
-      year[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']] = c[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
-      year[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']] = c[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']]
-      break
-    else:
-      year.update({'notExist': 1})
-    
-    return (midYear, year)
+  # def LoadYearPaper(self, y, code):
+  #   # 加载年报，中报
+  #   midYear = {}
+  #   year = {}
+  #   db = self.mongoClient["stock"]
+  #   collection = db["gpfh-" + str(y) + "-06-30"]
+  #   cursor = collection.find({"_id": code})
+  #   for c in cursor:
+  #     midYear[const.GPFH_KEYWORD.KEY_NAME['CQCXR']] = c[const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
+  #     midYear[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']] = c[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
+  #     midYear[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']] = c[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']]
+  #     break
+  #   else:
+  #     midYear.update({'notExist': 1})
+  #
+  #   collection = db["gpfh-" + str(y) + "-12-31"]
+  #   cursor = collection.find({"_id": code})
+  #   for c in cursor:
+  #     year[const.GPFH_KEYWORD.KEY_NAME['CQCXR']] = c[const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
+  #     year[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']] = c[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
+  #     year[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']] = c[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']]
+  #     break
+  #   else:
+  #     year.update({'notExist': 1})
+  #
+  #   return (midYear, year)
   
   
-  def LoadQuaterPaper(self, year, code):
-    # 加载季报
-    first = {}
-    second = {}
-    third = {}
-    forth = {}
-    db = self.mongoClient["stock"]
-    collection = db["yjbg-" + code]
-    strYear = str(year)
-    # 一季度
-    cursor = collection.find({"_id": strYear + "-03-31"})
-    for c in cursor:
-      first['sjltz'] = c['sjltz']
-      break
-    
-    # 二季度
-    cursor = collection.find({"_id": strYear + "-06-30"})
-    for c in cursor:
-      second['sjltz'] = c['sjltz']
-      break
-    
-    # 三季度
-    cursor = collection.find({"_id": strYear + "-09-30"})
-    for c in cursor:
-      third['sjltz'] = c['sjltz']
-      break
-    
-    # 四季度
-    cursor = collection.find({"_id": strYear + "-12-31"})
-    for c in cursor:
-      forth['sjltz'] = c['sjltz']
-      break
-    
-    return (first, second, third, forth)
+  # def LoadQuaterPaper(self, year, code):
+  #   # 加载季报
+  #   first = {}
+  #   second = {}
+  #   third = {}
+  #   forth = {}
+  #   db = self.mongoClient["stock"]
+  #   collection = db["yjbg-" + code]
+  #   strYear = str(year)
+  #   # 一季度
+  #   cursor = collection.find({"_id": strYear + "-03-31"})
+  #   for c in cursor:
+  #     first['sjltz'] = c['sjltz']
+  #     break
+  #
+  #   # 二季度
+  #   cursor = collection.find({"_id": strYear + "-06-30"})
+  #   for c in cursor:
+  #     second['sjltz'] = c['sjltz']
+  #     break
+  #
+  #   # 三季度
+  #   cursor = collection.find({"_id": strYear + "-09-30"})
+  #   for c in cursor:
+  #     third['sjltz'] = c['sjltz']
+  #     break
+  #
+  #   # 四季度
+  #   cursor = collection.find({"_id": strYear + "-12-31"})
+  #   for c in cursor:
+  #     forth['sjltz'] = c['sjltz']
+  #     break
+  #
+  #   return (first, second, third, forth)
   
   
   def loadData(self, dbName, collectionName, condition):
@@ -1623,50 +1487,7 @@ class TradeMark:
 
 
 #########################################################
-class DividendPoint:
-  def __init__(self, date, dividend, dividendAfterTax, gift, year, postion):
-    self.__date = date
-    self.__dividend = dividend
-    self.__dividendAfterTax = dividendAfterTax
-    self.__gift = gift  # 送转股数量
-    self.__year = year  # 影响哪个位置分红的买卖股价
-    self.__position = postion  # year还是midYear
-    # self.__profit = profit
-  
-  @property
-  def date(self):
-    return self.__date
-  
-  @property
-  def dividend(self):
-    return self.__dividend
-  
-  @property
-  def dividendAfterTax(self):
-    return self.__dividendAfterTax
-  
-  @property
-  def gift(self):
-    return self.__gift
-  
-  @property
-  def year(self):
-    return self.__year
-  
-  @property
-  def position(self):
-    return self.__position
-  
-  # @property
-  # def profit(self):
-  #   return self.__profit
-  
-  def __str__(self):
-    return "日期：{}, 派息：{}, 派息税后：{}, 送股：{}, 年份：{}, 位置：{}, ".format(
-      self.date, self.dividend, self.dividendAfterTax, self.gift, self.year, self.position)
 
-
-#########################################################
 class TradeResult:
   def __init__(self):
     self.__beginDate = None  # 开始的时间
@@ -1826,9 +1647,9 @@ def RunOne(code, beginMoney, name, save=False, check=False):
   stock.Merge()
   stock.CheckPrepare()
   
-  print(stock.DV.checkPoint)
-  print(stock.DV.dangerousPoint)
-  for one in stock.DV.dividendPoint:
+  print(stock.DV.dv2Index.checkPoint)
+  print(stock.DV.dv2Index.dangerousPoint)
+  for one in stock.DV.dv2Index.dividendPoint:
     print(one)
   
   stock.BackTest()
@@ -1839,8 +1660,8 @@ def RunOne(code, beginMoney, name, save=False, check=False):
   if check:
     assert stock.CheckResult()
   # print(stock.checkPoint)
-  # print(stock.dangerousPoint)
-  # print(stock.dividendPoint)
+  # print(stock.dv2Index.dangerousPoint)
+  # print(stock.dv2Index.dividendPoint)
   return stock
 
 
@@ -1851,9 +1672,9 @@ def RunOne2(code, beginMoney, name, args):
   stock.Merge()
   stock.CheckPrepare()
   
-  print(stock.DV.checkPoint)
-  print(stock.DV.dangerousPoint)
-  for one in stock.DV.dividendPoint:
+  print(stock.DV.dv2Index.checkPoint)
+  print(stock.DV.dv2Index.dangerousPoint)
+  for one in stock.DV.dv2Index.dividendPoint:
     print(one)
   
   if 'backtest' in args:
@@ -1995,6 +1816,27 @@ def CompareAll(collectionName, codes):
   for one in out:
     print(one)
 
+#########################################################
+def Compare(one, two):
+  #比较两个策略的percent
+  df1 = util.LoadData('stock_backtest', one)
+  df2 = util.LoadData('stock_backtest', two)
+  df1Tmp = df1.loc[:, ['name', 'percent']]
+  df2Tmp = df2.loc[:, ['percent']]
+  dfMerge = df1Tmp.join(df2Tmp, how='left', rsuffix='_two')
+  # frame['panduan'] = frame.city.apply(lambda x: 1 if 'ing' in x else 0)
+  def win(x):
+    if x.percent_two>=x.percent:
+      return True
+    else:
+      return False
+
+  dfMerge['win'] = dfMerge.apply(win, axis=1)
+  # dfMerge['win'] = dfMerge.apply((lambda x: True if x.percent_two > x.percent else False), axis=1)
+  
+  print(dfMerge)
+
+
 
 # 对传入的标的，测算最后行情是否可以执行买卖操作
 # 可以执行买卖操作存db，如果最后一天没有买卖信号，但一个自然月内有信号，也存入
@@ -2045,16 +1887,16 @@ def CalcQuarterSpeed(codes, year):
   for one in codes:
     stock = RunOne2(one['_id'], 100000, one['name'], {})
     out = {'_id': stock.code, 'name': stock.name}
-    if year in stock.DV.checkPoint:
+    if year in stock.DV.dv2Index.checkPoint:
       counter = 0
       total = 0
       dictData = ['first', 'second', 'third', 'forth']
       for quarter in dictData:
-        if quarter in stock.DV.checkPoint[year]:
+        if quarter in stock.DV.dv2Index.checkPoint[year]:
           try:
-            out[quarter] = stock.DV.checkPoint[year][quarter]['sjltz']
+            out[quarter] = stock.DV.dv2Index.checkPoint[year][quarter]['sjltz']
             counter += 1
-            total += stock.DV.checkPoint[year][quarter]['sjltz']
+            total += stock.DV.dv2Index.checkPoint[year][quarter]['sjltz']
           except Exception as e:
             pass
       
