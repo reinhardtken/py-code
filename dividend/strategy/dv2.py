@@ -528,10 +528,11 @@ class DividendGenerator:
     # 处理除权,
     # 除权日不可能不是交易日
     context = args[0]
+
     if not np.isnan(self.DV.eventDF.loc[context.date, 'dividend']):
       context.Add_A(DayContext.PRIORITY_BEFORE_TRADE, DayContext.DIVIDEND_POINT, None,
                     DividendGenerator.Event(self.DV.dividendMap[context.date]))
-      
+
     # if len(self.dividendPoint) > 0:
     #   if context.date > self.dividendPoint[0].date:
     #     # 比如600900,在除权期间停牌。。。，对于这种目前简化为弹出这些除权，避免影响后续
@@ -569,7 +570,7 @@ class DangerousGenerator:
       context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.DANGEROUS_POINT,
                     None,
                     DangerousGenerator.Event(self.DV.dangerousQuarterMap[context.date]))
-    
+
     # if len(self.dangerousPoint) > 0 and context.date >= self.dangerousPoint[0][0]:
     #   # 记录因为扣非为负的区间，在区间内屏蔽开仓
     #   print('cooldownbegin {}'.format(self.dangerousPoint[0][0]))
@@ -645,7 +646,7 @@ class StrategyDV:
       'dividend', 'dangerousPoint',
       # 'yearGift', 'yearDividend', 'midYearGift', 'midYearDividend', 'allDividend', 'yearDividendDate',
       # 'midYearDividendDate', 'earningsPerShare',
-    ])])
+    ])], sort=False)
     # self.eventDF.drop(['willDrop', ], axis=1, inplace=True)
     
     #登记除权信息
@@ -674,6 +675,7 @@ class StrategyDV:
     self.checkPoint2DF()
     
   def CheckPrepare(self):
+    print('### {} CheckPrepare########'.format(self.code))
     self.dv2Index.Run()
     
     #根据分析数据生成eventDF
@@ -998,6 +1000,8 @@ class StrategyDV:
 class TradeManager:
   # 沪深300，如果跑多个实例无需重复load数据
   DF_HS300 = None
+  baseIndex = None  # 自然日index
+  baseIndex2 = None  # 自然日index，带了hs300数据，也就是知道那些日子是交易日
   
   # 代表交易管理
   def __init__(self, stocks, beginMoney):
@@ -1006,6 +1010,7 @@ class TradeManager:
     start = str(self.startYear) + '-01-01T00:00:00Z'
     self.startDate = parser.parse(start, ignoretz=True)
     self.endYear = 2019  # 结束年份
+    # end = str(self.endYear) + '-12-13T00:00:00Z'
     end = str(self.endYear) + '-12-20T00:00:00Z'
     self.endDate = parser.parse(end, ignoretz=True)
 
@@ -1016,8 +1021,6 @@ class TradeManager:
     self.stocks = stocks
     self.data = []  # 行情
     self.index = None  # 沪深300指数
-    self.baseIndex = None #自然日index
-    self.baseIndex2 = None  # 自然日index，带了hs300数据，也就是知道那些日子是交易日
 
     self.collectionName = 'dv2'  # 存盘表名
     
@@ -1237,11 +1240,11 @@ class TradeManager:
     if TradeManager.DF_HS300 is None:
       #引入每天的日程坐标，这样就不会遗漏任何一个非交易日信息，可以用精准的日期匹配触发事件了
       index = pd.date_range(start=self.startDate, end=self.endDate)
-      self.baseIndex = pd.DataFrame(np.random.randn(len(index)), index=index, columns=['willDrop'])
+      TradeManager.baseIndex = pd.DataFrame(np.random.randn(len(index)), index=index, columns=['willDrop'])
       hs300 = self.loadData("stock_all_kdata_none", '000300', {"_id": {"$gte": self.startDate, "$lte": self.endDate}})
-      self.baseIndex2 = self.baseIndex.join(hs300, how='left', lsuffix='_index')
-      self.baseIndex2.drop(['willDrop', 'high', 'open', 'low', 'volume'], axis=1, inplace=True)
-      TradeManager.DF_HS300 = self.baseIndex2
+      TradeManager.baseIndex2 = TradeManager.baseIndex.join(hs300, how='left', lsuffix='_index')
+      TradeManager.baseIndex2.drop(['willDrop', 'high', 'open', 'low', 'volume'], axis=1, inplace=True)
+      TradeManager.DF_HS300 = TradeManager.baseIndex2
     self.index = TradeManager.DF_HS300
     
   
@@ -1371,7 +1374,7 @@ class TradeManager:
       code = one['_id']
       A = self.accountMap[code]
       db = self.mongoClient["stock_backtest"]
-      collection = db['dv1']
+      collection = db['dv2']
       # collection = db[self.collectionName]
       cursor = collection.find({"_id": code})
       out = None
@@ -1379,7 +1382,7 @@ class TradeManager:
         out = c
         break
       else:
-        collection = db['all_dv1']
+        collection = db['all_dv2']
         cursor = collection.find({"_id": code})
         out = None
         for c in cursor:
@@ -1817,24 +1820,34 @@ def CompareAll(collectionName, codes):
     print(one)
 
 #########################################################
-def Compare(one, two):
+def Compare(one, two, codes):
   #比较两个策略的percent
   df1 = util.LoadData('stock_backtest', one)
-  df2 = util.LoadData('stock_backtest', two)
+  condition = {}
+  if codes is not None:
+    condition = {'_id': {'$in': codes}}
+  df2 = util.LoadData('stock_backtest', two, condition)
   df1Tmp = df1.loc[:, ['name', 'percent']]
   df2Tmp = df2.loc[:, ['percent']]
-  dfMerge = df1Tmp.join(df2Tmp, how='left', rsuffix='_two')
+  dfMerge = df2Tmp.join(df1Tmp, how='left', lsuffix='_two', rsuffix='_one')
   # frame['panduan'] = frame.city.apply(lambda x: 1 if 'ing' in x else 0)
   def win(x):
-    if x.percent_two>=x.percent:
-      return True
+    if x.percent_two > x.percent_one:
+      return 1
+    elif x.percent_two < x.percent_one:
+      return -1
     else:
-      return False
-
+      return 0
+    
+  def diff(x):
+    return x.percent_two - x.percent_one
+    
   dfMerge['win'] = dfMerge.apply(win, axis=1)
+  dfMerge['diff'] = dfMerge.apply(diff, axis=1)
   # dfMerge['win'] = dfMerge.apply((lambda x: True if x.percent_two > x.percent else False), axis=1)
   
   print(dfMerge)
+  dfMerge.to_excel("c:/workspace/tmp/1226.xlsx")
 
 
 

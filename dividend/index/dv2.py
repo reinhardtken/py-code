@@ -131,22 +131,28 @@ class DV2Index:
         self.CalcDividend(k, 'year')
         v['year']['allDividend'] = v['midYear']['dividend'] + v['year']['dividend']
         # 计算股利支付率，如果这个数字超过100%，则分红不能当真
-        if GPFH_KEY['EarningsPerShare'] in v['year']:
-          v['year']['dividendRatio'] = v['year']['allDividend'] / v['year'][GPFH_KEY['EarningsPerShare']]
-        # 计算分红是不是大于每股收益，如果大于每股收益，显然不可持续
-        # 002351 漫步者 买入："date" : ISODate("2011-06-17T00:00:00.000Z"),
-        # 不可持续的分红，需要调整为实际每股收益的80%来测算
-        if GPFH_KEY['EarningsPerShare'] in v['midYear']:
-          if 0.8 * v['midYear'][GPFH_KEY['EarningsPerShare']] < v['midYear']['dividend']:
-            v['unsustainable'] = True
-            v['midYear']['dividend'] = 0.8 * v['midYear'][GPFH_KEY['EarningsPerShare']]
-            v['year']['allDividend'] = v['midYear']['dividend'] + v['year']['dividend']
-        if GPFH_KEY['EarningsPerShare'] in v['year']:
-          if 0.8 * v['year'][GPFH_KEY['EarningsPerShare']] < v['year']['dividend']:
-            v['unsustainable'] = True
-            v['year']['dividend'] = 0.8 * v['year'][GPFH_KEY['EarningsPerShare']]
-            v['year']['allDividend'] = v['midYear']['dividend'] + v['year']['dividend']
-        
+        try:
+          if GPFH_KEY['EarningsPerShare'] in v['year']:
+            v['year']['dividendRatio'] = v['year']['allDividend'] / v['year'][GPFH_KEY['EarningsPerShare']]
+            
+          # 计算分红是不是大于每股收益，如果大于每股收益，显然不可持续
+          # 002351 漫步者 买入："date" : ISODate("2011-06-17T00:00:00.000Z"),
+          # 不可持续的分红，需要调整为实际每股收益的80%来测算
+          #2019/12/26此段逻辑很好的改善了回测中差标的集合的表现
+          if GPFH_KEY['EarningsPerShare'] in v['midYear']:
+            if 0.8 * v['midYear'][GPFH_KEY['EarningsPerShare']] < v['midYear']['dividend']:
+              v['unsustainable'] = True
+              v['midYear']['dividend'] = 0.8 * v['midYear'][GPFH_KEY['EarningsPerShare']]
+              v['year']['allDividend'] = v['midYear']['dividend'] + v['year']['dividend']
+          if GPFH_KEY['EarningsPerShare'] in v['year']:
+            if 0.8 * v['year'][GPFH_KEY['EarningsPerShare']] < v['year']['dividend']:
+              v['unsustainable'] = True
+              v['year']['dividend'] = 0.8 * v['year'][GPFH_KEY['EarningsPerShare']]
+              v['year']['allDividend'] = v['midYear']['dividend'] + v['year']['dividend']
+        except Exception as e:
+          if v['year'][GPFH_KEY['EarningsPerShare']]  == '-':
+            v['year'][GPFH_KEY['EarningsPerShare']] = 0
+          util.PrintException(e)
         # 根据分红计算全年和半年的买入卖出价格
         # allDividend影响下一年
         if v['year']['allDividend'] > 0:
