@@ -15,6 +15,13 @@ import numpy as np
 import const
 import util
 from index import dv2
+from comm import TradeResult
+from comm import TradeMark
+from comm import Pump
+from comm import Retracement
+from comm import MaxRecord
+from comm import Priority
+from comm import Task
 
 # this project
 if __name__ == '__main__':
@@ -39,7 +46,6 @@ MIDYEAR_POSITION = const.DV2.MIDYEAR_POSITION
 GPFH_KEY = const.GPFH_KEYWORD.KEY_NAME
 
 
-
 # #交易日当天的信息##########################################
 # class DayInfo:
 #   def __init__(self):
@@ -52,75 +58,10 @@ GPFH_KEY = const.GPFH_KEYWORD.KEY_NAME
 #     #5日平均线等等，都放在这里
 
 
-# 回撤相关信息
-class RetracementMark:
-  def __init__(self):
-    self.clear()
-  
-  def copy(self):
-    one = RetracementMark()
-    one.value = self.value
-    one.days = self.days
-    one.beginPrice = self.beginPrice
-    one.endPrice = self.endPrice
-    one.begin = self.begin
-    one.end = self.end
-    return one
-  
-  def clear(self):
-    self.value = 0  # 最大回撤
-    self.days = 0  # 连续不创新高天数
-    self.beginPrice = 0
-    self.endPrice = 0
-    self.begin = None
-    self.end = None
-  
-  def ToDict(self, head):
-    return {head + ':value': self.value, head + ':days': self.days, head + ':begin': self.begin,
-            head + ':end': self.end,
-            head + ':beginPrice': self.beginPrice, head + ':endPrice': self.endPrice}
 
 
-class Retracement:
-  def __init__(self):
-    self.__current = RetracementMark()
-    self.__history = RetracementMark()
-    self.maxRetracementDaysLastCheck = None  # 上个检查持股时点
-  
-  def Record(self, date):
-    old = self.current.days
-    self.current.end = date
-    # 如果回测创新高，记录
-    if self.current.value > self.history.value:
-      self.updateHistory(self.current.copy())
-    # 回撤记录清零
-    self.current.clear()
-    self.maxRetracementDaysLastCheck = None
-    return old
-  
-  def ToDict(self, head):
-    return self.__history.ToDict(head)
-  
-  @property
-  def current(self):
-    return self.__current
-  
-  @property
-  def history(self):
-    return self.__history
-  
-  def updateHistory(self, one):
-    self.__history = one
 
 
-# 记录新高
-class MaxRecord:
-  def __init__(self):
-    self.value = 0
-    self.date = None
-  
-  def ToDict(self, head):
-    return {head + ':value': self.value, head + ':date': self.date}
 
 
 #########################################################
@@ -143,39 +84,40 @@ class DayContext:
   TARGET_SELL_PRICE_EVENT = 8
   # 出买卖价格
   MAKE_DECISION = 9
-  #统计
+  # 统计
   OTHER_WORK = 10
   
+  
+  #######################################################
   # priority##############################
   # 其实策略和账户响应根本不会在一起，没必要设置先后
-  PRIORITY_JUMP = 0  # 跳过循环，这种必须有util字段
+  STAGE_STRATEGY = 1  # 策略在这里广播
+  STAGE_BEFORE_TRADE = 2  # 除权调整价格
+  STAGE_SELL_TRADE = 3  # 前交易阶段，所有的卖
+  STAGE_BUY_TRADE = 4  # 所有的买
+  STAGE_AFTER_TRADE = 5  # 所有交易后
+  #######################################################
+  
+  PRIORITY_JUMP = 1  # 跳过循环，这种必须有util字段
   PRIORITY_DIVIDEND_ADJUST = 50  # 除权引发价格调整
   
   PRIORITY_MAKEDECISION = 900
-  PRIORITY_STRATEGY_END = 1000
+  
   
   PRIORITY_BEFORE_DIVIDEND = 1100  # 发生在除权前
-  PRIORITY_BEFORE_TRADE = 1200  # 买卖前
-  PRIORITY_TRADE = 1300  #
-  PRIORITY_AFTER_TRADE = 1400  #
+  PRIORITY_DIVIDEND = 1200  # 除权
+  PRIORITY_COOLDOWN = 1300  # 扣非净利润-10%，卖出
+  ########################
+  # PRIORITY_STAGE_ONE = 1200  # 买卖前
+  # PRIORITY_TRADE_TAG = 1300  #
+  PRIORITY_SELL = 1400  #
+  #引入资金管理，此时所有的信号及卖出都已经执行完成，但所有的买入还没有执行
+  #资金策略可以根据自己的判断决定之后的买入信号里面那些可以给予资金支持
+  # PRIORITY_STAGE_TWO = 2000
+  PRIORITY_BUY = 2500  #
+  PRIORITY_AFTER_TRADE = 2600  #
+  # PRIORITY_STAGE_THREE = 3000
   
-  class Task:
-    def __init__(self, priority, key, util=None, *args, **kwargs):
-      self.priority = priority
-      self.key = key
-      self.util = util
-      self.args = args
-      self.kwargs = kwargs
-    
-    # def __cmp__(self, other):
-    #   if self.priority < other.priority:
-    #     return -1
-    #   elif self.priority == other.priority:
-    #     return 0
-    #   else:
-    #     return 1
-    def __lt__(self, other):
-      return self.priority < other.priority
   
   def __init__(self, code):
     self.code = code
@@ -185,61 +127,18 @@ class DayContext:
     self.price = None
     self.pb = None
     self.priceVec = []
-    self.AH = []  # Account注册处理handle
-    self.SH = []  # Account注册处理handle
+
     
-    # self.extra = {}
-    # 带优先级的任务队列，Account
-    self.taskPQAccount = PriorityQueue()
-    self.taskPQStrategy = PriorityQueue()
+    self.pump = Pump(self)
     # 临时存放策略信息，回头挪走
     self.dvInfo = None
-
+    
     self.cooldown = False
     self.cooldownEnd = None
-    
-    
   
-  def Add_A(self, priority, key, util=None, *args, **kwargs):
-    # util 为None，标示当天有效
-    # util 为一个timstamp，表示时间戳之前有效
-    self.taskPQAccount.put(DayContext.Task(priority, key, util, *args, **kwargs))
   
-  def Add_S(self, priority, key, util=None, *args, **kwargs):
-    # util 为None，标示当天有效
-    # util 为一个timstamp，表示时间戳之前有效
-    self.taskPQStrategy.put(DayContext.Task(priority, key, util, *args, **kwargs))
-  
-  def Add_AH(self, handle):
-    self.AH.append(handle)
-  
-  def Add_SH(self, handle):
-    self.SH.append(handle)
-  
-  def Loop(self):
-    # 先策略，后账户
-    self.__loopInner(self.taskPQStrategy, self.SH)
-    self.__loopInner(self.taskPQAccount, self.AH)
-  
-  def __loopInner(self, taskPQ, H):
-    tmp = []
-    while taskPQ.qsize() != 0:
-      task = taskPQ.get_nowait()
-      for handle in H:
-        handle(self, task)
-      tmp.append(task)
-    
-    for one in tmp:
-      if one.util is None:
-        # del self.extra[k]
-        pass
-      elif self.date >= one.util:
-        # del self.extra[k]
-        pass
-      else:
-        taskPQ.put(one)
-  
-
+  def AddTask(self, task:Task):
+    self.pump.AddTask(task)
   
   def NewDay(self, date, row):
     self.year = date.year
@@ -304,10 +203,18 @@ class Account:
   
   def Before(self, context: DayContext):
     # 永久有效
-    context.Add_A(DayContext.PRIORITY_TRADE, DayContext.SELL_ALWAYS_EVENT,
-                  pd.Timestamp(self.endDate))
-    context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.OTHER_WORK,
-                  pd.Timestamp(self.endDate))
+    context.AddTask(
+      Task(
+        Priority(
+          DayContext.STAGE_SELL_TRADE, DayContext.PRIORITY_SELL),
+        DayContext.SELL_ALWAYS_EVENT,
+        pd.Timestamp(self.endDate)))
+    context.AddTask(
+      Task(
+        Priority(
+          DayContext.STAGE_AFTER_TRADE, DayContext.PRIORITY_AFTER_TRADE),
+        DayContext.OTHER_WORK,
+        pd.Timestamp(self.endDate)))
   
   def After(self, context: DayContext):
     # self.processOther(context.date, context.price)
@@ -475,7 +382,7 @@ class Account:
       self.indexProfit *= current.index / self.indexBuyPoint
       # 可能结束回测的时候，都没有创新高，导致最大回撤记录没有刷新，在这里刷新下
       self.Retracement.Record(current.date)
-      #刷新最后持股日期
+      # 刷新最后持股日期
       self.holdStockDateVec[-1] = (self.holdStockDateVec[-1], current.date)
     else:
       money = self.money
@@ -495,11 +402,11 @@ class Account:
     elif task.key == DayContext.DANGEROUS_POINT:
       # self.SellNoCodition()
       self.SellNoCodition(context.date, context.price, context.index,
-                     reason='扣非卖出: {}'.format(task.args[0].point[4]))
+                          reason='扣非卖出: {}'.format(task.args[0].point[4]))
       print('cooldownbegin2 {}'.format(task.args[0].point[0]))
       context.cooldown = True
       context.cooldownEnd = task.args[0].point[1]
-      
+    
     elif task.key == DayContext.BUY_EVENT:
       self.Buy(context.date, task.args[0], task.args[1], context.price, context.index, task.args[2], reason='低于买点')
     elif task.key == DayContext.SELL_EVENT:
@@ -522,6 +429,8 @@ class Account:
         self.SellNoCodition(context.date, context.price, context.index, reason='高于卖点')
     elif task.key == DayContext.OTHER_WORK:
       self.processOther(context.date, context.price)
+
+
 #########################################################
 class DividendGenerator:
   class Event:
@@ -538,22 +447,15 @@ class DividendGenerator:
     # 处理除权,
     # 除权日不可能不是交易日
     context = args[0]
-
+    
     if not np.isnan(self.DV.eventDF.loc[context.date, 'dividend']):
-      context.Add_A(DayContext.PRIORITY_BEFORE_TRADE, DayContext.DIVIDEND_POINT, None,
-                    DividendGenerator.Event(self.DV.dividendMap[context.date]))
-
-    # if len(self.dividendPoint) > 0:
-    #   if context.date > self.dividendPoint[0].date:
-    #     # 比如600900,在除权期间停牌。。。，对于这种目前简化为弹出这些除权，避免影响后续
-    #     # TODO 如何处理停牌？
-    #     while len(self.dividendPoint) > 0 and context.date > self.dividendPoint[0].date:
-    #       print(' 弹出除权信息！！！ {}， {}'.format(context.priceVec, self.dividendPoint[0]))
-    #       self.dividendPoint = self.dividendPoint[1:]
-    #   elif len(self.dividendPoint) > 0 and context.date == self.dividendPoint[0].date:
-    #     context.Add_A(DayContext.PRIORITY_BEFORE_TRADE, DayContext.DIVIDEND_POINT, None,
-    #                   DividendGenerator.Event(self.dividendPoint[0]))
-    #     self.dividendPoint = self.dividendPoint[1:]
+      context.AddTask(
+        Task(
+          Priority(
+            DayContext.STAGE_BEFORE_TRADE, DayContext.PRIORITY_DIVIDEND),
+          DayContext.DIVIDEND_POINT, None,
+          DividendGenerator.Event(self.DV.dividendMap[context.date])))
+    
 
 
 #########################################################
@@ -562,33 +464,28 @@ class DangerousGenerator:
     def __init__(self, point):
       self.cooldown = True
       self.point = point
-
   
   def __init__(self, dv, dp):
     self.DV = dv
     self.dangerousPoint = dp
-
   
   def __call__(self, *args, **kwargs):  # (self, context : DayContext):
     context = args[0]
     # 处理季报，检查是否扣非-10%
     if not np.isnan(self.DV.eventDF.loc[context.date, 'dangerousPoint']):
       print('cooldownbegin {}'.format(self.DV.dangerousQuarterMap[context.date][0]))
-      # context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.DANGEROUS_POINT, self.DV.dangerousQuarterMap[context.date][1],
-      #               DangerousGenerator.Event(self.DV.dangerousQuarterMap[context.date]))
 
-      context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.DANGEROUS_POINT,
-                    None,
-                    DangerousGenerator.Event(self.DV.dangerousQuarterMap[context.date]))
-
-    # if len(self.dangerousPoint) > 0 and context.date >= self.dangerousPoint[0][0]:
-    #   # 记录因为扣非为负的区间，在区间内屏蔽开仓
-    #   print('cooldownbegin {}'.format(self.dangerousPoint[0][0]))
-    #   context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.DANGEROUS_POINT, self.dangerousPoint[0][1],
-    #                 DangerousGenerator.Event(self.dangerousPoint[0]))
-    #   # cooldown = True
-    #   # cooldownEnd = self.dangerousPoint[0][1]
-    #   self.dangerousPoint = self.dangerousPoint[1:]
+      task = Task(
+          Priority(
+            DayContext.STAGE_BEFORE_TRADE, DayContext.PRIORITY_COOLDOWN),
+          DayContext.DANGEROUS_POINT,
+          None,
+          DangerousGenerator.Event(self.DV.dangerousQuarterMap[context.date]))
+      jump = set()
+      jump.add(DayContext.STAGE_SELL_TRADE)
+      jump.add(DayContext.STAGE_BUY_TRADE)
+      task.jump = jump
+      context.AddTask(task)
 
 
 #########################################################
@@ -618,24 +515,24 @@ class StrategyDV:
     self.generator = {
       # 'dividendPoint': DividendGenerator(),
     }
-    #事件发生dataFrame
+    # 事件发生dataFrame
     self.eventDF = None
     self.dividendMap = {}  # 除权的详细信息，和eventDF配合使用
     self.dangerousQuarterMap = {}  # 危险季报详细信息，和eventDF配合使用
   
-  
   def BuildGenerator(self):
     self.generator['dividendPoint'] = DividendGenerator(self, self.dv2Index.dividendPoint)
     self.generator['dangerousPoint'] = DangerousGenerator(self, self.dv2Index.dangerousPoint)
-    
-    
+  
   def Before(self, context: DayContext):
     # 永久有效
-    # context.Add_S(DayContext.PRIORITY_DIVIDEND_ADJUST, DayContext.DIVIDEND_ADJUST,
-    #               pd.Timestamp(self.endDate))
-    context.Add_S(DayContext.PRIORITY_MAKEDECISION, DayContext.MAKE_DECISION,
-                  pd.Timestamp(self.endDate))
-    pass
+    context.AddTask(
+      Task(
+        Priority(
+          DayContext.STAGE_STRATEGY, DayContext.PRIORITY_MAKEDECISION),
+        DayContext.MAKE_DECISION,
+        pd.Timestamp(self.endDate)))
+
   
   def After(self, context: DayContext):
     pass
@@ -649,7 +546,6 @@ class StrategyDV:
     elif task.key == DayContext.MAKE_DECISION:
       self.MakeDecision(context)
   
-  
   def genEventDF(self):
     self.eventDF = pd.concat([self.TU.baseIndex2, pd.DataFrame(columns=[
       'buyPrice', 'sellPrice', 'where',
@@ -658,15 +554,15 @@ class StrategyDV:
       # 'midYearDividendDate', 'earningsPerShare',
     ])], sort=False)
     # self.eventDF.drop(['willDrop', ], axis=1, inplace=True)
-    
-    #登记除权信息
+
+    # 登记除权信息
     for one in self.dv2Index.dividendPoint:
       if one.date in self.eventDF.index:
         row = self.eventDF.loc[one.date]
-        #除权日肯定是交易日
+        # 除权日肯定是交易日
         self.eventDF.loc[one.date, 'dividend'] = True
         self.dividendMap[one.date] = one
-        
+    
     for one in self.dv2Index.dangerousPoint:
       if one[0] in self.eventDF.index:
         row = self.eventDF.loc[one[0]]
@@ -674,29 +570,27 @@ class StrategyDV:
         # row['dangerousPoint'] = True
         # # not work
         # self.eventDF.loc[one[0]]['dangerousPoint'] = True
-        #季报日期未必是交易日，需要找到下一个最近的交易日
+        # 季报日期未必是交易日，需要找到下一个最近的交易日
         index = one[0]
         while np.isnan(self.eventDF.loc[index, 'close']):
           index += timedelta(days=1)
-          
+        
         self.eventDF.loc[index, 'dangerousPoint'] = True
         self.dangerousQuarterMap[index] = one
-
-    self.checkPoint2DF()
     
+    self.checkPoint2DF()
+  
   def CheckPrepare(self):
     print('### {} CheckPrepare########'.format(self.code))
     self.dv2Index.Run()
-    
-    #根据分析数据生成eventDF
+
+    # 根据分析数据生成eventDF
     self.genEventDF()
-    #作废原始数据
+    # 作废原始数据
     # self.dv2Index.checkPoint = {}
     # self.dangerousPoint = []
     # self.dv2Index.dividendPoint = []
     # self.dividendAdjust = {}
-    
-    
   
   # def processSong(self, value):
   #   # 处理送股
@@ -892,13 +786,13 @@ class StrategyDV:
     #   pass
     # # should not run here
     # return INVALID_BUY_PRICE, INVALID_SELL_PRICE, where
-
+  
   def checkPoint2DF(self):
     
-    for year in range(self.startDate.year, self.endDate.year+1):
-      #今年一阶段：2010年：[1月1, 4月30]，由2009半年报决定
-      #今年二阶段：2010年：(4月30, 8月31]，有2009年报决定
-      #今年三阶段：2010年：(8月31, 12月31]，由2009年报2010年半年报中收益高的决定
+    for year in range(self.startDate.year, self.endDate.year + 1):
+      # 今年一阶段：2010年：[1月1, 4月30]，由2009半年报决定
+      # 今年二阶段：2010年：(4月30, 8月31]，有2009年报决定
+      # 今年三阶段：2010年：(8月31, 12月31]，由2009年报2010年半年报中收益高的决定
       anchor0 = pd.Timestamp(datetime(year, 1, 1))
       anchor1 = pd.Timestamp(datetime(year, 4, 30))
       anchor2 = pd.Timestamp(datetime(year, 8, 31))
@@ -909,19 +803,19 @@ class StrategyDV:
           anchor1 = self.specialPaper[year][0]
         if 1 in self.specialPaper[year]:
           anchor2 = self.specialPaper[year][1]
-
+      
       # TODO wrong should year-1
       self.eventDF.loc[anchor0:anchor1, 'where'] = str(year) + '-midYear'
-      self.eventDF.loc[anchor0:anchor1, 'buyPrice'] = self.dv2Index.checkPoint[year-1]['buyPrice2']
+      self.eventDF.loc[anchor0:anchor1, 'buyPrice'] = self.dv2Index.checkPoint[year - 1]['buyPrice2']
       self.eventDF.loc[anchor0:anchor1, 'sellPrice'] = self.dv2Index.checkPoint[year - 1]['sellPrice2']
-
+      
       self.eventDF.loc[anchor1 + timedelta(days=1):anchor2, 'where'] = str(year - 1) + '-year'
-      self.eventDF.loc[anchor1+timedelta(days=1):anchor2, 'buyPrice'] = self.dv2Index.checkPoint[year]['buyPrice']
-      self.eventDF.loc[anchor1+timedelta(days=1):anchor2, 'sellPrice'] = self.dv2Index.checkPoint[year]['sellPrice']
+      self.eventDF.loc[anchor1 + timedelta(days=1):anchor2, 'buyPrice'] = self.dv2Index.checkPoint[year]['buyPrice']
+      self.eventDF.loc[anchor1 + timedelta(days=1):anchor2, 'sellPrice'] = self.dv2Index.checkPoint[year]['sellPrice']
       
       buy = self.dv2Index.checkPoint[year]['buyPrice']
       sell = self.dv2Index.checkPoint[year]['sellPrice']
-      where = str(year-1) + '-year2'
+      where = str(year - 1) + '-year2'
       midBuy = self.dv2Index.checkPoint[year]['buyPrice2']
       tmp = None
       flag = 1
@@ -933,15 +827,15 @@ class StrategyDV:
           buy = midBuy
           sell = self.dv2Index.checkPoint[year]['sellPrice2']
           where = str(year) + '-midYear2'
-
+      
       self.eventDF.loc[anchor2 + timedelta(days=1):anchor3, 'buyPrice'] = buy
       self.eventDF.loc[anchor2 + timedelta(days=1):anchor3, 'sellPrice'] = sell
       self.eventDF.loc[anchor2 + timedelta(days=1):anchor3, 'where'] = where
-      
-      #除权调整
-      #1 去年半年报的除权，要影响今年一阶段
-      if 'dividendAdjust' in self.dv2Index.checkPoint[year-1]['midYear']:
-        tmp = self.dv2Index.checkPoint[year-1]['midYear']['dividendAdjust']
+
+      # 除权调整
+      # 1 去年半年报的除权，要影响今年一阶段
+      if 'dividendAdjust' in self.dv2Index.checkPoint[year - 1]['midYear']:
+        tmp = self.dv2Index.checkPoint[year - 1]['midYear']['dividendAdjust']
         self.eventDF.loc[anchor0:anchor1, 'buyPrice'] = tmp['buyPriceX']
         self.eventDF.loc[anchor0:anchor1, 'sellPrice'] = tmp['sellPriceX']
         # 如果用了今年半年报，今年半年报除权影响三阶段部分
@@ -949,25 +843,32 @@ class StrategyDV:
           tmp = self.dv2Index.checkPoint[year]['midYear']['dividendAdjust']
           self.eventDF.loc[tmp['date']:anchor3, 'buyPrice'] = tmp['buyPriceX']
           self.eventDF.loc[tmp['date']:anchor3, 'sellPrice'] = tmp['sellPriceX']
-      #2 去年年报除权，影响今年二阶段部分
+      # 2 去年年报除权，影响今年二阶段部分
       if 'dividendAdjust' in self.dv2Index.checkPoint[year]['year']:
         tmp = self.dv2Index.checkPoint[year]['year']['dividendAdjust']
         self.eventDF.loc[tmp['date']:anchor2, 'buyPrice'] = tmp['buyPriceX']
         self.eventDF.loc[tmp['date']:anchor2, 'sellPrice'] = tmp['sellPriceX']
-        #如果今年三阶段用了去年年报
+        # 如果今年三阶段用了去年年报
         if flag == 1:
           self.eventDF.loc[tmp['date']:anchor3, 'buyPrice'] = tmp['buyPriceX']
           self.eventDF.loc[tmp['date']:anchor3, 'sellPrice'] = tmp['sellPriceX']
-  
   
   def MakeDecision(self, context: DayContext):
     buySignal, sellSignal = self.BuySellSignal(context.date, context.price)
     context.dvInfo = (None, buySignal[1], sellSignal[1], None)
     if buySignal[0]:
-      context.Add_A(DayContext.PRIORITY_TRADE, DayContext.BUY_EVENT, None, buySignal[1], sellSignal[1], buySignal[2])
+      context.AddTask(
+        Task(
+          Priority(
+            DayContext.STAGE_BUY_TRADE, DayContext.PRIORITY_BUY),
+          DayContext.BUY_EVENT, None, buySignal[1], sellSignal[1], buySignal[2]))
     
     if sellSignal[0]:
-      context.Add_A(DayContext.PRIORITY_TRADE, DayContext.SELL_EVENT, None, sellSignal[1], sellSignal[2])
+      context.AddTask(
+        Task(
+          Priority(
+            DayContext.STAGE_SELL_TRADE, DayContext.PRIORITY_SELL),
+          DayContext.SELL_EVENT, None, sellSignal[1], sellSignal[2]))
     
     if sellSignal[1] != INVALID_SELL_PRICE:
       notify = False
@@ -978,7 +879,10 @@ class StrategyDV:
         self.oldSellPrice = sellSignal[1]
         notify = True
       if notify:
-        context.Add_A(DayContext.PRIORITY_BEFORE_DIVIDEND, DayContext.TARGET_SELL_PRICE_EVENT, None, sellSignal[1])
+        context.AddTask(
+          Task(
+            Priority(DayContext.STAGE_SELL_TRADE, DayContext.PRIORITY_BEFORE_DIVIDEND),
+            DayContext.TARGET_SELL_PRICE_EVENT, None, sellSignal[1]))
   
   def BuySellSignal(self, date, price):
     buyPrice, sellPrice, where = self.MakeDecisionPrice2(date)
@@ -1023,7 +927,7 @@ class TradeManager:
     # end = str(self.endYear) + '-12-13T00:00:00Z'
     end = str(self.endYear) + '-12-20T00:00:00Z'
     self.endDate = parser.parse(end, ignoretz=True)
-
+    
     # self.MAXEND = Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
     self.BEGIN_MONEY = beginMoney
     
@@ -1031,15 +935,15 @@ class TradeManager:
     self.stocks = stocks
     self.data = []  # 行情
     self.index = None  # 沪深300指数
-
-    self.collectionName = 'dv2'  # 存盘表名
     
-    #支持多个品种测试，每个品种一个dv和一个account
+    self.collectionName = 'dv3'  # 存盘表名
+
+    # 支持多个品种测试，每个品种一个dv和一个account
     self.dvMap = {}
     self.accountMap = {}
-    self.context = {}#DayContext()  # 代表全部的事件
-    self.codes = [] #单独存放所有的股票代码
-    self.listen = {} #ListenOne
+    self.context = {}  # DayContext()  # 代表全部的事件
+    self.codes = []  # 单独存放所有的股票代码
+    self.listen = {}  # ListenOne
     for one in stocks:
       tmpBeginMoney = beginMoney
       self.codes.append(one['_id'])
@@ -1050,20 +954,43 @@ class TradeManager:
       self.dvMap[one['_id']] = DV
       self.accountMap[one['_id']] = A
       context = DayContext(one['_id'])
-      context.Add_AH(A.Process)
-      context.Add_SH(DV.Process)
-    
+      
+      def before(stage):
+        pass
+        # print('### before {} ####'.format(stage))
+      def after(stage):
+        pass
+        # print('### after {} ####'.format(stage))
+
+
+      context.pump.AddStage(DayContext.STAGE_STRATEGY, before, after)
+      context.pump.AddStage(DayContext.STAGE_BEFORE_TRADE, before, after)
+      context.pump.AddStage(DayContext.STAGE_SELL_TRADE, before, after)
+      context.pump.AddStage(DayContext.STAGE_BUY_TRADE, before, after)
+      context.pump.AddStage(DayContext.STAGE_AFTER_TRADE, before, after)
+
+      context.pump.AddHandler([
+        DayContext.DIVIDEND_POINT,
+        DayContext.DANGEROUS_POINT,
+        DayContext.BUY_EVENT,
+        DayContext.SELL_EVENT,
+        DayContext.TARGET_SELL_PRICE_EVENT,
+        DayContext.TARGET_SELL_PRICE_EVENT,
+        DayContext.SELL_ALWAYS_EVENT,
+      ], A.Process)
+      context.pump.AddHandler([
+        DayContext.DIVIDEND_ADJUST,
+        DayContext.MAKE_DECISION,
+      ], DV.Process)
+      
       self.context[one['_id']] = context
-
-
+      
       listen = ListenOne(one['_id'], one['name'], DV.strategyName)
-      context.Add_AH(listen.Process)
+      context.pump.AddHandler([
+        DayContext.BUY_EVENT,
+        DayContext.SELL_EVENT,
+      ], listen.Process)
       self.listen[one['_id']] = listen
-
-
-    
-    
-    
     
     # 特殊年报时间
     self.ALL_SPECIAL_PAPER = {}
@@ -1105,12 +1032,10 @@ class TradeManager:
       if one in self.ALL_SPECIAL_PAPER:
         self.dvMap[one].specialPaper = self.ALL_SPECIAL_PAPER[one]
   
-  
   def CheckPrepare(self):
     for one in self.codes:
       self.dvMap[one].CheckPrepare()
       self.dvMap[one].BuildGenerator()
-  
   
   # def LoadYearPaper(self, y, code):
   #   # 加载年报，中报
@@ -1138,7 +1063,6 @@ class TradeManager:
   #     year.update({'notExist': 1})
   #
   #   return (midYear, year)
-  
   
   # def LoadQuaterPaper(self, year, code):
   #   # 加载季报
@@ -1175,7 +1099,6 @@ class TradeManager:
   #
   #   return (first, second, third, forth)
   
-  
   def loadData(self, dbName, collectionName, condition):
     db = self.mongoClient[dbName]
     collection = db[collectionName]
@@ -1191,7 +1114,7 @@ class TradeManager:
       return df
     
     return None
-
+  
   def loadData2(self, dbName, collectionName, condition):
     db = self.mongoClient[dbName]
     collection = db[collectionName]
@@ -1199,7 +1122,7 @@ class TradeManager:
     out = []
     for c in cursor:
       out.append(c)
-  
+    
     if len(out):
       df = pd.DataFrame(out)
       df.drop('date', axis=1, inplace=True)
@@ -1210,8 +1133,9 @@ class TradeManager:
       df.rename(columns={'close': collectionName, }, inplace=True)
       df.set_index('_id', inplace=True)
       return df
-  
+    
     return None
+  
   # def loadPB(self):
   #   db = self.mongoClient['stock2']
   #   collection = db['pb2']
@@ -1245,10 +1169,9 @@ class TradeManager:
     except Exception as e:
       print(e)
   
-  
   def LoadIndexs(self):
     if TradeManager.DF_HS300 is None:
-      #引入每天的日程坐标，这样就不会遗漏任何一个非交易日信息，可以用精准的日期匹配触发事件了
+      # 引入每天的日程坐标，这样就不会遗漏任何一个非交易日信息，可以用精准的日期匹配触发事件了
       index = pd.date_range(start=self.startDate, end=self.endDate)
       TradeManager.baseIndex = pd.DataFrame(np.random.randn(len(index)), index=index, columns=['willDrop'])
       hs300 = self.loadData("stock_all_kdata_none", '000300', {"_id": {"$gte": self.startDate, "$lte": self.endDate}})
@@ -1256,8 +1179,6 @@ class TradeManager:
       TradeManager.baseIndex2.drop(['willDrop', 'high', 'open', 'low', 'volume'], axis=1, inplace=True)
       TradeManager.DF_HS300 = TradeManager.baseIndex2
     self.index = TradeManager.DF_HS300
-    
-  
   
   def Merge(self):
     if self.index is not None:
@@ -1269,7 +1190,7 @@ class TradeManager:
         pass
       except Exception as e:
         pass
-      #填充股票的空值，但是不处理沪深300指数的空值
+      # 填充股票的空值，但是不处理沪深300指数的空值
       for one in self.codes:
         self.mergeData[one].fillna(method='ffill', inplace=True)
       # self.mergeData.fillna(method='ffill', inplace=True)  # 用前面的值来填充
@@ -1288,17 +1209,18 @@ class TradeManager:
         context.cooldownEnd = None
       else:
         return
-  
+    
     # 环境数据更新
     context.NewDay(date, row)
-  
+    
     # 事件生成
     for k, v in DV.generator.items():
       v(context)
+    
+    context.pump.Loop()
   
-    context.Loop()
-      
-      
+  
+  
   def backTestInner(self, backtestData):
     # 回测
     print('BackTest {} ###########################'.format(self.codes))
@@ -1326,21 +1248,17 @@ class TradeManager:
     # 环境处理after
     for one in self.codes:
       self.accountMap[one].After(context[one])
-
-
   
   def CloseAccount(self):
     for one in self.codes:
       self.accountMap[one].CloseAccount(self.context[one])
       self.listen[one].Dump()
   
-  
-  
   def StorePrepare2DB(self):
     for one in self.stocks:
       code = one['_id']
       name = one['name']
-      
+    
     pass
   
   def StoreResult2DB(self):
@@ -1364,7 +1282,6 @@ class TradeManager:
       out['holdStockDateVec'] = A.holdStockDateVec
       util.SaveMongoDB(out, 'stock_backtest', self.collectionName)
   
-  
   # def ExistCheckResult(self):
   #   db = self.mongoClient["stock_backtest"]
   #   collection = db[self.collectionName]
@@ -1379,13 +1296,12 @@ class TradeManager:
   #   else:
   #     return False
   
-  
   def CheckResult(self):
     for one in self.stocks:
       code = one['_id']
       A = self.accountMap[code]
       db = self.mongoClient["stock_backtest"]
-      collection = db['dv2']
+      collection = db['dv3']
       # collection = db[self.collectionName]
       cursor = collection.find({"_id": code})
       out = None
@@ -1429,173 +1345,8 @@ class TradeManager:
     
     return True
 
-# 交易记录#################################################
-class TradeMark:
-  def __init__(self):
-    self.__date = None  # 交易发生的时间
-    self.__dir = None  # 交易发生的方向，1 买入，-1 卖出
-    self.__fee = None
-    self.__number = None  # 股票交易数量
-    self.__price = None  # 股票交易的金额
-    self.__total = None  # 涉及的总金额
-    self.__reason = None  # 交易原因
-    self.__where = ''  # 根据哪一年的中报年报分红决定买入，仅开仓有效
-    self.__extraInfo = None  # 其他附带信息
-  
-  def date(self, d):
-    self.__date = d
-    return self
-  
-  def dir(self, d):
-    self.__dir = d
-    return self
-  
-  def fee(self, d):
-    self.__fee = d
-    return self
-  
-  def number(self, d):
-    self.__number = d
-    return self
-  
-  def price(self, d):
-    self.__price = d
-    return self
-  
-  def total(self, d):
-    self.__total = d
-    return self
-  
-  def reason(self, d):
-    self.__reason = d
-    return self
-  
-  def extraInfo(self, d):
-    self.__extraInfo = d
-    return self
-  
-  def where(self, d):
-    self.__where = d
-    return self
-  
-  def Dump(self):
-    print(self)
-  
-  def __str__(self):
-    return "操作：{}, 日期：{}, 方向：{}, 金额：{}, 价格：{}, 数量：{}, 年报：{}, 附加信息：{}, ".format(
-      self.__reason, self.__date, self.__dir, self.__total, self.__price, self.__number, self.__where, self.__extraInfo)
-  
-  def ToDB(self):
-    return {'op': self.__reason, 'date': self.__date, 'dir': self.__dir, 'total': self.__total, 'number': self.__number,
-            'price': self.__price,
-            'where': self.__where, 'extraInfo': self.__extraInfo}
-  
-  def FromDB(db):
-    one = TradeMark()
-    one.reason(db['op']).date(db['date']).dir(db['dir']).total(db['total']).number(db['number']).price(db['price']). \
-      where(db['where']).extraInfo(db['extraInfo'])
-    return one
-  
-  def __eq__(self, obj):
-    return self.__reason == obj.__reason and self.__date == obj.__date and self.__dir == obj.__dir \
-           and self.__total == obj.__total and self.__price == obj.__price and self.__number == obj.__number \
-           and self.__fee == obj.__fee and self.__where == obj.__where and self.__extraInfo == obj.__extraInfo
 
 
-#########################################################
-
-class TradeResult:
-  def __init__(self):
-    self.__beginDate = None  # 开始的时间
-    self.__endDate = None  # 结算的时间
-    self.__status = None  # 结算状态
-    self.__profit = None  # 总收益
-    self.__percent = None  # 股票收益率
-    self.__total = None  # 涉及的总金额
-    self.__beginMoney = None  # 开始资金
-    self.__days = None  # 持股天数
-    self.__hs300Profit = None  # 同期沪深300指数收益
-  
-  def beginDate(self, d):
-    self.__beginDate = d
-    return self
-  
-  def endDate(self, d):
-    self.__endDate = d
-    return self
-  
-  def status(self, d):
-    self.__status = d
-    return self
-  
-  def beginMoney(self, d):
-    self.__beginMoney = d
-    return self
-  
-  def number(self, d):
-    self.__number = d
-    return self
-  
-  def days(self, d):
-    self.__days = d
-    return self
-  
-  def total(self, d):
-    self.__total = d
-    return self
-  
-  def profit(self, d):
-    self.__profit = d
-    return self
-  
-  def percent(self, d):
-    self.__percent = d
-    return self
-  
-  def hs300Profit(self, d):
-    self.__hs300Profit = d
-    return self
-  
-  def Calc(self):
-    self.__profit = self.__total - self.__beginMoney
-    self.__percent = self.__profit / self.__beginMoney
-  
-  def Dump(self):
-    print(self)
-  
-  def __str__(self):
-    return "结算：开始：{}, 结束：{}, 持仓：{}, 开始资金：{}, 结束资金：{}, 绝对收益：{}, 相对收益：{}, 持股天数：{}, 同期沪深300：{}, ".format(
-      self.__beginDate, self.__endDate, self.__status, self.__beginMoney, self.__total, self.__profit, self.__percent,
-      self.__days, self.__hs300Profit)
-  
-  def ToDB(self):
-    growth = []
-    if self.code == '601515':
-      growth.append('1.0.0.17.5 ==> 2.0.0.5:低版本默认在4月30日之前使用去年半年报。而此股18年年报规定19年4月23除权，新版本此日期起使用除权设定的买卖价格，导致差异')
-    if self.code == '002014':
-      growth.append('1.0.0.17.5 ==> 2.0.0.5:低版本默认在4月30日之前使用去年半年报。而此股17年年报规定18年4月18除权，新版本此日期起使用除权设定的买卖价格，导致差异')
-      
-      
-    return {'beginDate': self.__beginDate, 'endDate': self.__endDate, 'status': self.__status,
-            'beginMoney': self.__beginMoney, 'total': self.__total,
-            'profit': self.__profit, 'percent': self.__percent, 'days': self.__days,
-            'hs300Profit': self.__hs300Profit, 'growth': growth,}
-  
-  def FromDB(db):
-    one = TradeResult()
-    one.beginDate(db['beginDate']).endDate(db['endDate']).status(db['status']).beginMoney(db['beginMoney']).total(
-      db['total']).profit(db['profit']). \
-      percent(db['percent']).days(db['days']).hs300Profit(db['hs300Profit'])
-    return one
-  
-  def __eq__(self, obj):
-    # return self.__beginDate == obj.__beginDate and self.__endDate == obj.__endDate and self.__status == obj.__status \
-    #        and self.__total == obj.__total and self.__beginMoney == obj.__beginMoney and self.__profit == obj.__profit \
-    #        and self.__days == obj.__days and self.__percent == obj.__percent and self.__hs300Profit == obj.__hs300Profit
-    
-    return self.__beginDate == obj.__beginDate and self.__status == obj.__status \
-           and self.__total == obj.__total and self.__beginMoney == obj.__beginMoney and self.__profit == obj.__profit \
-           and self.__percent == obj.__percent and self.__hs300Profit == obj.__hs300Profit
 
 
 #########################################################
@@ -1625,11 +1376,6 @@ class ListenOne:
         self.lastSellPrice = None
       self.actionList.append((context.date, -1, context.price, diff, percent))
     
-    # elif task.key == DayContext.SELL_ALWAYS_EVENT:
-    #   if len(self.actionList) and self.actionList[-1][0] == context.date:
-    #     pass
-    #   else:
-    #     self.actionList.append((context.date, context.price, 0))
   
   def DumpOne(self, one):
     return '日期：{}, 操作：{}, 价格：{}, 价差：{:.3}, 百分比：{:.2%}'.format(one[0], one[1], one[2], one[3], one[4])
@@ -1656,54 +1402,10 @@ class ListenOne:
 
 
 #########################################################
-def RunOne(code, beginMoney, name, save=False, check=False):
-  stock = TradeUnit(code, name, beginMoney)
-  stock.LoadQuotations()
-  stock.LoadIndexs()
-  stock.Merge()
-  stock.CheckPrepare()
-  
-  print(stock.DV.dv2Index.checkPoint)
-  print(stock.DV.dv2Index.dangerousPoint)
-  for one in stock.DV.dv2Index.dividendPoint:
-    print(one)
-  
-  stock.BackTest()
-  stock.CloseAccount()
-  if save:
-    stock.Store2DB()
-  
-  if check:
-    assert stock.CheckResult()
-  # print(stock.checkPoint)
-  # print(stock.dv2Index.dangerousPoint)
-  # print(stock.dv2Index.dividendPoint)
-  return stock
 
 
-def RunOne2(code, beginMoney, name, args):
-  stock = TradeUnit(code, name, beginMoney)
-  stock.LoadQuotations()
-  stock.LoadIndexs()
-  stock.Merge()
-  stock.CheckPrepare()
-  
-  print(stock.DV.dv2Index.checkPoint)
-  print(stock.DV.dv2Index.dangerousPoint)
-  for one in stock.DV.dv2Index.dividendPoint:
-    print(one)
-  
-  if 'backtest' in args:
-    stock.BackTest()
-    stock.CloseAccount()
-  
-  if 'save' in args:
-    stock.Store2DB()
-  
-  if 'check' in args:
-    return stock.CheckResult()
-  
-  return stock
+
+
 
 
 def TestAll(codes, save, check):
@@ -1832,9 +1534,10 @@ def CompareAll(collectionName, codes):
   for one in out:
     print(one)
 
+
 #########################################################
 def Compare(one, two, codes):
-  #比较两个策略的percent
+  # 比较两个策略的percent
   df1 = util.LoadData('stock_backtest', one)
   condition = {}
   if codes is not None:
@@ -1843,6 +1546,7 @@ def Compare(one, two, codes):
   df1Tmp = df1.loc[:, ['name', 'percent']]
   df2Tmp = df2.loc[:, ['percent']]
   dfMerge = df2Tmp.join(df1Tmp, how='left', lsuffix='_two', rsuffix='_one')
+  
   # frame['panduan'] = frame.city.apply(lambda x: 1 if 'ing' in x else 0)
   def win(x):
     if x.percent_two > x.percent_one:
@@ -1851,17 +1555,16 @@ def Compare(one, two, codes):
       return -1
     else:
       return 0
-    
+  
   def diff(x):
     return x.percent_two - x.percent_one
-    
+  
   dfMerge['win'] = dfMerge.apply(win, axis=1)
   dfMerge['diff'] = dfMerge.apply(diff, axis=1)
   # dfMerge['win'] = dfMerge.apply((lambda x: True if x.percent_two > x.percent else False), axis=1)
   
   print(dfMerge)
   dfMerge.to_excel("c:/workspace/tmp/1226.xlsx")
-
 
 
 # 对传入的标的，测算最后行情是否可以执行买卖操作
