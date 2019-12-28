@@ -54,17 +54,17 @@ def TestTwo(codes, beginMoney, args):
   stock.Merge()
   stock.CheckPrepare()
   
-  if 'saveprepare' in args:
+  if 'saveprepare' in args and args['saveprepare']:
     stock.StorePrepare2DB()
     
-  if 'backtest' in args:
+  if 'backtest' in args and args['backtest']:
     stock.BackTest()
     stock.CloseAccount()
     
-  if 'save' in args:
+  if 'save' in args and args['save']:
     stock.StoreResult2DB()
   
-  if 'check' in args:
+  if 'check' in args and args['check']:
     assert stock.CheckResult()
   # print(stock.checkPoint)
   # print(stock.dangerousPoint)
@@ -251,170 +251,85 @@ def TestB():
   
 if __name__ == '__main__':
   import strategy.dv1
-  CODE_AND_MONEY = [
-    # # # 皖通高速
-    #   {'code': '600012', 'money': 52105},
-    # # # 万华化学
-    #   {'code': '600309', 'money': 146005},
-    # # # 北京银行
-    #   {'code': '601169', 'money': 88305},
-    # # # 大秦铁路
-    # # # 2015年4月27日那天，预警价为14.33元，但收盘价只有14.32元，我们按照收盘价计算，
-    # # # 差一分钱才触发卖出规则。如果当时卖出，可收回现金14.32*12500+330=179330元。
-    # # # 错过这次卖出机会后不久，牛市见顶，股价狂泻，从14元多一直跌到5.98元。
-    # # # TODO 需要牛市清盘卖出策略辅助
-    #   {'code': '601006', 'money': 84305},
-    #南京银行
-    # {'code': '601009', 'money': 75005},
-    # 东风股份
-    # {'code': '601515', 'money': 133705},
-    # 福耀玻璃
-    # {'code': '600660', 'money': 125905},
-    # 光大银行
-    # {'code': '601818', 'money': 29105},
-    # 浦发银行
-    # {'code': '600000', 'money': 74505},
-    # 重庆水务
-    # {'code': '601158', 'money': 58105},
-    # 中国建筑
-    # {'code': '601668', 'money': 29605},
-    # 永新股份
-    # {'code': '002014', 'money': 124305},
-    # 万科
-    # {'code': '000002', 'money': 72705},
-    # 华域汽车
-    # {'code': '600741', 'money': 92005},
-    # 宇通客车
-   # 再看历史PB情况，在2016年4月，宇通客车的PB位于3.84，中位值3.96，很显然，
-    # 不具有很强的估值吸引力。也就是说，如果考虑估值因素，我们将不会买入。
-    # TODO 买点看pb？
-    # {'code': '600066', 'money': 203305},
-    # 宝钢股份
-    # TODO 买点看pb？
-    # {'code': '600019', 'money': 70705},
-    # 荣盛发展
-    # {'code': '002146', 'money': 99205},
-    # 厦门空港
-    # {'code': '600897', 'money': 242805},
-    # 金地集团
-    # {'code': '600383', 'money': 103205},
-    # 海螺水泥
-    # {'code': '600585', 'money': 295905},
-    # 长江电力
-    # {'code': '600900', 'money': 63905},
-    # 承德露露
-    #可以看到，虽然承德露露目前属于高息股票，但从2011到2016年，它的分红一直不达标
-    #TODO 需要持续分红剔除没有做到持续分红的标的
-    # {'code': '000848', 'money': 97405},
-    # 联发股份
-    #TODO 这是一个股息率算法的典型例子，因为它每年分红两次（中报、年报），且常有送转股
-    #缺少db.getCollection('gpfh-2015-12-31').find({"_id" : "002394"}) 数据
-    # {'code': '002394', 'money': 149005},
-    # 粤高速A
-    # {'code': '000429', 'money': 75105},
-    # 招商银行
-    # {'code': '600036', 'money': 101505},
-    # 鲁泰A
-    # {'code': '000726', 'money': 93505},
-  ]
-  
+  import strategy.dv2
+  from const import stockList
+  from fund_manage import hold
+  VERIFY_CODES = stockList.VERIFY_CODES
 
-  VERIFY_CODES = [
-    # # # 皖通高速
-    {'name': '皖通高速', '_id': '600012', 'money': 52105},
-    # # # 万华化学
-    {'name': '万华化学', '_id': '600309', 'money': 146005},
-    # # # 北京银行
-    {'name': '北京银行', '_id': '601169', 'money': 88305},
-    # # # 大秦铁路
-    # # # 2015年4月27日那天，预警价为14.33元，但收盘价只有14.32元，我们按照收盘价计算，
-    # # # 差一分钱才触发卖出规则。如果当时卖出，可收回现金14.32*12500+330=179330元。
-    # # # 错过这次卖出机会后不久，牛市见顶，股价狂泻，从14元多一直跌到5.98元。
-    # # # TODO 需要牛市清盘卖出策略辅助
-    {'name': '大秦铁路', '_id': '601006', 'money': 84305},
-    # 南京银行
-    {'name': '南京银行', '_id': '601009', 'money': 75005},
-    # 东风股份
-    {'name': '东风股份', '_id': '601515', 'money': 133705},
-    # 福耀玻璃
-     {'name': '福耀玻璃', '_id': '600660', 'money': 125905},
-    # 光大银行
-    {'name': '光大银行', '_id': '601818', 'money': 29105},
-    # 浦发银行
-    {'name': '浦发银行', '_id': '600000', 'money': 74505},
-    # 重庆水务
-    {'name': '重庆水务', '_id': '601158', 'money': 58105},
-    # 中国建筑
-    {'name': '中国建筑', '_id': '601668', 'money': 29605},
-    # 永新股份
-    {'name': '永新股份', '_id': '002014', 'money': 124305},
-    # 万科
-    {'name': '万科', '_id': '000002', 'money': 72705},
-    # 华域汽车
-    {'name': '华域汽车', '_id': '600741', 'money': 92005},
-    # 宇通客车
-    # 再看历史PB情况，在2016年4月，宇通客车的PB位于3.84，中位值3.96，很显然，
-    # 不具有很强的估值吸引力。也就是说，如果考虑估值因素，我们将不会买入。
-    # TODO 买点看pb？
-    {'name': '宇通客车', '_id': '600066', 'money': 203305},
-    # 宝钢股份
-    # TODO 买点看pb？
-    {'name': '宝钢股份', '_id': '600019', 'money': 70705},
-    # 荣盛发展
-    {'name': '荣盛发展', '_id': '002146', 'money': 99205},
-    # 厦门空港
-    {'name': '厦门空港', '_id': '600897', 'money': 242805},
-    # 金地集团
-    {'name': '金地集团', '_id': '600383', 'money': 103205},
-    # 海螺水泥
-    {'name': '海螺水泥', '_id': '600585', 'money': 295905},
-    # 长江电力
-    {'name': '长江电力', '_id': '600900', 'money': 63905},
-    # 承德露露
-    # 可以看到，虽然承德露露目前属于高息股票，但从2011到2016年，它的分红一直不达标
-    # TODO 需要持续分红剔除没有做到持续分红的标的
-    {'name': '承德露露', '_id': '000848', 'money': 97405},
-    # 粤高速A
-    {'name': '粤高速A', '_id': '000429', 'money': 75105},
-    # 招商银行
-    {'name': '招商银行', '_id': '600036', 'money': 101505},
-    # 鲁泰A
-    {'name': '鲁泰A', '_id': '000726', 'money': 93505},
-  
-    {'name': '中国石化', '_id': '600028', 'money': 74405},
-    {'name': '双汇发展', '_id': '000895', 'money': 211205},
-    {'name': '伟星股份', '_id': '002003', 'money': 80805},
-    {'name': '兴业银行', '_id': '601166', 'money': 90205},
-    {'name': '交通银行', '_id': '601328', 'money': 46905},
-    {'name': '方大特钢', '_id': '600507', 'money': 167905},
-    #TODO 增加pb指标
-    {'name': '中国神华', '_id': '601088', 'money': 219705},
-    {'name': '新城控股', '_id': '601155', 'money': 102805},
-    {'name': '农业银行', '_id': '601288', 'money': 26405},
-    #2017年全年无分红，2018年出年报就该卖出
-    {'name': '格力电器', '_id': '000651', 'money': 296305},
+  start = '2011-01-01T00:00:00Z'
+  end = '2019-12-31T00:00:00Z'
+  # hold.CalcHoldTime(stockList.VERSION_DV1.GOOD_LIST, 'dv2', start, end)
+  hold.CalcHoldTime(stockList.VERSION_DV2.TOP30_LIST, 'dv2', 'dv2_top30', start, end)
+  # client = MongoClient()
+  # db = client["stock_backtest"]
+  # collection = db["dv2"]
+  # collection.rename('all_dv2')
 
-  ]
-  #上证红利50
-  BONUS_CODES = [
-    {'name': "宝钢股份", '_id': "600019"}, {'name': "浙能电力", '_id': "600023"}, {'name': "中国石化", '_id': "600028"},
-    {'name': "福建高速", '_id': "600033"}, {'name': "保利地产", '_id': "600048"}, {'name': "宇通客车", '_id': "600066"},
-    {'name': "上汽集团", '_id': "600104"}, {'name': "东睦股份", '_id': "600114"}, {'name': "香江控股", '_id': "600162"},
-    {'name': "雅戈尔", '_id': "600177"}, {'name': "赣粤高速", '_id': "600269"}, {'name': "南钢股份", '_id': "600282"},
-    {'name': "华发股份", '_id': "600325"}, {'name': "山东高速", '_id': "600350"}, {'name': "首开股份", '_id': "600376"},
-    {'name': "宁沪高速", '_id': "600377"}, {'name': "金地集团", '_id': "600383"}, {'name': "海澜之家", '_id': "600398"},
-    {'name': "方大特钢", '_id': "600507"}, {'name': "深高速", '_id': "600548"}, {'name': "迪马股份", '_id': "600565"},
-    {'name': "海螺水泥", '_id': "600585"}, {'name': "申能股份", '_id': "600642"}, {'name': "福耀玻璃", '_id': "600660"},
-    {'name': "川投能源", '_id': "600674"}, {'name': "上海石化", '_id': "600688"}, {'name': "物产中大", '_id': "600704"},
-    {'name': "华域汽车", '_id': "600741"}, {'name': "马钢股份", '_id': "600808"}, {'name': "梅花生物", '_id': "600873"},
-    {'name': "厦门空港", '_id': "600897"}, {'name': "长江电力", '_id': "600900"}, {'name': "恒源煤电", '_id': "600971"},
-    {'name': "柳钢股份", '_id': "601003"}, {'name': "大秦铁路", '_id': "601006"}, {'name': "南京银行", '_id': "601009"},
-    {'name': "中国神华", '_id': "601088"}, {'name': "兴业银行", '_id': "601166"}, {'name': "农业银行", '_id': "601288"},
-    {'name': "交通银行", '_id': "601328"}, {'name': "工商银行", '_id': "601398"},{'name': "九牧王", '_id': "601566"},
-    {'name': "旗滨集团", '_id': "601636"}, {'name': "光大银行", '_id': "601818"}, {'name': "建设银行", '_id': "601939"},
-    {'name': "中国银行", '_id': "601988"}, {'name': "中信银行", '_id': "601998"}, {'name': "养元饮品", '_id': "603156"},
-    {'name': "渤海轮渡", '_id': "603167"}, {'name': "依顿电子", '_id': "603328"},
-    ]
+  # TestTwo( [{'_id': '600025', 'name': '华能水电', },], 100000, {'check': False, 'backtest': True, 'save': True})
+  # codes = []
+  # for one in stockList.VERSION_DV1.BAD_LIST:
+  #   codes.append(one['_id'])
+  # strategy.dv2.Compare('all_dv1', 'dv2', codes)
+
+  # for index in range(0, len(stockList.VERSION_DV1.GOOD_LIST), 5):
+  #   codes = stockList.VERSION_DV1.GOOD_LIST[index:5]
+  #   TestTwo(codes, 100000, {'check': True, 'backtest': True, 'save': False})
+
+  # TestTwo(stockList.VERSION_DV1.GOOD_LIST, 100000, {'check': False, 'backtest': True, 'save': True})
+  # codes = []
+  # for one in stockList.VERSION_DV1.GOOD_LIST:
+  #   codes.append(one['_id'])
+  # strategy.dv2.Compare('all_dv1', 'dv2', codes)
+
+  # TestTwo( [{'name': '000070', '_id': '000070', }], 100000, {'check': False, 'backtest': True, 'save': True})
+  
+  # codes = []
+  # df = util.QueryAll()
+  # for code, row in df.iterrows():
+  #   codes.append({'_id': code, 'name': row['名称']})
+  # #
+  # # #每次100个
+  # for index in range(180, len(codes), 100):
+  #   tmp = codes[index:index+100]
+  #   print('now index  {}  #################'.format(index))
+  #   TestTwo(tmp, 100000, {'check': False, 'backtest': True, 'save': True})
+  # if index < len(codes):
+  #   tmp = codes[index:]
+  #   TestTwo(tmp, 100000, {'check': False, 'backtest': True, 'save': True})
+  
+  
+  from index import trend
+  from index import times
+  # trend.ProfitMarginTrend.Run(['601088', '600809', '002269'])
+  # trend.ProfitMarginTrend.Run(['601009', '601166', '600036', '601818'])
+
+  # df = util.QueryAll()
+  # codes = []
+  # for code, row in df.iterrows():
+  #   codes.append(code)
+  # trend.ProfitMarginTrend.Run(codes)
+
+  # ones = stockList.VERSION_DV1.BAD_LIST
+  # codes = []
+  # for one in ones:
+  #   codes.append(one['_id'])
+  # trend.ProfitMarginTrend.Show(codes)
+
+  # ones = stockList.VERSION_DV1.GOOD_LIST
+  # trend.ProfitMarginTrend.Show(ones)
+  
+  # ones = stockList.MY_HOLD
+  # # times.DangerousQuarterRatio.Run(ones)
+  # times.DangerousQuarterRatio.Show(ones)
+
+  # ones = stockList.VERSION_DV1.BAD_LIST
+  # times.DangerousQuarterRatio.Run(ones)
+  # times.DangerousQuarterRatio.Show(ones)
+  #
+  # ones = stockList.VERSION_DV1.GOOD_LIST
+  # times.DangerousQuarterRatio.Run(ones)
+  # times.DangerousQuarterRatio.Show(ones)
+  
   # for one in VERIFY_CODES:
   #   stock = TradeUnit(one['_id'], one['money'])
   #   if not stock.ExistCheckResult():
@@ -446,6 +361,7 @@ if __name__ == '__main__':
   
   
   # strategy.dv1.CalcDV([{'_id': '002085', 'name': ''}, {'_id': '002191', 'name': ''}])
+  #'601515', 133705, '东风股份'
   # TestTwo(
   #         # [
   #         #   {'_id': '600025', 'name': '华能水电', },
@@ -453,13 +369,16 @@ if __name__ == '__main__':
   #         #   {'_id': '600900', 'name': '长江电力', 'money': 63905},
   #         #  ],
   #   [
-  #     {'_id': '603118', 'name': '共进股份', },
+  #     {'name': '002085', '_id': '002085', },
+  #     # {'name': '皖通高速', '_id': '600012', 'money': 52105},
   #   ],
-  #   100000, {'saveprepare': 1, 'backtest':1})
+  #   100000, {'save': False, 'check': False, 'backtest':True})
+  
   # test
   # TestAll(CODE_AND_MONEY, True, False)
   #save
-  TestTwo(VERIFY_CODES, 100000, {'check': 1, 'backtest': 1})
+  # TestTwo(VERIFY_CODES, 100000, {'check': False, 'backtest': True, 'save': True})
+  # TestTwo(stockList.VERSION_DV1.BAD_LIST, 100000, {'check': False, 'backtest': True, 'save': True})
   # TestAll(VERIFY_CODES, True, False)
   #check
   # TestAll(VERIFY_CODES, False, True)

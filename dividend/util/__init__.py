@@ -95,6 +95,29 @@ def SaveMongoDB_DF(data: pd.DataFrame, dbName, collectionName, insert=True):
 
 
 
+def SaveMongoDBDict(data: dict, dbName, collectionName, insert=True):
+  print('enter SaveMongoDBDict')
+  client = MongoClient()
+  db = client[dbName]
+  collection = db[collectionName]
+
+
+  for k, v in data.items():
+    try:
+      update_result = collection.update_one({'_id': k},
+                                          {'$set': v}, upsert=insert)
+
+      if update_result.matched_count > 0 and update_result.modified_count > 0:
+        print('update to Mongo: %s : %s'%(dbName, collectionName))
+      elif update_result.upserted_id is not None:
+        print('insert to Mongo: %s : %s : %s' % (dbName, collectionName, update_result.upserted_id))
+
+    except errors.DuplicateKeyError as e:
+      print('DuplicateKeyError to Mongo!!!: %s : %s : %s' % (dbName, collectionName, k))
+    except Exception as e:
+      print(e)
+
+  print('leave SaveMongoDBDict')
 
   
 def QueryHS300All():
@@ -146,7 +169,7 @@ def QueryAll():
 
   if len(out):
     df = pd.DataFrame(out)
-    df.set_index("代码", inplace=True)
+    df.set_index("_id", inplace=True)
     return df
   else:
     return None

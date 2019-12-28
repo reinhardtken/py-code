@@ -143,6 +143,8 @@ class DayContext:
   TARGET_SELL_PRICE_EVENT = 8
   # 出买卖价格
   MAKE_DECISION = 9
+  #统计
+  OTHER_WORK = 10
   
   # priority##############################
   # 其实策略和账户响应根本不会在一起，没必要设置先后
@@ -270,6 +272,7 @@ class Account:
     self.tradeList = []
     self.holdStockDate = 0  # 持股总交易天数
     self.holdStockNatureDate = 0  # 持股总自然天数
+    self.holdStockDateVec = []  # 持股区间
     self.holdStockNatureDateLastCheck = None  # 上个检查持股自然日的时点
     self.beforeProfit = None
     
@@ -303,9 +306,12 @@ class Account:
     # 永久有效
     context.Add_A(DayContext.PRIORITY_TRADE, DayContext.SELL_ALWAYS_EVENT,
                   pd.Timestamp(self.endDate))
+    context.Add_A(DayContext.PRIORITY_AFTER_TRADE, DayContext.OTHER_WORK,
+                  pd.Timestamp(self.endDate))
   
   def After(self, context: DayContext):
-    self.processOther(context.date, context.price)
+    # self.processOther(context.date, context.price)
+    pass
   
   def Buy(self, date, triggerPrice, sellPrice, price, indexPrice, where, reason=''):
     try:
@@ -326,6 +332,7 @@ class Account:
           self.indexBuyPoint = indexPrice
           # 交易次数+1
           self.tradeCounter += 1
+          self.holdStockDateVec.append(date)
           
           # 记录
           mark = TradeMark()
@@ -362,6 +369,7 @@ class Account:
       self.status = HOLD_MONEY
       # 计算指数收益
       self.indexProfit *= indexPrice / self.indexBuyPoint
+      self.holdStockDateVec[-1] = (self.holdStockDateVec[-1], date)
       
       # 记录
       mark = TradeMark()
@@ -467,6 +475,8 @@ class Account:
       self.indexProfit *= current.index / self.indexBuyPoint
       # 可能结束回测的时候，都没有创新高，导致最大回撤记录没有刷新，在这里刷新下
       self.Retracement.Record(current.date)
+      #刷新最后持股日期
+      self.holdStockDateVec[-1] = (self.holdStockDateVec[-1], current.date)
     else:
       money = self.money
     
@@ -510,8 +520,8 @@ class Account:
     elif task.key == DayContext.SELL_ALWAYS_EVENT:
       if self.isHoldStock() and context.price >= self.sellPrice:
         self.SellNoCodition(context.date, context.price, context.index, reason='高于卖点')
-
-
+    elif task.key == DayContext.OTHER_WORK:
+      self.processOther(context.date, context.price)
 #########################################################
 class DividendGenerator:
   class Event:
@@ -1351,6 +1361,7 @@ class TradeManager:
       out.update(A.Retracement.ToDict('Retracement'))
       
       out['holdStockNatureDate'] = A.holdStockNatureDate
+      out['holdStockDateVec'] = A.holdStockDateVec
       util.SaveMongoDB(out, 'stock_backtest', self.collectionName)
   
   
