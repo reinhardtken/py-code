@@ -23,6 +23,8 @@ from comm import MaxRecord
 from comm import Priority
 from comm import Task
 
+from fund_manage import fm
+
 # this project
 if __name__ == '__main__':
   import sys
@@ -86,6 +88,8 @@ class DayContext:
   MAKE_DECISION = 9
   # 统计
   OTHER_WORK = 10
+
+  SUGGEST_BUY_EVENT = 11
   
   
   #######################################################
@@ -111,11 +115,9 @@ class DayContext:
   # PRIORITY_STAGE_ONE = 1200  # 买卖前
   # PRIORITY_TRADE_TAG = 1300  #
   PRIORITY_SELL = 1400  #
-  #引入资金管理，此时所有的信号及卖出都已经执行完成，但所有的买入还没有执行
-  #资金策略可以根据自己的判断决定之后的买入信号里面那些可以给予资金支持
-  # PRIORITY_STAGE_TWO = 2000
-  PRIORITY_BUY = 2500  #
-  PRIORITY_AFTER_TRADE = 2600  #
+  PRIORITY_SUGGEST_BUY = 1500
+  PRIORITY_BUY = 1600  #
+  PRIORITY_AFTER_TRADE = 1700  #
   # PRIORITY_STAGE_THREE = 3000
   
   
@@ -858,11 +860,12 @@ class StrategyDV:
     buySignal, sellSignal = self.BuySellSignal(context.date, context.price)
     context.dvInfo = (None, buySignal[1], sellSignal[1], None)
     if buySignal[0]:
+      #建议开仓
       context.AddTask(
         Task(
           Priority(
-            DayContext.STAGE_BUY_TRADE, DayContext.PRIORITY_BUY),
-          DayContext.BUY_EVENT, None, buySignal[1], sellSignal[1], buySignal[2]))
+            DayContext.STAGE_BUY_TRADE, DayContext.PRIORITY_SUGGEST_BUY),
+          DayContext.SUGGEST_BUY_EVENT, None, buySignal[1], sellSignal[1], buySignal[2]))
     
     if sellSignal[0]:
       context.AddTask(
@@ -945,6 +948,8 @@ class TradeManager:
     self.context = {}  # DayContext()  # 代表全部的事件
     self.codes = []  # 单独存放所有的股票代码
     self.listen = {}  # ListenOne
+    self.fm = fm.FundManager() #资金管理
+    
     for one in stocks:
       tmpBeginMoney = beginMoney
       self.codes.append(one['_id'])
@@ -966,7 +971,7 @@ class TradeManager:
 
       context.pump.AddStage(DayContext.STAGE_STRATEGY, before, after)
       context.pump.AddStage(DayContext.STAGE_BEFORE_TRADE, before, after)
-      context.pump.AddStage(DayContext.STAGE_SELL_TRADE, before, after)
+      context.pump.AddStage(DayContext.STAGE_SELL_TRADE, before, self.fm.AfterSellStage)
       context.pump.AddStage(DayContext.STAGE_BUY_TRADE, before, after)
       context.pump.AddStage(DayContext.STAGE_AFTER_TRADE, before, after)
 
@@ -983,6 +988,10 @@ class TradeManager:
         DayContext.DIVIDEND_ADJUST,
         DayContext.MAKE_DECISION,
       ], DV.Process)
+
+      context.pump.AddHandler([
+        DayContext.SUGGEST_BUY_EVENT,
+      ], self.fm.Process)
       
       self.context[one['_id']] = context
       
@@ -1297,6 +1306,55 @@ class TradeManager:
   #   else:
   #     return False
   
+  def CheckResult(self):
+    for one in self.stocks:
+      code = one['_id']
+      A = self.accountMap[code]
+      db = self.mongoClient["stock_backtest"]
+      collection = db['dv3']
+      # collection = db[self.collectionName]
+      cursor = collection.find({"_id": code})
+      out = None
+      for c in cursor:
+        out = c
+        break
+      else:
+        collection = db['all_dv2']
+        cursor = collection.find({"_id": code})
+        out = None
+        for c in cursor:
+          out = c
+          break
+
+      flag = False
+      where = 0
+      tmp = TradeResult.FromDB(out)
+      marks = []
+      for index in range(len(out['tradeMarks'])):
+        marks.append(TradeMark.FromDB(out['tradeMarks'][index]))
+
+      if A.BEGIN_MONEY == out['beginMoney']:
+        if len(A.tradeList) == len(out['tradeMarks']):
+          if A.result == tmp:
+            for index in range(len(A.tradeList)):
+              if A.tradeList[index] != marks[index]:
+                where += 1
+                print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
+                # return False
+            else:
+              flag = True
+          else:
+            where = 3
+        else:
+          where = 2
+      else:
+        where = 1
+      if flag is not True:
+        print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
+        # return False
+    
+    return True
+
   # def CheckResult(self):
   #   for one in self.stocks:
   #     code = one['_id']
@@ -1325,61 +1383,12 @@ class TradeManager:
   #       marks.append(TradeMark.FromDB(out['tradeMarks'][index]))
   #
   #     if A.BEGIN_MONEY == out['beginMoney']:
-  #       if len(A.tradeList) == len(out['tradeMarks']):
-  #         if A.result == tmp:
-  #           for index in range(len(A.tradeList)):
-  #             if A.tradeList[index] != marks[index]:
-  #               where += 1
-  #               print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
-  #               # return False
-  #           else:
-  #             flag = True
-  #         else:
-  #           where = 3
+  #       if abs(A.profit - out['profit']) < 100 and abs(A.percent - out['percent']) < 0.02:
+  #         print('### CheckResult success {} {} {}'.format(code, one['name'], abs(A.profit - out['profit'])))
   #       else:
-  #         where = 2
-  #     else:
-  #       where = 1
-  #     if flag is not True:
-  #       print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
-  #       # return False
-    
-    return True
-
-  def CheckResult(self):
-    for one in self.stocks:
-      code = one['_id']
-      A = self.accountMap[code]
-      db = self.mongoClient["stock_backtest"]
-      collection = db['dv3']
-      # collection = db[self.collectionName]
-      cursor = collection.find({"_id": code})
-      out = None
-      for c in cursor:
-        out = c
-        break
-      else:
-        collection = db['all_dv2']
-        cursor = collection.find({"_id": code})
-        out = None
-        for c in cursor:
-          out = c
-          break
-    
-      flag = False
-      where = 0
-      tmp = TradeResult.FromDB(out)
-      marks = []
-      for index in range(len(out['tradeMarks'])):
-        marks.append(TradeMark.FromDB(out['tradeMarks'][index]))
-    
-      if A.BEGIN_MONEY == out['beginMoney']:
-        if abs(A.profit - out['profit']) < 100 and abs(A.percent - out['percent']) < 0.02:
-          print('### CheckResult success {} {} {}'.format(code, one['name'], abs(A.profit - out['profit'])))
-        else:
-          print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
-  
-    return True
+  #         print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
+  #
+  #   return True
 
 
 
