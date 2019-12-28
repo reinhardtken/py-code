@@ -188,6 +188,8 @@ class Account:
     # 回撤相关
     self.Retracement = Retracement()
     # 事件处理
+    self.profit = None
+    self.percent = None
   
   def isHoldStock(self):
     return self.status == HOLD_STOCK
@@ -287,51 +289,47 @@ class Account:
   
   def ProcessDividend(self, date, buyPrice, price, indexPrice, dividend):
     if self.isHoldStock():
-      if buyPrice >= price:
-        self.oldPrice = buyPrice
-        oldMoney = self.money
-        oldNumber = self.number
-        dividendMoney = self.number * 100 * dividend.dividendAfterTax
-        money = dividendMoney + self.money
+      dividendMoney = self.number * 100 * dividend.dividendAfterTax
+      money = dividendMoney + self.money
+      # 除权资金的买入不再在除权逻辑处理
+      self.money = money
+      print('发生除权 {} {} {}'.format(self.number, dividendMoney, self.money))
+      # 如果有转送股，所有的价格，股数需要变动
+      if dividend.gift > 0:
+        self.number *= 1 + dividend.gift
+        oldSellPrice = self.sellPrice
+        print('发生转送股 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
+
+      
         
-        # 如果有转送股，所有的价格，股数需要变动
-        if dividend.gift > 0:
-          self.number *= 1 + dividend.gift
-          oldSellPrice = self.sellPrice
-          # 因为除权导致的价格变动，checkPoint处已经处理，并会广播，所以无需在此处理
-          # self.sellPrice /= 1 + dividend.gift
-          # 此时价格已经变化，无需处理
-          # price /= 1+dividend.gift
-          print('发生转送股 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
-        
-        number = money // (price * 100)
-        self.money = money - number * 100 * price
-        self.number += number
+        # number = money // (price * 100)
+        # self.money = money - number * 100 * price
+        # self.number += number
         
         # 记录
-        mark = TradeMark()
-        mark.reason('除权买入').date(date).dir(DIR_BUY).total(number * 100 * price).number(number). \
-          price(price).extraInfo('分红金额：{}'.format(dividendMoney)).Dump()
-        self.tradeList.append(mark)
-      else:
-        oldMoney = self.money
-        dividendMoney = self.number * 100 * dividend.dividendAfterTax
-        self.money += dividendMoney
-        
-        # 如果有转送股，所有的价格，股数需要变动
-        if dividend.gift > 0:
-          self.number *= 1 + dividend.gift
-          oldSellPrice = self.sellPrice
-          # 因为除权导致的价格变动，checkPoint处已经处理，并会广播，所以无需在此处理
-          # self.sellPrice /= 1 + dividend.gift
-          # price /= 1 + dividend.gift
-          print('发生转送股2 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
+        # mark = TradeMark()
+        # mark.reason('除权买入').date(date).dir(DIR_BUY).total(0).number(0). \
+        #   price(price).extraInfo('分红金额：{}'.format(dividendMoney)).Dump()
+        # self.tradeList.append(mark)
+      # else:
+      #   oldMoney = self.money
+      #   dividendMoney = self.number * 100 * dividend.dividendAfterTax
+      #   self.money += dividendMoney
+      #
+      #   # 如果有转送股，所有的价格，股数需要变动
+      #   if dividend.gift > 0:
+      #     self.number *= 1 + dividend.gift
+      #     oldSellPrice = self.sellPrice
+      #     # 因为除权导致的价格变动，checkPoint处已经处理，并会广播，所以无需在此处理
+      #     # self.sellPrice /= 1 + dividend.gift
+      #     # price /= 1 + dividend.gift
+      #     print('发生转送股2 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
         
         # 记录
-        mark = TradeMark()
-        mark.reason('除权不买入').date(date).dir(DIR_NONE).total(dividendMoney).number(0).price(0).extraInfo(
-          '分红金额：{}'.format(dividendMoney)).Dump()
-        self.tradeList.append(mark)
+        # mark = TradeMark()
+        # mark.reason('除权不买入').date(date).dir(DIR_NONE).total(dividendMoney).number(0).price(0).extraInfo(
+        #   '分红金额：{}'.format(dividendMoney)).Dump()
+        # self.tradeList.append(mark)
   
   def processOther(self, date, price):
     # 最大净值
@@ -375,7 +373,7 @@ class Account:
         self.holdStockNatureDate += diff.days
   
   def CloseAccount(self, current):
-    money = 0
+    
     if self.isHoldStock():
       money = self.money + self.number * 100 * current.price
       # 计算指数收益
@@ -386,6 +384,9 @@ class Account:
       self.holdStockDateVec[-1] = (self.holdStockDateVec[-1], current.date)
     else:
       money = self.money
+      
+    self.profit = money - self.BEGIN_MONEY
+    self.percent = self.profit / self.BEGIN_MONEY
     
     one = TradeResult()
     one.code = self.code
@@ -1296,6 +1297,55 @@ class TradeManager:
   #   else:
   #     return False
   
+  # def CheckResult(self):
+  #   for one in self.stocks:
+  #     code = one['_id']
+  #     A = self.accountMap[code]
+  #     db = self.mongoClient["stock_backtest"]
+  #     collection = db['dv3']
+  #     # collection = db[self.collectionName]
+  #     cursor = collection.find({"_id": code})
+  #     out = None
+  #     for c in cursor:
+  #       out = c
+  #       break
+  #     else:
+  #       collection = db['all_dv2']
+  #       cursor = collection.find({"_id": code})
+  #       out = None
+  #       for c in cursor:
+  #         out = c
+  #         break
+  #
+  #     flag = False
+  #     where = 0
+  #     tmp = TradeResult.FromDB(out)
+  #     marks = []
+  #     for index in range(len(out['tradeMarks'])):
+  #       marks.append(TradeMark.FromDB(out['tradeMarks'][index]))
+  #
+  #     if A.BEGIN_MONEY == out['beginMoney']:
+  #       if len(A.tradeList) == len(out['tradeMarks']):
+  #         if A.result == tmp:
+  #           for index in range(len(A.tradeList)):
+  #             if A.tradeList[index] != marks[index]:
+  #               where += 1
+  #               print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
+  #               # return False
+  #           else:
+  #             flag = True
+  #         else:
+  #           where = 3
+  #       else:
+  #         where = 2
+  #     else:
+  #       where = 1
+  #     if flag is not True:
+  #       print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
+  #       # return False
+    
+    return True
+
   def CheckResult(self):
     for one in self.stocks:
       code = one['_id']
@@ -1315,36 +1365,21 @@ class TradeManager:
         for c in cursor:
           out = c
           break
-      
+    
       flag = False
       where = 0
       tmp = TradeResult.FromDB(out)
       marks = []
       for index in range(len(out['tradeMarks'])):
         marks.append(TradeMark.FromDB(out['tradeMarks'][index]))
-      
-      if A.BEGIN_MONEY == out['beginMoney']:
-        if len(A.tradeList) == len(out['tradeMarks']):
-          if A.result == tmp:
-            for index in range(len(A.tradeList)):
-              if A.tradeList[index] != marks[index]:
-                where += 1
-                print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
-                # return False
-            else:
-              flag = True
-          else:
-            where = 3
-        else:
-          where = 2
-      else:
-        where = 1
-      if flag is not True:
-        print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
-        # return False
     
+      if A.BEGIN_MONEY == out['beginMoney']:
+        if abs(A.profit - out['profit']) < 100 and abs(A.percent - out['percent']) < 0.02:
+          print('### CheckResult success {} {} {}'.format(code, one['name'], abs(A.profit - out['profit'])))
+        else:
+          print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
+  
     return True
-
 
 
 
