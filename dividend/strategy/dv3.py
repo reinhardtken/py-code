@@ -17,6 +17,7 @@ import util
 from index import dv2
 from comm import TradeResult
 from comm import TradeMark
+from comm import PumpManager
 from comm import Pump
 from comm import Retracement
 from comm import MaxRecord
@@ -24,6 +25,8 @@ from comm import Priority
 from comm import Task
 
 from fund_manage import fm
+
+Message = const.Message
 
 # this project
 if __name__ == '__main__':
@@ -69,55 +72,7 @@ GPFH_KEY = const.GPFH_KEYWORD.KEY_NAME
 #########################################################
 # 代表当天发生的所有事件，比如price，indexPrice，pb，除权，年报季报等等
 class DayContext:
-  # 除权日，吃需要分红和配股
-  DIVIDEND_POINT = 1
-  # 除权日，买卖预期价格需要调整
-  DIVIDEND_ADJUST = 2
-  # 季报已出，季报利润下跌需要卖出
-  DANGEROUS_POINT = 3
-  # 冷冻期，不交易
-  COOLDOWN_RANGE = 4
-  # buy
-  BUY_EVENT = 5
-  # sell
-  SELL_EVENT = 6
-  SELL_ALWAYS_EVENT = 7
-  # 新的卖出目标价格
-  TARGET_SELL_PRICE_EVENT = 8
-  # 出买卖价格
-  MAKE_DECISION = 9
-  # 统计
-  OTHER_WORK = 10
-
-  SUGGEST_BUY_EVENT = 11
   
-  
-  #######################################################
-  # priority##############################
-  # 其实策略和账户响应根本不会在一起，没必要设置先后
-  STAGE_STRATEGY = 1  # 策略在这里广播
-  STAGE_BEFORE_TRADE = 2  # 除权调整价格
-  STAGE_SELL_TRADE = 3  # 前交易阶段，所有的卖
-  STAGE_BUY_TRADE = 4  # 所有的买
-  STAGE_AFTER_TRADE = 5  # 所有交易后
-  #######################################################
-  
-  PRIORITY_JUMP = 1  # 跳过循环，这种必须有util字段
-  PRIORITY_DIVIDEND_ADJUST = 50  # 除权引发价格调整
-  
-  PRIORITY_MAKEDECISION = 900
-  
-  
-  PRIORITY_BEFORE_DIVIDEND = 1100  # 发生在除权前
-  PRIORITY_DIVIDEND = 1200  # 除权
-  PRIORITY_COOLDOWN = 1300  # 扣非净利润-10%，卖出
-  ########################
-  # PRIORITY_STAGE_ONE = 1200  # 买卖前
-  # PRIORITY_TRADE_TAG = 1300  #
-  PRIORITY_SELL = 1400  #
-  PRIORITY_SUGGEST_BUY = 1500
-  PRIORITY_BUY = 1600  #
-  PRIORITY_AFTER_TRADE = 1700  #
   # PRIORITY_STAGE_THREE = 3000
   
   
@@ -156,7 +111,7 @@ class DayContext:
 #########################################################
 # 代表账号信息
 class Account:
-  def __init__(self, code, beginMoney, startDate, endDate):
+  def __init__(self, code, beginMoney, startDate, endDate, fm):
     self.code = code
     self.status = HOLD_MONEY  # 持仓还是持币
     # self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
@@ -164,6 +119,7 @@ class Account:
     self.endDate = endDate
     self.BEGIN_MONEY = beginMoney
     self.money = self.BEGIN_MONEY
+    self.fm = fm
     self.oldMoney = self.money
     self.oldPrice = None  # 建仓价格，不包括追加买入除权买入，等于当初广播的买点价格triggerPrice
     self.number = 0  # 持仓的时候表示持仓数目(手)
@@ -210,14 +166,14 @@ class Account:
     context.AddTask(
       Task(
         Priority(
-          DayContext.STAGE_SELL_TRADE, DayContext.PRIORITY_SELL),
-        DayContext.SELL_ALWAYS_EVENT,
+          Message.STAGE_SELL_TRADE, Message.PRIORITY_SELL),
+        Message.SELL_ALWAYS_EVENT,
         pd.Timestamp(self.endDate)))
     context.AddTask(
       Task(
         Priority(
-          DayContext.STAGE_AFTER_TRADE, DayContext.PRIORITY_AFTER_TRADE),
-        DayContext.OTHER_WORK,
+          Message.STAGE_AFTER_TRADE, Message.PRIORITY_AFTER_TRADE),
+        Message.OTHER_WORK,
         pd.Timestamp(self.endDate)))
   
   def After(self, context: DayContext):
@@ -235,28 +191,31 @@ class Account:
           self.oldMoney = self.money
           
           number, money = self.buyInner(price, self.money)
-          self.number = number
-          self.money = money
-          self.status = HOLD_STOCK
-          
-          # 记录指数变化
-          self.indexBuyPoint = indexPrice
-          # 交易次数+1
-          self.tradeCounter += 1
-          self.holdStockDateVec.append(date)
-          
-          # 记录
-          mark = TradeMark()
-          mark.reason('买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
-            price).where(where).extraInfo('{}'.format(reason)).Dump()
-          self.tradeList.append(mark)
-          # print("买入： 日期：{}, 触发价格：{}, 价格：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price, self.number, self.money, reason))
+          if number > 0:
+            self.number = number
+            self.money = money
+            self.status = HOLD_STOCK
+            self.fm.Alloc(self.code, self.number*100*price)
+            # 记录指数变化
+            self.indexBuyPoint = indexPrice
+            # 交易次数+1
+            self.tradeCounter += 1
+            self.holdStockDateVec.append(date)
+            
+            # 记录
+            mark = TradeMark()
+            mark.reason('买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
+              price).where(where).extraInfo('{}'.format(reason)).Dump()
+            self.tradeList.append(mark)
+        
         elif self.isHoldStock():
           number, money = self.buyInner(price, self.money)
           if number > 0:
             # 追加买入
+            self.fm.Alloc(self.code, number*100*price)
             self.number += number
             self.money = money
+
             
             mark = TradeMark()
             mark.reason('追加买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
@@ -276,6 +235,7 @@ class Account:
   def SellNoCodition(self, date, price, indexPrice, reason=''):
     if self.isHoldStock():
       self.money = self.money + self.number * 100 * price
+      self.fm.Free(self.code, self.money)
       winLoss = (self.money - self.oldMoney) / self.oldMoney
       self.status = HOLD_MONEY
       # 计算指数收益
@@ -400,9 +360,9 @@ class Account:
     one.Dump()
   
   def Process(self, context: DayContext, task):
-    if task.key == DayContext.DIVIDEND_POINT:
+    if task.key == Message.DIVIDEND_POINT:
       self.ProcessDividend(context.date, context.dvInfo[1], context.price, context.index, task.args[0].dividendPointOne)
-    elif task.key == DayContext.DANGEROUS_POINT:
+    elif task.key == Message.DANGEROUS_POINT:
       # self.SellNoCodition()
       self.SellNoCodition(context.date, context.price, context.index,
                           reason='扣非卖出: {}'.format(task.args[0].point[4]))
@@ -410,9 +370,9 @@ class Account:
       context.cooldown = True
       context.cooldownEnd = task.args[0].point[1]
     
-    elif task.key == DayContext.BUY_EVENT:
+    elif task.key == Message.BUY_EVENT:
       self.Buy(context.date, task.args[0], task.args[1], context.price, context.index, task.args[2], reason='低于买点')
-    elif task.key == DayContext.SELL_EVENT:
+    elif task.key == Message.SELL_EVENT:
       # 监控到价格变化的时候，必然符合当前价格高于建仓时候的卖出价格，建仓不应该再需要记录卖出价格
       # 除非策略变化，卖出价格和建仓有关，而非和年报有关
       reason = '年报未分红'
@@ -423,14 +383,14 @@ class Account:
         else:
           print("wrong")
       self.Sell(context.date, task.args[0], context.price, context.index, reason)
-    elif task.key == DayContext.TARGET_SELL_PRICE_EVENT:
+    elif task.key == Message.TARGET_SELL_PRICE_EVENT:
       # if self.isHoldStock():
       # 如果已经持股，需要根据历年股息调整卖出价格
       self.sellPrice = task.args[0]
-    elif task.key == DayContext.SELL_ALWAYS_EVENT:
+    elif task.key == Message.SELL_ALWAYS_EVENT:
       if self.isHoldStock() and context.price >= self.sellPrice:
         self.SellNoCodition(context.date, context.price, context.index, reason='高于卖点')
-    elif task.key == DayContext.OTHER_WORK:
+    elif task.key == Message.OTHER_WORK:
       self.processOther(context.date, context.price)
 
 
@@ -455,8 +415,8 @@ class DividendGenerator:
       context.AddTask(
         Task(
           Priority(
-            DayContext.STAGE_BEFORE_TRADE, DayContext.PRIORITY_DIVIDEND),
-          DayContext.DIVIDEND_POINT, None,
+            Message.STAGE_BEFORE_TRADE, Message.PRIORITY_DIVIDEND),
+          Message.DIVIDEND_POINT, None,
           DividendGenerator.Event(self.DV.dividendMap[context.date])))
     
 
@@ -480,13 +440,13 @@ class DangerousGenerator:
 
       task = Task(
           Priority(
-            DayContext.STAGE_BEFORE_TRADE, DayContext.PRIORITY_COOLDOWN),
-          DayContext.DANGEROUS_POINT,
+            Message.STAGE_BEFORE_TRADE, Message.PRIORITY_COOLDOWN),
+          Message.DANGEROUS_POINT,
           None,
           DangerousGenerator.Event(self.DV.dangerousQuarterMap[context.date]))
       jump = set()
-      jump.add(DayContext.STAGE_SELL_TRADE)
-      jump.add(DayContext.STAGE_BUY_TRADE)
+      jump.add(Message.STAGE_SELL_TRADE)
+      jump.add(Message.STAGE_BUY_TRADE)
       task.jump = jump
       context.AddTask(task)
 
@@ -532,8 +492,8 @@ class StrategyDV:
     context.AddTask(
       Task(
         Priority(
-          DayContext.STAGE_STRATEGY, DayContext.PRIORITY_MAKEDECISION),
-        DayContext.MAKE_DECISION,
+          Message.STAGE_STRATEGY, Message.PRIORITY_MAKEDECISION),
+        Message.MAKE_DECISION,
         pd.Timestamp(self.endDate)))
 
   
@@ -541,12 +501,12 @@ class StrategyDV:
     pass
   
   def Process(self, context: DayContext, task):
-    if task.key == DayContext.DIVIDEND_ADJUST:
+    if task.key == Message.DIVIDEND_ADJUST:
       # 处理除权日时，需要调整买入卖出价格
       # if context.date in self.dividendAdjust:
       #   self.ProcessDividendAdjust(self.dividendAdjust[context.date])
       pass
-    elif task.key == DayContext.MAKE_DECISION:
+    elif task.key == Message.MAKE_DECISION:
       self.MakeDecision(context)
   
   def genEventDF(self):
@@ -864,15 +824,15 @@ class StrategyDV:
       context.AddTask(
         Task(
           Priority(
-            DayContext.STAGE_BUY_TRADE, DayContext.PRIORITY_SUGGEST_BUY),
-          DayContext.SUGGEST_BUY_EVENT, None, buySignal[1], sellSignal[1], buySignal[2]))
+            Message.STAGE_BUY_TRADE, Message.PRIORITY_SUGGEST_BUY),
+          Message.SUGGEST_BUY_EVENT, None, buySignal[1], sellSignal[1], buySignal[2]))
     
     if sellSignal[0]:
       context.AddTask(
         Task(
           Priority(
-            DayContext.STAGE_SELL_TRADE, DayContext.PRIORITY_SELL),
-          DayContext.SELL_EVENT, None, sellSignal[1], sellSignal[2]))
+            Message.STAGE_SELL_TRADE, Message.PRIORITY_SELL),
+          Message.SELL_EVENT, None, sellSignal[1], sellSignal[2]))
     
     if sellSignal[1] != INVALID_SELL_PRICE:
       notify = False
@@ -885,8 +845,8 @@ class StrategyDV:
       if notify:
         context.AddTask(
           Task(
-            Priority(DayContext.STAGE_SELL_TRADE, DayContext.PRIORITY_BEFORE_DIVIDEND),
-            DayContext.TARGET_SELL_PRICE_EVENT, None, sellSignal[1]))
+            Priority(Message.STAGE_SELL_TRADE, Message.PRIORITY_BEFORE_DIVIDEND),
+            Message.TARGET_SELL_PRICE_EVENT, None, sellSignal[1]))
   
   def BuySellSignal(self, date, price):
     buyPrice, sellPrice, where = self.MakeDecisionPrice2(date)
@@ -946,16 +906,20 @@ class TradeManager:
     self.dvMap = {}
     self.accountMap = {}
     self.context = {}  # DayContext()  # 代表全部的事件
+    self.contextManager = PumpManager(len(stocks), self.endDate)
+    # self.contextManager.AddStageCallback(Message.STAGE_STRATEGY, before, after)
     self.codes = []  # 单独存放所有的股票代码
     self.listen = {}  # ListenOne
-    self.fm = fm.FundManager() #资金管理
+    self.fm = fm.FundManager(len(stocks)) #资金管理
+    
+    
     
     for one in stocks:
       tmpBeginMoney = beginMoney
       self.codes.append(one['_id'])
       if 'money' in one:
         tmpBeginMoney = one['money']
-      A = Account(one['_id'], tmpBeginMoney, self.startDate, self.endDate)
+      A = Account(one['_id'], tmpBeginMoney, self.startDate, self.endDate, self.fm)
       DV = StrategyDV(one['_id'], self, self.startYear, self.startDate, self.endDate)
       self.dvMap[one['_id']] = DV
       self.accountMap[one['_id']] = A
@@ -968,37 +932,30 @@ class TradeManager:
         pass
         # print('### after {} ####'.format(stage))
 
-
-      context.pump.AddStage(DayContext.STAGE_STRATEGY, before, after)
-      context.pump.AddStage(DayContext.STAGE_BEFORE_TRADE, before, after)
-      context.pump.AddStage(DayContext.STAGE_SELL_TRADE, before, self.fm.AfterSellStage)
-      context.pump.AddStage(DayContext.STAGE_BUY_TRADE, before, after)
-      context.pump.AddStage(DayContext.STAGE_AFTER_TRADE, before, after)
-
       context.pump.AddHandler([
-        DayContext.DIVIDEND_POINT,
-        DayContext.DANGEROUS_POINT,
-        DayContext.BUY_EVENT,
-        DayContext.SELL_EVENT,
-        DayContext.TARGET_SELL_PRICE_EVENT,
-        DayContext.TARGET_SELL_PRICE_EVENT,
-        DayContext.SELL_ALWAYS_EVENT,
+        Message.DIVIDEND_POINT,
+        Message.DANGEROUS_POINT,
+        Message.BUY_EVENT,
+        Message.SELL_EVENT,
+        Message.TARGET_SELL_PRICE_EVENT,
+        Message.TARGET_SELL_PRICE_EVENT,
+        Message.SELL_ALWAYS_EVENT,
       ], A.Process)
       context.pump.AddHandler([
-        DayContext.DIVIDEND_ADJUST,
-        DayContext.MAKE_DECISION,
+        Message.DIVIDEND_ADJUST,
+        Message.MAKE_DECISION,
       ], DV.Process)
 
       context.pump.AddHandler([
-        DayContext.SUGGEST_BUY_EVENT,
+        Message.SUGGEST_BUY_EVENT,
       ], self.fm.Process)
       
       self.context[one['_id']] = context
       
       listen = ListenOne(one['_id'], one['name'], DV.strategyName)
       context.pump.AddHandler([
-        DayContext.BUY_EVENT,
-        DayContext.SELL_EVENT,
+        Message.BUY_EVENT,
+        Message.SELL_EVENT,
       ], listen.Process)
       self.listen[one['_id']] = listen
     
@@ -1238,7 +1195,9 @@ class TradeManager:
     context = self.context
     
     # 环境处理bofore
+    
     for one in self.codes:
+      self.contextManager.Before(self.context[one])
       self.dvMap[one].Before(self.context[one])
       self.accountMap[one].Before(context[one])
     
@@ -1405,11 +1364,11 @@ class ListenOne:
     self.lastSellPrice = None
   
   def Process(self, context: DayContext, task):
-    if task.key == DayContext.BUY_EVENT:
+    if task.key == Message.BUY_EVENT:
       diff = task.args[0] - context.price
       self.actionList.append((context.date, 1, context.price, diff, diff / context.price))
       self.lastBuyPrice = task.args[0]
-    elif task.key == DayContext.SELL_EVENT:
+    elif task.key == Message.SELL_EVENT:
       if task.args[0] != INVALID_SELL_PRICE:
         diff = task.args[0] - context.price
         percent = diff / context.price

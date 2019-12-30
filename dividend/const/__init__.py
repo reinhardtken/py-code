@@ -1,7 +1,78 @@
 # -*- coding: utf-8 -*-
 
 
-
+class Message:
+  # 除权日，吃需要分红和配股
+  DIVIDEND_POINT = 1
+  # 除权日，买卖预期价格需要调整
+  DIVIDEND_ADJUST = 2
+  # 季报已出，季报利润下跌需要卖出
+  DANGEROUS_POINT = 3
+  # 冷冻期，不交易
+  COOLDOWN_RANGE = 4
+  # buy
+  BUY_EVENT = 5
+  # sell
+  SELL_EVENT = 6
+  SELL_ALWAYS_EVENT = 7
+  # 新的卖出目标价格
+  TARGET_SELL_PRICE_EVENT = 8
+  # 出买卖价格
+  MAKE_DECISION = 9
+  # 统计
+  OTHER_WORK = 10
+  
+  SUGGEST_BUY_EVENT = 11
+  
+  
+  STAGE_STRATEGY_BEGIN = 1000
+  STAGE_STRATEGY_END = 1001
+  STAGE_BEFORE_TRADE_BEGIN = 1002
+  STAGE_BEFORE_TRADE_END = 1003
+  STAGE_SELL_TRADE_BEGIN = 1004
+  STAGE_SELL_TRADE_END = 1005
+  STAGE_BUY_TRADE_BEGIN = 1006
+  STAGE_BUY_TRADE_END = 1007
+  STAGE_AFTER_TRADE_BEGIN = 1008
+  STAGE_AFTER_TRADE_END = 1009
+  #######################################################
+  # priority##############################
+  # 其实策略和账户响应根本不会在一起，没必要设置先后
+  STAGE_STRATEGY = 1  # 策略在这里广播
+  STAGE_BEFORE_TRADE = 2  # 除权调整价格
+  STAGE_SELL_TRADE = 3  # 前交易阶段，所有的卖
+  STAGE_BUY_TRADE = 4  # 所有的买
+  STAGE_AFTER_TRADE = 5  # 所有交易后
+  STAGE_INVALID = 6
+  STAGE_VALUE = 100000  # 一个阶段可以包含的值
+  #######################################################
+  # 阶段
+  PRIORITY_STAGE_STRATEGY_BEGIN = 0
+  PRIORITY_STAGE_STRATEGY_END = STAGE_VALUE - 1
+  PRIORITY_STAGE_BEFORE_TRADE_BEGIN = 0
+  PRIORITY_STAGE_BEFORE_TRADE_END = STAGE_VALUE - 1
+  PRIORITY_STAGE_SELL_TRADE_BEGIN = 0
+  PRIORITY_STAGE_SELL_TRADE_END = STAGE_VALUE - 1
+  PRIORITY_STAGE_BUY_TRADE_BEGIN = 0
+  PRIORITY_STAGE_BUY_TRADE_END = STAGE_VALUE - 1
+  PRIORITY_STAGE_AFTER_TRADE_BEGIN = 0
+  PRIORITY_STAGE_AFTER_TRADE_END = STAGE_VALUE - 1
+  
+  # PRIORITY_JUMP = 1  # 跳过循环，这种必须有util字段
+  PRIORITY_DIVIDEND_ADJUST = 50  # 除权引发价格调整
+  
+  PRIORITY_MAKEDECISION = 900
+  
+  PRIORITY_BEFORE_DIVIDEND = 1100  # 发生在除权前
+  PRIORITY_DIVIDEND = 1200  # 除权
+  PRIORITY_COOLDOWN = 1300  # 扣非净利润-10%，卖出
+  ########################
+  # PRIORITY_STAGE_ONE = 1200  # 买卖前
+  # PRIORITY_TRADE_TAG = 1300  #
+  PRIORITY_SELL = 1400  #
+  PRIORITY_SUGGEST_BUY = 1500
+  PRIORITY_BUY = 1600  #
+  PRIORITY_AFTER_TRADE = 1700  #
 
 
 class DV2:

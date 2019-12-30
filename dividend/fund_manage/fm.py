@@ -28,8 +28,12 @@ SUGGEST_BUY_EVENT = 11
 
 
 class FundManager:
-  def __init__(self, ):
+  def __init__(self, stockSize):
     self.TOTALMONEY = 500000
+    self.stockSize = stockSize
+    self.counter = 0
+    self.totalMoney = 0
+    self.MaxMoney = 0
     
   def Process(self, context, task):
     if task.key == SUGGEST_BUY_EVENT:
@@ -44,4 +48,21 @@ class FundManager:
   
   def AfterSellStage(self, stage):
     #在这里做资金管理后再真正转发
+    pass
+  
+  
+  
+  def Alloc(self, code, money):
+    self.totalMoney -= money
+    if self.MaxMoney < abs(self.totalMoney) and self.totalMoney < 0:
+      self.MaxMoney = abs(self.totalMoney)
+      print('###FundManager: new Max Money {} ###'.format(self.MaxMoney))
+      
+    print('###FundManager: alloc {} {} {}###'.format(code, money, self.totalMoney))
+    pass
+  
+  
+  def Free(self, code, money):
+    self.totalMoney += money
+    print('###FundManager: free {} {} {}###'.format(code, money, self.totalMoney))
     pass

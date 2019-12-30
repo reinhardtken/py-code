@@ -14,7 +14,7 @@ import numpy as np
 
 import const
 import util
-
+Message = const.Message
 
 class Priority:
   def __init__(self, stage, priority):
@@ -46,15 +46,13 @@ class Pump:
   def __init__(self, context):
     self.context = context
     self.taskPriorityQueue = PriorityQueue()
-    self.stage = {}
+    
     self.handler = {}
     # self.currentStage = None
     # self.stagePriority = None
     pass
   
-  #添加阶段
-  def AddStage(self, stage, beforeCallback=None, afterCallback=None):
-    self.stage[stage] = (beforeCallback, afterCallback)
+  
     
   def __getStageCallback(self, stage):
     if stage in self.stage:
@@ -96,18 +94,7 @@ class Pump:
     jump = None
     while self.taskPriorityQueue.qsize() != 0:
       task = self.taskPriorityQueue.get_nowait()
-      if currentStage is None:
-        currentStage = task.priority.stage
-        before, _ = self.__getStageCallback(currentStage)
-        before(currentStage) if before is not None else None
-      elif currentStage != task.priority.stage:
-        # 当前阶段结束
-        _, after = self.__getStageCallback(currentStage)
-        after(currentStage) if after is not None else None
-        currentStage = task.priority.stage
-        before, _ = self.__getStageCallback(currentStage)
-        before(currentStage) if before is not None else None
-        #如果前面有task设置了jump，此轮循环所有的jump stage跳过
+      currentStage = task.priority.stage
         
           
       tmp.append(task)
@@ -132,6 +119,109 @@ class Pump:
       else:
         self.taskPriorityQueue.put_nowait(one)
 
+#########################################################
+#用于管理Pump，当所有的loop进出阶段的时候负责广播
+class PumpManager:
+  def __init__(self, loopSize, endDate):
+    self.loopSize = loopSize
+    self.endDate = endDate
+    self.stageCallback = {}
+    self.counter = {}
+    
+    
+  # 添加阶段
+  def AddStageCallback(self, stageValue, callback):
+    if stageValue in self.stage:
+      pass
+    else:
+      self.stageCallback[stageValue] = []
+    self.stage[stageValue].append(callback)
+    
+    
+  def Before(self, context):
+    # 永久有效
+    context.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_STRATEGY, Message.PRIORITY_STAGE_STRATEGY_BEGIN),
+        Message.STAGE_STRATEGY_BEGIN,
+        pd.Timestamp(self.endDate)))
+    self.counter[Message.STAGE_STRATEGY_BEGIN] = 0
+    context.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_STRATEGY, Message.PRIORITY_STAGE_STRATEGY_END),
+        Message.STAGE_STRATEGY_END,
+        pd.Timestamp(self.endDate)))
+    self.counter[Message.STAGE_STRATEGY_END] = 0
+    
+    context.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_BEFORE_TRADE, Message.PRIORITY_STAGE_BEFORE_TRADE_BEGIN),
+        Message.STAGE_BEFORE_TRADE_BEGIN,
+        pd.Timestamp(self.endDate)))
+    self.counter[Message.STAGE_BEFORE_TRADE_BEGIN] = 0
+    context.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_BEFORE_TRADE, Message.PRIORITY_STAGE_BEFORE_TRADE_END),
+        Message.STAGE_BEFORE_TRADE_END,
+        pd.Timestamp(self.endDate)))
+    self.counter[Message.STAGE_BEFORE_TRADE_END] = 0
+    context.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_SELL_TRADE, Message.PRIORITY_STAGE_SELL_TRADE_BEGIN),
+        Message.STAGE_SELL_TRADE_BEGIN,
+        pd.Timestamp(self.endDate)))
+    self.counter[Message.STAGE_SELL_TRADE_BEGIN] = 0
+    context.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_SELL_TRADE, Message.PRIORITY_STAGE_SELL_TRADE_END),
+        Message.STAGE_SELL_TRADE_END,
+        pd.Timestamp(self.endDate)))
+    self.counter[Message.STAGE_SELL_TRADE_END] = 0
+    context.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_BUY_TRADE, Message.PRIORITY_STAGE_BUY_TRADE_BEGIN),
+        Message.STAGE_BUY_TRADE_BEGIN,
+        pd.Timestamp(self.endDate)))
+    self.counter[Message.STAGE_BUY_TRADE_BEGIN] = 0
+    context.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_BUY_TRADE, Message.PRIORITY_STAGE_BUY_TRADE_END),
+        Message.STAGE_BUY_TRADE_END,
+        pd.Timestamp(self.endDate)))
+    self.counter[Message.STAGE_BUY_TRADE_END] = 0
+    context.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_AFTER_TRADE, Message.PRIORITY_STAGE_AFTER_TRADE_BEGIN),
+        Message.STAGE_AFTER_TRADE_BEGIN,
+        pd.Timestamp(self.endDate)))
+    self.counter[Message.STAGE_AFTER_TRADE_BEGIN] = 0
+    context.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_AFTER_TRADE, Message.PRIORITY_STAGE_AFTER_TRADE_END),
+        Message.STAGE_AFTER_TRADE_END,
+        pd.Timestamp(self.endDate)))
+    self.counter[Message.STAGE_AFTER_TRADE_END] = 0
+    
+    
+  def Process(self, context, task):
+    if task.key in self.counter:
+      self.counter[task.key] += 1
+      if self.counter[task.key] == self.loopSize:
+        self.counter[task.key] = 0
+        if task.key in self.stageCallback:
+          for one in self.stageCallback[task.key]:
+            one()
+          
 
 # 交易记录#################################################
 class TradeMark:
