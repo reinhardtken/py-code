@@ -26,6 +26,7 @@ from comm import Task
 
 from fund_manage import fm
 
+
 Message = const.Message
 
 # this project
@@ -111,16 +112,17 @@ class DayContext:
 #########################################################
 # 代表账号信息
 class Account:
-  def __init__(self, code, beginMoney, startDate, endDate, fm):
+  def __init__(self, code, beginMoney, startDate, endDate, FM):
     self.code = code
     self.status = HOLD_MONEY  # 持仓还是持币
     # self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
     self.startDate = startDate
     self.endDate = endDate
     self.BEGIN_MONEY = beginMoney
-    self.money = self.BEGIN_MONEY
-    self.fm = fm
-    self.oldMoney = self.money
+    self.money = fm.Money(self.BEGIN_MONEY, self.code)
+    # self.money = self.BEGIN_MONEY
+    self.fm = FM
+    self.oldMoney = self.money.value
     self.oldPrice = None  # 建仓价格，不包括追加买入除权买入，等于当初广播的买点价格triggerPrice
     self.number = 0  # 持仓的时候表示持仓数目(手)
     
@@ -188,12 +190,12 @@ class Account:
         if self.isHoldMoney():
           # 卖出的价格是在建仓的时候决定的
           self.sellPrice = sellPrice
-          self.oldMoney = self.money
+          self.oldMoney = self.money.value
           
-          number, money = self.buyInner(price, self.money)
+          number, money = self.buyInner(price, self.money.value)
           if number > 0:
             self.number = number
-            self.money = money
+            self.money.reset(money)
             self.status = HOLD_STOCK
             self.fm.Alloc(self.code, self.number*100*price)
             # 记录指数变化
@@ -209,20 +211,18 @@ class Account:
             self.tradeList.append(mark)
         
         elif self.isHoldStock():
-          number, money = self.buyInner(price, self.money)
+          number, money = self.buyInner(price, self.money.value)
           if number > 0:
             # 追加买入
             self.fm.Alloc(self.code, number*100*price)
             self.number += number
-            self.money = money
+            self.money.reset(money)
 
             
             mark = TradeMark()
             mark.reason('追加买入').date(date).dir(DIR_BUY).total(self.number * 100 * price).number(self.number).price(
-              price).where(where).extraInfo('剩余资金：{}'.format(self.money)).Dump()
+              price).where(where).extraInfo('剩余资金：{}'.format(self.money.value)).Dump()
             self.tradeList.append(mark)
-            # print("买入（追加买入）： 日期：{}, 触发价格：{}, 价格：{}, 追加数量：{}, 数量：{}, 剩余资金：{}, 原因：{}".format(date, triggerPrice, price,
-            #                                                                                nm[0], self.number, self.money, reason))
     except Exception as e:
       print(e)
   
@@ -234,8 +234,8 @@ class Account:
   
   def SellNoCodition(self, date, price, indexPrice, reason=''):
     if self.isHoldStock():
-      self.money = self.money + self.number * 100 * price
-      self.fm.Free(self.code, self.money)
+      self.money.reset(self.money + self.number * 100 * price)
+      self.fm.Free(self.code, self.money.value)
       winLoss = (self.money - self.oldMoney) / self.oldMoney
       self.status = HOLD_MONEY
       # 计算指数收益
@@ -252,9 +252,8 @@ class Account:
   def ProcessDividend(self, date, buyPrice, price, indexPrice, dividend):
     if self.isHoldStock():
       dividendMoney = self.number * 100 * dividend.dividendAfterTax
-      money = dividendMoney + self.money
       # 除权资金的买入不再在除权逻辑处理
-      self.money = money
+      self.money += dividendMoney
       print('发生除权 {} {} {}'.format(self.number, dividendMoney, self.money))
       # 如果有转送股，所有的价格，股数需要变动
       if dividend.gift > 0:
@@ -262,36 +261,6 @@ class Account:
         oldSellPrice = self.sellPrice
         print('发生转送股 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
 
-      
-        
-        # number = money // (price * 100)
-        # self.money = money - number * 100 * price
-        # self.number += number
-        
-        # 记录
-        # mark = TradeMark()
-        # mark.reason('除权买入').date(date).dir(DIR_BUY).total(0).number(0). \
-        #   price(price).extraInfo('分红金额：{}'.format(dividendMoney)).Dump()
-        # self.tradeList.append(mark)
-      # else:
-      #   oldMoney = self.money
-      #   dividendMoney = self.number * 100 * dividend.dividendAfterTax
-      #   self.money += dividendMoney
-      #
-      #   # 如果有转送股，所有的价格，股数需要变动
-      #   if dividend.gift > 0:
-      #     self.number *= 1 + dividend.gift
-      #     oldSellPrice = self.sellPrice
-      #     # 因为除权导致的价格变动，checkPoint处已经处理，并会广播，所以无需在此处理
-      #     # self.sellPrice /= 1 + dividend.gift
-      #     # price /= 1 + dividend.gift
-      #     print('发生转送股2 {} {} {}'.format(self.number, oldSellPrice, self.sellPrice))
-        
-        # 记录
-        # mark = TradeMark()
-        # mark.reason('除权不买入').date(date).dir(DIR_NONE).total(dividendMoney).number(0).price(0).extraInfo(
-        #   '分红金额：{}'.format(dividendMoney)).Dump()
-        # self.tradeList.append(mark)
   
   def processOther(self, date, price):
     # 最大净值
@@ -345,7 +314,7 @@ class Account:
       # 刷新最后持股日期
       self.holdStockDateVec[-1] = (self.holdStockDateVec[-1], current.date)
     else:
-      money = self.money
+      money = self.money.value
       
     self.profit = money - self.BEGIN_MONEY
     self.percent = self.profit / self.BEGIN_MONEY

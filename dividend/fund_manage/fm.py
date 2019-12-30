@@ -27,29 +27,112 @@ from comm import Task
 SUGGEST_BUY_EVENT = 11
 
 
+class Money:
+  def __init__(self, startMoney, code):
+    self.__money = startMoney
+    self.__code = code
+  
+  
+  @property
+  def value(self):
+    return self.__money
+  
+  def __add__(self, other):
+    if isinstance(other, (int, float)):
+      return self.__money+other
+    elif isinstance(other, Money):
+      return self.__money+other.__money
+    else:
+      return NotImplemented
+    
+  def __radd__(self, other):
+    return self.__add__(other)
+    
+    
+  def __iadd__(self, other):
+    if isinstance(other, (int, float)):
+      self.__money += other
+      return self
+    elif isinstance(other, Money):
+      self.__money += other.__money
+      return self
+    else:
+      return NotImplemented
+
+  def __sub__(self, other):
+    if isinstance(other, (int, float)):
+      return self.__money - other
+    elif isinstance(other, Money):
+      return self.__money - other.__money
+    else:
+      return NotImplemented
+
+  def __rsub__(self, other):
+    return self.__sub__(other)
+  
+  def __isub__(self, other):
+    if isinstance(other, (int, float)):
+      self.__money -= other
+      return self
+    elif isinstance(other, Money):
+      self.__money -= other.__money
+      return self
+    else:
+      return NotImplemented
+    
+  def __truediv__(self, other):
+    if isinstance(other, (int, float)):
+      return self.__money / other
+    elif isinstance(other, Money):
+      return self.__money / other.__money
+    else:
+      return NotImplemented
+    
+  def __gt__(self, other):
+    if isinstance(other, (int, float)):
+      return self.__money > other
+    elif isinstance(other, Money):
+      return self.__money > other.__money
+    else:
+      return NotImplemented
+  
+  def copy(self):
+    return Money(self.value, self.code)
+  
+  def reset(self, n):
+    if isinstance(n, (int, float)):
+      self.__money = n
+    elif isinstance(n, Money):
+      self.__money = n.__money
+    else:
+      raise NotImplemented
+    
+  
+  def __str__(self):
+    return self.__money.__str__()
+
+
+
 class FundManager:
   def __init__(self, stockSize):
     self.TOTALMONEY = 500000
     self.stockSize = stockSize
-    self.counter = 0
+    
     self.totalMoney = 0
     self.MaxMoney = 0
-    
+
+  
+  def AfterSellStage(self, stage):
+    #在这里做资金管理后再真正转发
+    pass
+
   def Process(self, context, task):
     if task.key == SUGGEST_BUY_EVENT:
-      #无条件转发
       context.AddTask(
         Task(
           Priority(
             4, 2500),
           5, None, *task.args))
-      #实际上缓存信号，等到stage完成后，进行资金管理再转发
-    
-  
-  def AfterSellStage(self, stage):
-    #在这里做资金管理后再真正转发
-    pass
-  
   
   
   def Alloc(self, code, money):
