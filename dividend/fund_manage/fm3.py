@@ -23,34 +23,37 @@ from comm import MaxRecord
 from comm import Priority
 from comm import Task
 
-
 SUGGEST_BUY_EVENT = 11
 
 from fund_manage import fm
-class Money(fm.Money):
+from fund_manage import fm2
+
+
+class Money(fm2.Money):
   def __init__(self, fm, startMoney, code):
-    self.__money = fm.AllocOnce(code, startMoney)
+    #像资金管理登记，告知本code希望的起始资金是多少
+    self.__money = fm.Register(code, startMoney)
     self.__fm = fm
     self.__code = code
     self.moveList = []
-    
-  #出金
+
+  # 出金
   def withdraw(self, first):
-    v = self.__money
-    self.__money -= v
-    if v > 0:
-      self.moveList.append(-v)
-    return v
-  
-  #入金
+    v1 = self.__fm.Alloc(self.__code, first)
+    v2 = self.__money
+    self.__money -= v2
+    if v1+v2 > 0:
+      self.moveList.append(-(v1+v2))
+    return v1+v2
+
+  # 入金
   def deposit(self, v):
-    self.__money += v
-    if v > 0:
-      self.moveList.append(v)
-    
-  # def reset(self, other):
-  #   super().reset(other)
-  #   self.payback(self.__money)
+    self.__fm.Free(self.__code, v)
+    self.moveList.append(v)
+
+  @property
+  def value(self):
+    return self.__fm.Query(self.__code)
 
 
 class FundManager:
@@ -60,7 +63,8 @@ class FundManager:
     
     self.totalMoney = self.TOTALMONEY
     self.MaxMoney = 0
-    self.stockMap = {}  # 记录每个code借入和归还的资金
+    self.stockMap = {
+    }  # 记录每个code借入和归还的资金
   
   def AfterSellStage(self, stage):
     # 在这里做资金管理后再真正转发
@@ -74,20 +78,23 @@ class FundManager:
             4, 2500),
           5, None, *task.args))
   
-  def Alloc(self, code, money):
-    self.totalMoney -= money
-    if self.MaxMoney < abs(self.totalMoney) and self.totalMoney < 0:
-      self.MaxMoney = abs(self.totalMoney)
-      print('###FundManager: new Max Money {} ###'.format(self.MaxMoney))
-    
-    print('###FundManager: alloc {} {} {}###'.format(code, money, self.totalMoney))
-    pass
+  def Alloc(self, code, first):
+    #first 表示是否是建仓，建仓考虑大宗资金分配，否则只考虑动用分红资金
+    n = self.stockMap[code]['now']
+    self.stockMap[code]['now'] = 0
+    return n
+  
+  
+  def Query(self, code):
+    n = self.stockMap[code]['now']
+    return n
   
   def Free(self, code, money):
-    self.totalMoney += money
-    print('###FundManager: free {} {} {}###'.format(code, money, self.totalMoney))
-    pass
+    self.stockMap[code]['now'] += money
+
   
-  
-  def AllocOnce(self, code, money):
-    return money
+  def Register(self, code, money):
+    self.stockMap[code] = {}
+    self.stockMap[code]['start'] = money
+    self.stockMap[code]['now'] = money
+    return 0

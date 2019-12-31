@@ -37,6 +37,7 @@ class Money:
   def value(self):
     return self.__money
   
+  
   def __add__(self, other):
     if isinstance(other, (int, float)):
       return self.__money+other
@@ -49,15 +50,15 @@ class Money:
     return self.__add__(other)
     
     
-  def __iadd__(self, other):
-    if isinstance(other, (int, float)):
-      self.__money += other
-      return self
-    elif isinstance(other, Money):
-      self.__money += other.__money
-      return self
-    else:
-      return NotImplemented
+  # def __iadd__(self, other):
+  #   if isinstance(other, (int, float)):
+  #     self.__money += other
+  #     return self
+  #   elif isinstance(other, Money):
+  #     self.__money += other.__money
+  #     return self
+  #   else:
+  #     return NotImplemented
 
   def __sub__(self, other):
     if isinstance(other, (int, float)):
@@ -70,15 +71,15 @@ class Money:
   def __rsub__(self, other):
     return self.__sub__(other)
   
-  def __isub__(self, other):
-    if isinstance(other, (int, float)):
-      self.__money -= other
-      return self
-    elif isinstance(other, Money):
-      self.__money -= other.__money
-      return self
-    else:
-      return NotImplemented
+  # def __isub__(self, other):
+  #   if isinstance(other, (int, float)):
+  #     self.__money -= other
+  #     return self
+  #   elif isinstance(other, Money):
+  #     self.__money -= other.__money
+  #     return self
+  #   else:
+  #     return NotImplemented
     
   def __truediv__(self, other):
     if isinstance(other, (int, float)):
@@ -96,16 +97,16 @@ class Money:
     else:
       return NotImplemented
   
-  def copy(self):
-    return Money(self.value, self.code)
+  # def copy(self):
+  #   return Money(self.value, self.code)
   
-  def reset(self, n):
-    if isinstance(n, (int, float)):
-      self.__money = n
-    elif isinstance(n, Money):
-      self.__money = n.__money
-    else:
-      raise NotImplemented
+  # def reset(self, n):
+  #   if isinstance(n, (int, float)):
+  #     self.__money = n
+  #   elif isinstance(n, Money):
+  #     self.__money = n.__money
+  #   else:
+  #     raise NotImplemented
     
   
   def __str__(self):

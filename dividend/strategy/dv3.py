@@ -25,7 +25,8 @@ from comm import Priority
 from comm import Task
 
 from fund_manage import fm
-
+from fund_manage import fm2
+from fund_manage import fm3
 
 Message = const.Message
 
@@ -119,10 +120,13 @@ class Account:
     self.startDate = startDate
     self.endDate = endDate
     self.BEGIN_MONEY = beginMoney
-    self.money = fm.Money(self.BEGIN_MONEY, self.code)
-    # self.money = self.BEGIN_MONEY
+    
+    
     self.fm = FM
-    self.oldMoney = self.money.value
+    # self.money = fm2.Money(self.BEGIN_MONEY, self.code)
+    self.money = fm3.Money(self.fm, self.BEGIN_MONEY, self.code)
+    
+    self.oldMoney = None
     self.oldPrice = None  # 建仓价格，不包括追加买入除权买入，等于当初广播的买点价格triggerPrice
     self.number = 0  # 持仓的时候表示持仓数目(手)
     
@@ -157,11 +161,24 @@ class Account:
   def isHoldMoney(self):
     return self.status == HOLD_MONEY
   
-  def buyInner(self, price, money):
+  
+  def tryBuy(self, price, alloc):
     # 计算多少钱买多少股，返回股数，钱数
-    number = money // (price * 100)
-    restMoney = money - number * 100 * price
-    return (number, restMoney)
+    #alloc 表示是否要向资金管理申请资金。建仓的时候需要，分红买股不需要
+    if alloc:
+      oldValue = self.money.withdraw(True)
+    else:
+      oldValue = self.money.withdraw(False)
+      
+    number = oldValue // (price * 100)
+    if number > 0:
+      restMoney = oldValue - number * 100 * price
+      return (number, restMoney, oldValue)
+    else:
+      #没有成功交易
+      if alloc:
+        self.money.deposit(oldValue)
+      return (0, 0, 0)
   
   def Before(self, context: DayContext):
     # 永久有效
@@ -190,14 +207,13 @@ class Account:
         if self.isHoldMoney():
           # 卖出的价格是在建仓的时候决定的
           self.sellPrice = sellPrice
-          self.oldMoney = self.money.value
           
-          number, money = self.buyInner(price, self.money.value)
+          number, money, self.oldMoney = self.tryBuy(price, True)
           if number > 0:
             self.number = number
-            self.money.reset(money)
+            self.money.deposit(money)
             self.status = HOLD_STOCK
-            self.fm.Alloc(self.code, self.number*100*price)
+            # self.fm.Alloc(self.code, self.number*100*price)
             # 记录指数变化
             self.indexBuyPoint = indexPrice
             # 交易次数+1
@@ -211,12 +227,12 @@ class Account:
             self.tradeList.append(mark)
         
         elif self.isHoldStock():
-          number, money = self.buyInner(price, self.money.value)
+          number, money, _ = self.tryBuy(price, False)
           if number > 0:
             # 追加买入
-            self.fm.Alloc(self.code, number*100*price)
+            # self.fm.Alloc(self.code, number*100*price)
             self.number += number
-            self.money.reset(money)
+            self.money.deposit(money)
 
             
             mark = TradeMark()
@@ -224,7 +240,7 @@ class Account:
               price).where(where).extraInfo('剩余资金：{}'.format(self.money.value)).Dump()
             self.tradeList.append(mark)
     except Exception as e:
-      print(e)
+      util.PrintException(e)
   
   def Sell(self, date, sellPrice, price, indexPrice, reason=''):
     if self.isHoldStock():
@@ -234,9 +250,9 @@ class Account:
   
   def SellNoCodition(self, date, price, indexPrice, reason=''):
     if self.isHoldStock():
-      self.money.reset(self.money + self.number * 100 * price)
-      self.fm.Free(self.code, self.money.value)
-      winLoss = (self.money - self.oldMoney) / self.oldMoney
+      tmp = self.number * 100 * price
+      self.money.deposit(tmp)
+      winLoss = (tmp - self.oldMoney) / self.oldMoney
       self.status = HOLD_MONEY
       # 计算指数收益
       self.indexProfit *= indexPrice / self.indexBuyPoint
@@ -253,7 +269,7 @@ class Account:
     if self.isHoldStock():
       dividendMoney = self.number * 100 * dividend.dividendAfterTax
       # 除权资金的买入不再在除权逻辑处理
-      self.money += dividendMoney
+      self.money.deposit(dividendMoney)
       print('发生除权 {} {} {}'.format(self.number, dividendMoney, self.money))
       # 如果有转送股，所有的价格，股数需要变动
       if dividend.gift > 0:
@@ -306,7 +322,10 @@ class Account:
   def CloseAccount(self, current):
     
     if self.isHoldStock():
-      money = self.money + self.number * 100 * current.price
+      totalMoney = self.money.value
+      money = self.number * 100 * current.price
+      self.money.deposit(money)
+      totalMoney += money
       # 计算指数收益
       self.indexProfit *= current.index / self.indexBuyPoint
       # 可能结束回测的时候，都没有创新高，导致最大回撤记录没有刷新，在这里刷新下
@@ -314,16 +333,16 @@ class Account:
       # 刷新最后持股日期
       self.holdStockDateVec[-1] = (self.holdStockDateVec[-1], current.date)
     else:
-      money = self.money.value
+      totalMoney = self.money.value
       
-    self.profit = money - self.BEGIN_MONEY
+    self.profit = totalMoney - self.BEGIN_MONEY
     self.percent = self.profit / self.BEGIN_MONEY
     
     one = TradeResult()
     one.code = self.code
     one.beginDate(pd.Timestamp(self.startDate)).endDate(current.date).status(self.status).beginMoney(
       self.BEGIN_MONEY). \
-      total(money).days(self.holdStockDate).hs300Profit(self.indexProfit - 1)
+      total(totalMoney).days(self.holdStockDate).hs300Profit(self.indexProfit - 1)
     one.Calc()
     self.result = one
     one.Dump()
@@ -879,7 +898,7 @@ class TradeManager:
     # self.contextManager.AddStageCallback(Message.STAGE_STRATEGY, before, after)
     self.codes = []  # 单独存放所有的股票代码
     self.listen = {}  # ListenOne
-    self.fm = fm.FundManager(len(stocks)) #资金管理
+    self.fm = fm3.FundManager(len(stocks)) #资金管理
     
     
     
@@ -1218,6 +1237,7 @@ class TradeManager:
       
       out['holdStockNatureDate'] = A.holdStockNatureDate
       out['holdStockDateVec'] = A.holdStockDateVec
+      out['moneyMoveVec'] = A.money.moveList
       util.SaveMongoDB(out, 'stock_backtest', self.collectionName)
   
   # def ExistCheckResult(self):
