@@ -48,6 +48,8 @@ class Pump:
     self.taskPriorityQueue = PriorityQueue()
     
     self.handler = {}
+    self.tmp = [] #临时存放task
+    self.jump = None
     # self.currentStage = None
     # self.stagePriority = None
     pass
@@ -88,36 +90,39 @@ class Pump:
   #     self.stagePriority.put_nowait(k)
   
   
-  def Loop(self):
-    tmp = []
-    currentStage = None
-    jump = None
+  def Loop(self, currentStage):
+    # tmp = []
+    if currentStage == Message.STAGE_STRATEGY:
+      for one in self.tmp:
+        if one.util is None:
+          # del self.extra[k]
+          pass
+        elif self.context.date >= one.util:
+          # del self.extra[k]
+          pass
+        else:
+          self.taskPriorityQueue.put_nowait(one)
+      self.tmp = []
+    
     while self.taskPriorityQueue.qsize() != 0:
       task = self.taskPriorityQueue.get_nowait()
-      currentStage = task.priority.stage
-        
+      if currentStage == task.priority.stage:
+        self.tmp.append(task)
+        if self.jump is not None and currentStage in self.jump:
+          continue
           
-      tmp.append(task)
-      if jump is not None and currentStage in jump:
-        continue
+        if task.key in self.handler:
+          for handler in self.handler[task.key]:
+            handler(self.context, task)
         
-      if task.key in self.handler:
-        for handler in self.handler[task.key]:
-          handler(self.context, task)
-        
-      if task.jump is not None:
-        jump = task.jump
-      
-    
-    for one in tmp:
-      if one.util is None:
-        # del self.extra[k]
-        pass
-      elif self.context.date >= one.util:
-        # del self.extra[k]
-        pass
+        if task.jump is not None:
+          self.jump = task.jump
       else:
-        self.taskPriorityQueue.put_nowait(one)
+        self.taskPriorityQueue.put_nowait(task)
+        break
+    
+    if currentStage == Message.STAGE_AFTER_TRADE:
+      self.jump = None
 
 #########################################################
 #用于管理Pump，当所有的loop进出阶段的时候负责广播
