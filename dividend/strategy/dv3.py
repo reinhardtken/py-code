@@ -176,8 +176,7 @@ class Account:
       return (number, restMoney, oldValue)
     else:
       #没有成功交易
-      if alloc:
-        self.money.deposit(oldValue)
+      self.money.deposit(oldValue)
       return (0, 0, 0)
   
   def Before(self, context: DayContext):
@@ -251,8 +250,9 @@ class Account:
   def SellNoCodition(self, date, price, indexPrice, reason=''):
     if self.isHoldStock():
       tmp = self.number * 100 * price
+      originMoney = self.money.value + tmp
       self.money.deposit(tmp)
-      winLoss = (tmp - self.oldMoney) / self.oldMoney
+      winLoss = (originMoney - self.oldMoney) / self.oldMoney
       self.status = HOLD_MONEY
       # 计算指数收益
       self.indexProfit *= indexPrice / self.indexBuyPoint
