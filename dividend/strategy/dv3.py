@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '2.0.0.8'
+VERSION = '2.0.0.9'
 
 DIR_BUY = const.DV2.DIR_BUY
 DIR_NONE = const.DV2.DIR_NONE
@@ -125,7 +125,7 @@ class Account:
     
     self.fm = FM
     # self.money = fm2.Money(self.BEGIN_MONEY, self.code)
-    self.money = fm3.Money(self.fm, self.BEGIN_MONEY, self.code)
+    self.money = fm4.Money(self.fm, self.BEGIN_MONEY, self.code)
     
     self.oldMoney = None
     self.oldPrice = None  # 建仓价格，不包括追加买入除权买入，等于当初广播的买点价格triggerPrice
@@ -902,8 +902,8 @@ class TradeManager:
     
     self.codes = []  # 单独存放所有的股票代码
     self.listen = {}  # ListenOne
-    self.fm = fm3.FundManager(len(stocks)) #资金管理
-    self.contextManager.AddStageCallback(Message.STAGE_FUND_MANAGE_END, self.fm.StageChange)
+    self.fm = fm4.FundManager(len(stocks)) #资金管理
+    self.contextManager.AddStageCallback(Message.STAGE_FUND_MANAGE, self.fm.StageChange)
     
     
     for one in stocks:
@@ -917,20 +917,20 @@ class TradeManager:
       self.accountMap[one['_id']] = A
       context = DayContext(one['_id'])
 
-      context.pump.AddHandler([
-        Message.STAGE_STRATEGY_BEGIN,
-        Message.STAGE_STRATEGY_END,
-        Message.STAGE_BEFORE_TRADE_BEGIN,
-        Message.STAGE_BEFORE_TRADE_END,
-        Message.STAGE_SELL_TRADE_BEGIN,
-        Message.STAGE_SELL_TRADE_END,
-        Message.STAGE_FUND_MANAGE_BEGIN,
-        Message.STAGE_FUND_MANAGE_END,
-        Message.STAGE_BUY_TRADE_BEGIN,
-        Message.STAGE_BUY_TRADE_END,
-        Message.STAGE_AFTER_TRADE_BEGIN,
-        Message.STAGE_AFTER_TRADE_END,
-      ], self.contextManager.Process)
+      # context.pump.AddHandler([
+      #   Message.STAGE_STRATEGY_BEGIN,
+      #   Message.STAGE_STRATEGY_END,
+      #   Message.STAGE_BEFORE_TRADE_BEGIN,
+      #   Message.STAGE_BEFORE_TRADE_END,
+      #   Message.STAGE_SELL_TRADE_BEGIN,
+      #   Message.STAGE_SELL_TRADE_END,
+      #   Message.STAGE_FUND_MANAGE_BEGIN,
+      #   Message.STAGE_FUND_MANAGE_END,
+      #   Message.STAGE_BUY_TRADE_BEGIN,
+      #   Message.STAGE_BUY_TRADE_END,
+      #   Message.STAGE_AFTER_TRADE_BEGIN,
+      #   Message.STAGE_AFTER_TRADE_END,
+      # ], self.contextManager.Process)
 
       context.pump.AddHandler([
         Message.DIVIDEND_POINT,
@@ -1185,7 +1185,9 @@ class TradeManager:
       for k, v in DV.generator.items():
         v(context)
     
+    self.contextManager.NotifyStageChange(stage, True)
     context.pump.Loop(stage)
+    self.contextManager.NotifyStageChange(stage, False)
   
   
   

@@ -144,88 +144,89 @@ class PumpManager:
     
     
   def Before(self, context):
+    pass
     # 永久有效
-    context.AddTask(
-      Task(
-        Priority(
-          Message.STAGE_STRATEGY, Message.PRIORITY_STAGE_STRATEGY_BEGIN),
-        Message.STAGE_STRATEGY_BEGIN,
-        pd.Timestamp(self.endDate)))
-    self.counter[Message.STAGE_STRATEGY_BEGIN] = 0
-    context.AddTask(
-      Task(
-        Priority(
-          Message.STAGE_STRATEGY, Message.PRIORITY_STAGE_STRATEGY_END),
-        Message.STAGE_STRATEGY_END,
-        pd.Timestamp(self.endDate)))
-    self.counter[Message.STAGE_STRATEGY_END] = 0
+    # context.AddTask(
+    #   Task(
+    #     Priority(
+    #       Message.STAGE_STRATEGY, Message.PRIORITY_STAGE_STRATEGY_BEGIN),
+    #     Message.STAGE_STRATEGY_BEGIN,
+    #     pd.Timestamp(self.endDate)))
+    # self.counter[Message.STAGE_STRATEGY_BEGIN] = 0
+    # context.AddTask(
+    #   Task(
+    #     Priority(
+    #       Message.STAGE_STRATEGY, Message.PRIORITY_STAGE_STRATEGY_END),
+    #     Message.STAGE_STRATEGY_END,
+    #     pd.Timestamp(self.endDate)))
+    # self.counter[Message.STAGE_STRATEGY_END] = 0
+    #
+    # context.AddTask(
+    #   Task(
+    #     Priority(
+    #       Message.STAGE_BEFORE_TRADE, Message.PRIORITY_STAGE_BEFORE_TRADE_BEGIN),
+    #     Message.STAGE_BEFORE_TRADE_BEGIN,
+    #     pd.Timestamp(self.endDate)))
+    # self.counter[Message.STAGE_BEFORE_TRADE_BEGIN] = 0
+    # context.AddTask(
+    #   Task(
+    #     Priority(
+    #       Message.STAGE_BEFORE_TRADE, Message.PRIORITY_STAGE_BEFORE_TRADE_END),
+    #     Message.STAGE_BEFORE_TRADE_END,
+    #     pd.Timestamp(self.endDate)))
+    # self.counter[Message.STAGE_BEFORE_TRADE_END] = 0
+    # context.AddTask(
+    #   Task(
+    #     Priority(
+    #       Message.STAGE_SELL_TRADE, Message.PRIORITY_STAGE_SELL_TRADE_BEGIN),
+    #     Message.STAGE_SELL_TRADE_BEGIN,
+    #     pd.Timestamp(self.endDate)))
+    # self.counter[Message.STAGE_SELL_TRADE_BEGIN] = 0
+    # context.AddTask(
+    #   Task(
+    #     Priority(
+    #       Message.STAGE_SELL_TRADE, Message.PRIORITY_STAGE_SELL_TRADE_END),
+    #     Message.STAGE_SELL_TRADE_END,
+    #     pd.Timestamp(self.endDate)))
+    # self.counter[Message.STAGE_SELL_TRADE_END] = 0
+    # context.AddTask(
+    #   Task(
+    #     Priority(
+    #       Message.STAGE_BUY_TRADE, Message.PRIORITY_STAGE_BUY_TRADE_BEGIN),
+    #     Message.STAGE_BUY_TRADE_BEGIN,
+    #     pd.Timestamp(self.endDate)))
+    # self.counter[Message.STAGE_BUY_TRADE_BEGIN] = 0
+    # context.AddTask(
+    #   Task(
+    #     Priority(
+    #       Message.STAGE_BUY_TRADE, Message.PRIORITY_STAGE_BUY_TRADE_END),
+    #     Message.STAGE_BUY_TRADE_END,
+    #     pd.Timestamp(self.endDate)))
+    # self.counter[Message.STAGE_BUY_TRADE_END] = 0
+    # context.AddTask(
+    #   Task(
+    #     Priority(
+    #       Message.STAGE_AFTER_TRADE, Message.PRIORITY_STAGE_AFTER_TRADE_BEGIN),
+    #     Message.STAGE_AFTER_TRADE_BEGIN,
+    #     pd.Timestamp(self.endDate)))
+    # self.counter[Message.STAGE_AFTER_TRADE_BEGIN] = 0
+    # context.AddTask(
+    #   Task(
+    #     Priority(
+    #       Message.STAGE_AFTER_TRADE, Message.PRIORITY_STAGE_AFTER_TRADE_END),
+    #     Message.STAGE_AFTER_TRADE_END,
+    #     pd.Timestamp(self.endDate)))
+    # self.counter[Message.STAGE_AFTER_TRADE_END] = 0
     
-    context.AddTask(
-      Task(
-        Priority(
-          Message.STAGE_BEFORE_TRADE, Message.PRIORITY_STAGE_BEFORE_TRADE_BEGIN),
-        Message.STAGE_BEFORE_TRADE_BEGIN,
-        pd.Timestamp(self.endDate)))
-    self.counter[Message.STAGE_BEFORE_TRADE_BEGIN] = 0
-    context.AddTask(
-      Task(
-        Priority(
-          Message.STAGE_BEFORE_TRADE, Message.PRIORITY_STAGE_BEFORE_TRADE_END),
-        Message.STAGE_BEFORE_TRADE_END,
-        pd.Timestamp(self.endDate)))
-    self.counter[Message.STAGE_BEFORE_TRADE_END] = 0
-    context.AddTask(
-      Task(
-        Priority(
-          Message.STAGE_SELL_TRADE, Message.PRIORITY_STAGE_SELL_TRADE_BEGIN),
-        Message.STAGE_SELL_TRADE_BEGIN,
-        pd.Timestamp(self.endDate)))
-    self.counter[Message.STAGE_SELL_TRADE_BEGIN] = 0
-    context.AddTask(
-      Task(
-        Priority(
-          Message.STAGE_SELL_TRADE, Message.PRIORITY_STAGE_SELL_TRADE_END),
-        Message.STAGE_SELL_TRADE_END,
-        pd.Timestamp(self.endDate)))
-    self.counter[Message.STAGE_SELL_TRADE_END] = 0
-    context.AddTask(
-      Task(
-        Priority(
-          Message.STAGE_BUY_TRADE, Message.PRIORITY_STAGE_BUY_TRADE_BEGIN),
-        Message.STAGE_BUY_TRADE_BEGIN,
-        pd.Timestamp(self.endDate)))
-    self.counter[Message.STAGE_BUY_TRADE_BEGIN] = 0
-    context.AddTask(
-      Task(
-        Priority(
-          Message.STAGE_BUY_TRADE, Message.PRIORITY_STAGE_BUY_TRADE_END),
-        Message.STAGE_BUY_TRADE_END,
-        pd.Timestamp(self.endDate)))
-    self.counter[Message.STAGE_BUY_TRADE_END] = 0
-    context.AddTask(
-      Task(
-        Priority(
-          Message.STAGE_AFTER_TRADE, Message.PRIORITY_STAGE_AFTER_TRADE_BEGIN),
-        Message.STAGE_AFTER_TRADE_BEGIN,
-        pd.Timestamp(self.endDate)))
-    self.counter[Message.STAGE_AFTER_TRADE_BEGIN] = 0
-    context.AddTask(
-      Task(
-        Priority(
-          Message.STAGE_AFTER_TRADE, Message.PRIORITY_STAGE_AFTER_TRADE_END),
-        Message.STAGE_AFTER_TRADE_END,
-        pd.Timestamp(self.endDate)))
-    self.counter[Message.STAGE_AFTER_TRADE_END] = 0
     
-    
-  def Process(self, context, task):
-    if task.key in self.counter:
-      self.counter[task.key] += 1
-      if self.counter[task.key] == self.loopSize:
-        self.counter[task.key] = 0
-        if task.key in self.stageCallback:
-          for one in self.stageCallback[task.key]:
-            one(task.key)
+  def NotifyStageChange(self, stage, before):
+    # if task.key in self.counter:
+    #   self.counter[task.key] += 1
+    #   if self.counter[task.key] == self.loopSize:
+    #     self.counter[task.key] = 0
+    if stage in self.stageCallback:
+      for one in self.stageCallback[stage]:
+        one(before)
           
 
 # 交易记录#################################################
