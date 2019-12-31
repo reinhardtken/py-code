@@ -131,11 +131,11 @@ class PumpManager:
     
   # 添加阶段
   def AddStageCallback(self, stageValue, callback):
-    if stageValue in self.stage:
+    if stageValue in self.stageCallback:
       pass
     else:
       self.stageCallback[stageValue] = []
-    self.stage[stageValue].append(callback)
+    self.stageCallback[stageValue].append(callback)
     
     
   def Before(self, context):
@@ -220,7 +220,7 @@ class PumpManager:
         self.counter[task.key] = 0
         if task.key in self.stageCallback:
           for one in self.stageCallback[task.key]:
-            one()
+            one(task.key)
           
 
 # 交易记录#################################################

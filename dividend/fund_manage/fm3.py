@@ -23,7 +23,8 @@ from comm import MaxRecord
 from comm import Priority
 from comm import Task
 
-SUGGEST_BUY_EVENT = 11
+Message = const.Message
+
 
 from fund_manage import fm
 from fund_manage import fm2
@@ -71,12 +72,12 @@ class FundManager:
     pass
   
   def Process(self, context, task):
-    if task.key == SUGGEST_BUY_EVENT:
+    if task.key == Message.SUGGEST_BUY_EVENT:
       context.AddTask(
         Task(
           Priority(
-            4, 2500),
-          5, None, *task.args))
+            Message.STAGE_BUY_TRADE, Message.PRIORITY_BUY),
+          Message.BUY_EVENT, None, *task.args))
   
   def Alloc(self, code, first):
     #first 表示是否是建仓，建仓考虑大宗资金分配，否则只考虑动用分红资金
@@ -98,3 +99,7 @@ class FundManager:
     self.stockMap[code]['start'] = money
     self.stockMap[code]['now'] = money
     return 0
+  
+  
+  def StageChange(self, stageEvent):
+    pass

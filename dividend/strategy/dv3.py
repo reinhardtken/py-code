@@ -27,6 +27,7 @@ from comm import Task
 from fund_manage import fm
 from fund_manage import fm2
 from fund_manage import fm3
+from fund_manage import fm4
 
 Message = const.Message
 
@@ -895,11 +896,11 @@ class TradeManager:
     self.accountMap = {}
     self.context = {}  # DayContext()  # 代表全部的事件
     self.contextManager = PumpManager(len(stocks), self.endDate)
-    # self.contextManager.AddStageCallback(Message.STAGE_STRATEGY, before, after)
+    
     self.codes = []  # 单独存放所有的股票代码
     self.listen = {}  # ListenOne
     self.fm = fm3.FundManager(len(stocks)) #资金管理
-    
+    self.contextManager.AddStageCallback(Message.STAGE_BUY_TRADE_BEGIN, self.fm.StageChange)
     
     
     for one in stocks:
@@ -912,13 +913,19 @@ class TradeManager:
       self.dvMap[one['_id']] = DV
       self.accountMap[one['_id']] = A
       context = DayContext(one['_id'])
-      
-      def before(stage):
-        pass
-        # print('### before {} ####'.format(stage))
-      def after(stage):
-        pass
-        # print('### after {} ####'.format(stage))
+
+      context.pump.AddHandler([
+        Message.STAGE_STRATEGY_BEGIN,
+        Message.STAGE_STRATEGY_END,
+        Message.STAGE_BEFORE_TRADE_BEGIN,
+        Message.STAGE_BEFORE_TRADE_END,
+        Message.STAGE_SELL_TRADE_BEGIN,
+        Message.STAGE_SELL_TRADE_END,
+        Message.STAGE_BUY_TRADE_BEGIN,
+        Message.STAGE_BUY_TRADE_END,
+        Message.STAGE_AFTER_TRADE_BEGIN,
+        Message.STAGE_AFTER_TRADE_END,
+      ], self.contextManager.Process)
 
       context.pump.AddHandler([
         Message.DIVIDEND_POINT,
