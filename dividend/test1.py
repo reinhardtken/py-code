@@ -72,6 +72,30 @@ def TestTwo(codes, beginMoney, args):
   return stock
 
 
+def TestThree(codes, beginMoney, args):
+  import strategy.dv3
+  
+  stock = strategy.dv3.TradeManager(codes, beginMoney)
+  stock.LoadQuotations()
+  stock.LoadIndexs()
+  stock.Merge()
+  stock.CheckPrepare()
+  
+  if 'saveprepare' in args and args['saveprepare']:
+    stock.StorePrepare2DB()
+  
+  if 'backtest' in args and args['backtest']:
+    stock.BackTest()
+    stock.CloseAccount()
+  
+  if 'save' in args and args['save']:
+    stock.StoreResult2DB()
+  
+  if 'check' in args and args['check']:
+    assert stock.CheckResult()
+  return stock
+
+
 
 def TestAll(codes, save, check):
   # # 皖通高速
@@ -259,7 +283,8 @@ if __name__ == '__main__':
   start = '2011-01-01T00:00:00Z'
   end = '2019-12-31T00:00:00Z'
   # hold.CalcHoldTime(stockList.VERSION_DV1.GOOD_LIST, 'dv2', start, end)
-  hold.CalcHoldTime(stockList.VERSION_DV2.TOP30_LIST, 'dv2', 'dv2_top30', start, end)
+  # hold.CalcHoldTime(stockList.VERSION_DV2.TOP30_LIST, 'dv2', 'dv2_top30', start, end)
+  # hold.CalcHoldTime(stockList.VERSION_DV2.BOTTOM30_LIST, 'all_dv2', 'dv2_bottom30', start, end)
   # client = MongoClient()
   # db = client["stock_backtest"]
   # collection = db["dv2"]
@@ -275,7 +300,7 @@ if __name__ == '__main__':
   #   codes = stockList.VERSION_DV1.GOOD_LIST[index:5]
   #   TestTwo(codes, 100000, {'check': True, 'backtest': True, 'save': False})
 
-  # TestTwo(stockList.VERSION_DV1.GOOD_LIST, 100000, {'check': False, 'backtest': True, 'save': True})
+  # TestTwo(stockList.VERSION_DV2.BOTTOM30_LIST, 100000, {'check': False, 'backtest': True, 'save': True})
   # codes = []
   # for one in stockList.VERSION_DV1.GOOD_LIST:
   #   codes.append(one['_id'])
@@ -373,11 +398,32 @@ if __name__ == '__main__':
   #     # {'name': '皖通高速', '_id': '600012', 'money': 52105},
   #   ],
   #   100000, {'save': False, 'check': False, 'backtest':True})
+
+  # TestThree(
+  #         # [
+  #         #   {'_id': '600025', 'name': '华能水电', },
+  #         #   {'_id': '601166', 'name': '兴业银行', 'money': 90205},
+  #         #   {'_id': '600900', 'name': '长江电力', 'money': 63905},
+  #         #  ],
+  #   [
+  #     {'name': '东风股份', '_id': '601515', 'money': 133705},
+  #     {'name': '皖通高速', '_id': '600012', 'money': 52105},
+  #     {'name': '重庆水务', '_id': '601158', 'money': 58105},
+  #     {'name': '浦发银行', '_id': '600000', 'money': 74505},
+  #     {'name': '万科', '_id': '000002', 'money': 72705},
+  #     {'name': '宝钢股份', '_id': '600019', 'money': 70705},
+  #     {'name': '中国石化', '_id': '600028', 'money': 74405},
+  #     {'name': '双汇发展', '_id': '000895', 'money': 211205},
+  #      {'name': '伟星股份', '_id': '002003', 'money': 80805},
+  #   ],
+  #   100000, {'save': False, 'check': True, 'backtest':True})
   
   # test
   # TestAll(CODE_AND_MONEY, True, False)
   #save
-  # TestTwo(VERIFY_CODES, 100000, {'check': False, 'backtest': True, 'save': True})
+  # TestThree(VERIFY_CODES, 100000, {'check': True, 'backtest': True, 'save': False})
+  TestThree(stockList.VERSION_DV2.TOP30_LIST, 100000, {'check': False, 'backtest': True, 'save': False})
+  TestThree(stockList.VERSION_DV2.BOTTOM30_LIST, 100000, {'check': False, 'backtest': True, 'save': False})
   # TestTwo(stockList.VERSION_DV1.BAD_LIST, 100000, {'check': False, 'backtest': True, 'save': True})
   # TestAll(VERIFY_CODES, True, False)
   #check

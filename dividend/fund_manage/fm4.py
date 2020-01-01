@@ -59,9 +59,13 @@ class Money(fm2.Money):
 
 #########################################################
 class FundManager:
-  def __init__(self, stockSize):
+  def __init__(self, stocks, tm, startDate, endDate):
     self.TOTALMONEY = 500000
-    self.stockSize = stockSize
+    self.stocks = stocks
+    self.stockSize = len(stocks)
+    self.startDate = startDate
+    self.endDate = endDate
+    self.TM = tm
     
     self.totalMoney = self.TOTALMONEY
     self.MaxMoney = 0
@@ -71,6 +75,16 @@ class FundManager:
     self.eventCache = {}
     self.moveList = []
     self.lastPayback = {} #个股计算盈亏的时候，需要最后一次归还的资金
+
+    
+    dfIndex = pd.date_range(start=startDate, end=endDate, freq='M')
+    self.df = pd.DataFrame(np.random.randn(len(dfIndex)), index=dfIndex, columns=['willDrop'])
+    self.df = pd.concat([self.df, pd.DataFrame(columns=[
+      'total', 'profit', 'percent', 'cash', 'marketValue', 'stockNumber'
+    ])], sort=False)
+    self.df.drop(['willDrop', ], axis=1, inplace=True)
+    
+    self.quarterDetail = {}
 
   
   def Process(self, context, task):
@@ -85,6 +99,19 @@ class FundManager:
       #     Priority(
       #       Message.STAGE_BUY_TRADE, Message.PRIORITY_BUY),
       #     Message.BUY_EVENT, None, *task.args))
+    elif task.key == Message.OTHER_WORK:
+      if context.date in self.df.index:
+        #计算月度终值
+        digest, detail = self.TM.CalcNowValue()
+        self.df.loc[context.date, 'cash'] = self.totalMoney
+        self.df.loc[context.date, 'marketValue'] = digest['marketValue']
+        self.df.loc[context.date, 'stockNumber'] = digest['stockNumber']
+        self.df.loc[context.date, 'total'] = self.totalMoney + digest['marketValue']
+        self.df.loc[context.date, 'profit'] = self.df.loc[context.date, 'total'] - self.TOTALMONEY
+        self.df.loc[context.date, 'percent'] = self.df.loc[context.date, 'profit'] / self.TOTALMONEY
+        self.quarterDetail[context.date] = detail
+        pass
+  
   
   def Alloc(self, code, first):
     # first 表示是否是建仓，建仓考虑大宗资金分配，否则只考虑动用分红资金

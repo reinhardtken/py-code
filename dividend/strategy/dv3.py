@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
 # https://www.cnblogs.com/nxf-rabbit75/p/11111825.html
 
-VERSION = '2.0.0.9'
+VERSION = '2.0.0.10'
 
 DIR_BUY = const.DV2.DIR_BUY
 DIR_NONE = const.DV2.DIR_NONE
@@ -319,6 +319,19 @@ class Account:
         diff = date - self.holdStockNatureDateLastCheck
         self.holdStockNatureDateLastCheck = date
         self.holdStockNatureDate += diff.days
+
+
+  def CalcNowValue(self, current):
+    out = {'status': self.status}
+    if self.isHoldStock():
+      cash = self.money.value
+      marketValue = self.number * 100 * current.price
+      totalMoney = marketValue + cash
+      out['total'] = totalMoney
+      out['cash'] = cash
+      out['marketValue'] = marketValue
+    return out
+  
   
   def CloseAccount(self, current):
     
@@ -905,7 +918,7 @@ class TradeManager:
     
     self.codes = []  # 单独存放所有的股票代码
     self.listen = {}  # ListenOne
-    self.fm = fm4.FundManager(len(stocks)) #资金管理
+    self.fm = fm4.FundManager(stocks, self, self.startDate, self.endDate) #资金管理
     self.contextManager.AddStageCallback(Message.STAGE_FUND_MANAGE, self.fm.StageChange)
     
     
@@ -951,6 +964,7 @@ class TradeManager:
 
       context.pump.AddHandler([
         Message.SUGGEST_BUY_EVENT,
+        Message.OTHER_WORK,
       ], self.fm.Process)
       
       self.context[one['_id']] = context
@@ -1225,6 +1239,22 @@ class TradeManager:
     for one in self.codes:
       self.accountMap[one].After(context[one])
   
+  
+  
+  def CalcNowValue(self):
+    out = []
+    digest = {'marketValue': 0, 'stockNumber': 0}
+    for one in self.stocks:
+      tmp = self.accountMap[one['_id']].CalcNowValue(self.context[one['_id']])
+      tmp['_id'] = one['_id']
+      tmp['name'] = one['name']
+      out.append(tmp)
+      if tmp['status'] == HOLD_STOCK:
+        digest['marketValue'] += tmp['marketValue']
+        digest['stockNumber'] += 1
+    return digest, out
+      
+  
   def CloseAccount(self):
     for one in self.codes:
       self.accountMap[one].CloseAccount(self.context[one])
@@ -1238,6 +1268,8 @@ class TradeManager:
     print('### FundManager  stockMap {}'.format(len(self.fm.stockMap)))
     for k, v in self.fm.stockMap.items():
       print('### {}, {}'.format(k, v))
+      
+    self.fm.df.to_excel("c:/workspace/tmp/20200101_bottom35.xlsx")
   
   def StorePrepare2DB(self):
     for one in self.stocks:
