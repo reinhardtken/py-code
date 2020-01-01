@@ -49,8 +49,8 @@ class Money(fm2.Money):
     return v1 + v2
   
   # 入金
-  def deposit(self, v):
-    self.__fm.Free(self.__code, v)
+  def deposit(self, v, paybackAll):
+    self.__fm.Free(self.__code, v, paybackAll)
     self.moveList.append(v)
   
   @property
@@ -66,8 +66,11 @@ class FundManager:
     self.totalMoney = self.TOTALMONEY
     self.MaxMoney = 0
     self.stockMap = {
-    }  # 记录每个code借入和归还的资金
+    }  # 记录每个code借出的资金
+    self.stockSet = set()
     self.eventCache = {}
+    self.moveList = []
+    self.lastPayback = {} #个股计算盈亏的时候，需要最后一次归还的资金
 
   
   def Process(self, context, task):
@@ -85,26 +88,75 @@ class FundManager:
   
   def Alloc(self, code, first):
     # first 表示是否是建仓，建仓考虑大宗资金分配，否则只考虑动用分红资金
-    n = self.stockMap[code]['now']
-    self.stockMap[code]['now'] = 0
+    n = 0
+    if code in self.stockMap:
+      n = self.stockMap[code]['total']
+      self.stockMap[code]['old'] = n
+      self.stockMap[code]['total'] = 0
+    
+    if n > 0:
+      info = '### FundManager alloc {} {:.2f}'.format(code, n)
+      self.moveList.append(info)
+      print(info)
     return n
   
   def Query(self, code):
-    n = self.stockMap[code]['now']
+    n = 0
+    if code in self.stockMap:
+      n = self.stockMap[code]['change']
+    elif code in self.lastPayback:
+      n = self.lastPayback[code]
     return n
   
-  def Free(self, code, money):
-    self.stockMap[code]['now'] += money
+  def Free(self, code, money, paybackAll):
+    self.totalMoney += money
+    self.stockMap[code]['change'] += money
+    info = '### FundManager free {} {:.2f}, {:.2f}'.format(code, money, self.totalMoney)
+    self.moveList.append(info)
+    print(info)
+    if paybackAll:
+      self.lastPayback[code] = self.stockMap[code]['change']
+      winLoss = self.stockMap[code]['change'] - self.stockMap[code]['old']
+      info = '### FundManager free winlose {} {:.2f}, {:.2f}, {:.2f}'.format(code, winLoss, self.stockMap[code]['change'], self.stockMap[code]['old'])
+      self.moveList.append(info)
+      print(info)
+      self.stockMap.pop(code)
+    
   
   def Register(self, code, money):
-    self.stockMap[code] = {}
-    self.stockMap[code]['start'] = money
-    self.stockMap[code]['now'] = money
+    # self.stockMap[code] = {}
+    # self.stockMap[code]['start'] = money
+    # self.stockMap[code]['now'] = money
     return 0
   
   
   def StageChange(self, before):
     if not before:
+      if len(self.stockMap) >= 10:
+        #最多持有十只股票
+        self.eventCache = {}
+        return
+      left = 10 - len(self.stockMap)
+      #看看可以买入的数目和发出买入信号的数目中哪个小
+      small = left if left < len(self.eventCache) else len(self.eventCache)
+      share = 0
+      #计算每份可以给予支持的资金数目
+      if small > 0:
+        share = self.totalMoney / left
+        
+      counter = 0
       for k, v in self.eventCache.items():
-        k.AddTask(v)
+        #如果买入信号的股票没有持仓
+        if k.code not in self.stockMap:
+          print('### FundManager alloc all {} {}'.format(k.code, share))
+          self.stockMap[k.code] = {}
+          self.stockMap[k.code]['total'] = share
+          self.stockMap[k.code]['change'] = 0
+          self.stockMap[k.code]['date'] = k.date
+          self.stockSet.add(k.code)
+          self.totalMoney -= share
+          counter += 1
+          k.AddTask(v)
+          if counter == small:
+            break
       self.eventCache = {}

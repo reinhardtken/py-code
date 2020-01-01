@@ -48,7 +48,7 @@ class Money(fm2.Money):
     return v1+v2
 
   # 入金
-  def deposit(self, v):
+  def deposit(self, v, noUsed):
     self.__fm.Free(self.__code, v)
     self.moveList.append(v)
 

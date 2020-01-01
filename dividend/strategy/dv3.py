@@ -177,7 +177,7 @@ class Account:
       return (number, restMoney, oldValue)
     else:
       #没有成功交易
-      self.money.deposit(oldValue)
+      self.money.deposit(oldValue, alloc)
       return (0, 0, 0)
   
   def Before(self, context: DayContext):
@@ -211,7 +211,7 @@ class Account:
           number, money, self.oldMoney = self.tryBuy(price, True)
           if number > 0:
             self.number = number
-            self.money.deposit(money)
+            self.money.deposit(money, False)
             self.status = HOLD_STOCK
             # self.fm.Alloc(self.code, self.number*100*price)
             # 记录指数变化
@@ -232,7 +232,7 @@ class Account:
             # 追加买入
             # self.fm.Alloc(self.code, number*100*price)
             self.number += number
-            self.money.deposit(money)
+            self.money.deposit(money, False)
 
             
             mark = TradeMark()
@@ -252,7 +252,7 @@ class Account:
     if self.isHoldStock():
       tmp = self.number * 100 * price
       originMoney = self.money.value + tmp
-      self.money.deposit(tmp)
+      self.money.deposit(tmp, True)
       winLoss = (originMoney - self.oldMoney) / self.oldMoney
       self.status = HOLD_MONEY
       # 计算指数收益
@@ -270,7 +270,7 @@ class Account:
     if self.isHoldStock():
       dividendMoney = self.number * 100 * dividend.dividendAfterTax
       # 除权资金的买入不再在除权逻辑处理
-      self.money.deposit(dividendMoney)
+      self.money.deposit(dividendMoney, False)
       print('发生除权 {} {} {}'.format(self.number, dividendMoney, self.money))
       # 如果有转送股，所有的价格，股数需要变动
       if dividend.gift > 0:
@@ -325,7 +325,7 @@ class Account:
     if self.isHoldStock():
       totalMoney = self.money.value
       money = self.number * 100 * current.price
-      self.money.deposit(money)
+      self.money.deposit(money, True)
       totalMoney += money
       # 计算指数收益
       self.indexProfit *= current.index / self.indexBuyPoint
@@ -335,6 +335,7 @@ class Account:
       self.holdStockDateVec[-1] = (self.holdStockDateVec[-1], current.date)
     else:
       totalMoney = self.money.value
+
       
     self.profit = totalMoney - self.BEGIN_MONEY
     self.percent = self.profit / self.BEGIN_MONEY
@@ -438,6 +439,7 @@ class DangerousGenerator:
           DangerousGenerator.Event(self.DV.dangerousQuarterMap[context.date]))
       jump = set()
       jump.add(Message.STAGE_SELL_TRADE)
+      jump.add(Message.STAGE_FUND_MANAGE)
       jump.add(Message.STAGE_BUY_TRADE)
       task.jump = jump
       context.AddTask(task)
@@ -818,6 +820,7 @@ class StrategyDV:
           Priority(
             Message.STAGE_FUND_MANAGE, Message.PRIORITY_SUGGEST_BUY),
           Message.SUGGEST_BUY_EVENT, None, buySignal[1], sellSignal[1], buySignal[2]))
+        
     
     if sellSignal[0]:
       context.AddTask(
@@ -1226,6 +1229,15 @@ class TradeManager:
     for one in self.codes:
       self.accountMap[one].CloseAccount(self.context[one])
       self.listen[one].Dump()
+      
+    print('### FundManager  total {} {:0.2f}'.format(self.fm.TOTALMONEY, self.fm.totalMoney))
+    print('### FundManager  trade stock {}'.format(self.fm.stockSet))
+    for one in self.fm.moveList:
+      print(one)
+
+    print('### FundManager  stockMap {}'.format(len(self.fm.stockMap)))
+    for k, v in self.fm.stockMap.items():
+      print('### {}, {}'.format(k, v))
   
   def StorePrepare2DB(self):
     for one in self.stocks:
