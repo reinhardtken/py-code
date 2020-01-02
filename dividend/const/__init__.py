@@ -24,6 +24,8 @@ class Message:
   
   SUGGEST_BUY_EVENT = 11
   
+  NEW_DAY = 12
+  
   
   # STAGE_STRATEGY_BEGIN = 1000
   # STAGE_STRATEGY_END = 1001
@@ -64,6 +66,7 @@ class Message:
   # PRIORITY_STAGE_AFTER_TRADE_END = STAGE_VALUE - 1
   
   # PRIORITY_JUMP = 1  # 跳过循环，这种必须有util字段
+  PRIORITY_NEW_DAY = 1
   PRIORITY_DIVIDEND_ADJUST = 50  # 除权引发价格调整
   
   PRIORITY_MAKEDECISION = 900

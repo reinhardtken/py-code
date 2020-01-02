@@ -8,7 +8,7 @@ from dateutil import parser
 import pandas as pd
 from pymongo import MongoClient
 import numpy as np
-
+import tushare as ts
 
 import const
 import util
@@ -282,6 +282,8 @@ if __name__ == '__main__':
 
   start = '2011-01-01T00:00:00Z'
   end = '2019-12-31T00:00:00Z'
+  # df = ts.get_deposit_rate()
+  # print(df)
   # hold.CalcHoldTime(stockList.VERSION_DV1.GOOD_LIST, 'dv2', start, end)
   # hold.CalcHoldTime(stockList.VERSION_DV2.TOP30_LIST, 'dv2', 'dv2_top30', start, end)
   # hold.CalcHoldTime(stockList.VERSION_DV2.BOTTOM30_LIST, 'all_dv2', 'dv2_bottom30', start, end)
@@ -422,8 +424,28 @@ if __name__ == '__main__':
   # TestAll(CODE_AND_MONEY, True, False)
   #save
   # TestThree(VERIFY_CODES, 100000, {'check': True, 'backtest': True, 'save': False})
-  TestThree(stockList.VERSION_DV2.TOP30_LIST, 100000, {'check': False, 'backtest': True, 'save': False})
-  TestThree(stockList.VERSION_DV2.BOTTOM30_LIST, 100000, {'check': False, 'backtest': True, 'save': False})
+  # TestThree(stockList.VERSION_DV2.TOP30_LIST, 100000, {'check': False, 'backtest': True, 'save': False})
+  # TestThree(stockList.VERSION_DV2.BOTTOM30_LIST, 100000, {'check': False, 'backtest': True, 'save': False})
+  
+  tmp = stockList.VERSION_DV2.TOP30_LIST
+  tmp.extend(stockList.VERSION_DV2.BOTTOM30_LIST)
+  TestThree(tmp, 100000, {'check': False, 'backtest': True, 'save': False})
+  
+  
+  
+  # out = []
+  # client = MongoClient()
+  # db = client["stock_backtest"]
+  # collection = db["all_dv2"]
+  # cursor = collection.find({'tradeCounter': {'$gte': 1}})
+  # # cursor = collection.find()
+  # for one in cursor:
+  #   print(one)
+  #   out.append({'_id': one['_id'], 'name': one['name']})
+  #
+  #
+  # TestThree(out, 100000, {'check': False, 'backtest': True, 'save': False})
+  
   # TestTwo(stockList.VERSION_DV1.BAD_LIST, 100000, {'check': False, 'backtest': True, 'save': True})
   # TestAll(VERIFY_CODES, True, False)
   #check

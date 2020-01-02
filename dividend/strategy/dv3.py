@@ -4,6 +4,7 @@
 from datetime import datetime
 from datetime import timedelta
 from dateutil import parser
+import heapq
 import traceback
 from queue import PriorityQueue
 
@@ -28,6 +29,8 @@ from fund_manage import fm
 from fund_manage import fm2
 from fund_manage import fm3
 from fund_manage import fm4
+from fund_manage import fm5
+from fund_manage import fm6
 
 Message = const.Message
 
@@ -109,6 +112,12 @@ class DayContext:
     if len(self.priceVec) > 5:
       self.priceVec = self.priceVec[1:]
     self.priceVec.append((date, self.price, self.index))
+
+    self.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_STRATEGY, Message.PRIORITY_NEW_DAY),
+        Message.NEW_DAY))
 
 
 #########################################################
@@ -918,7 +927,7 @@ class TradeManager:
     
     self.codes = []  # 单独存放所有的股票代码
     self.listen = {}  # ListenOne
-    self.fm = fm4.FundManager(stocks, self, self.startDate, self.endDate) #资金管理
+    self.fm = fm6.FundManager(stocks, self, self.startDate, self.endDate) #资金管理
     self.contextManager.AddStageCallback(Message.STAGE_FUND_MANAGE, self.fm.StageChange)
     
     
@@ -963,6 +972,7 @@ class TradeManager:
       ], DV.Process)
 
       context.pump.AddHandler([
+        Message.NEW_DAY,
         Message.SUGGEST_BUY_EVENT,
         Message.OTHER_WORK,
       ], self.fm.Process)
@@ -1262,6 +1272,18 @@ class TradeManager:
       
     print('### FundManager  total {} {:0.2f}'.format(self.fm.TOTALMONEY, self.fm.totalMoney))
     print('### FundManager  trade stock {}'.format(self.fm.stockSet))
+
+    win = heapq.nlargest(len(self.codes), self.fm.moveList)
+    loss = heapq.nsmallest(len(self.codes), self.fm.moveList)
+    print('### win movelist ###')
+    for one in win:
+      print(one)
+
+    print('### loss movelist ###')
+    for one in loss:
+      print(one)
+      
+    print('### all movelist ###')
     for one in self.fm.moveList:
       print(one)
 
@@ -1269,7 +1291,8 @@ class TradeManager:
     for k, v in self.fm.stockMap.items():
       print('### {}, {}'.format(k, v))
       
-    self.fm.df.to_excel("c:/workspace/tmp/20200101_bottom35.xlsx")
+    self.fm.df.to_excel("c:/workspace/tmp/20200102_all60.xlsx")
+  
   
   def StorePrepare2DB(self):
     for one in self.stocks:
