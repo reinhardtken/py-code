@@ -456,6 +456,7 @@ class Retracement:
   
   def updateHistory(self, one):
     self.__history = one
+    
 
 
 # 记录新高
@@ -466,3 +467,57 @@ class MaxRecord:
   
   def ToDict(self, head):
     return {head + ':value': self.value, head + ':date': self.date}
+  
+
+
+#最大值与最大回撤
+class MaxAndRetracement:
+  def __init__(self, v, date):
+    self.M = MaxRecord()
+    self.M.value = v
+    self.M.date = date
+    # 回撤相关
+    self.R = Retracement()
+  
+  def Calc(self, newV, date):
+    # 新高
+    if newV > self.M.value:
+      self.M.value = newV
+      self.M.date = date
+      old = self.R.Record(date)
+      print('新高, 日期：{}, 净值：{}, 最近最大不创新高天数：{}'.format(date, self.M.value, old))
+
+
+    # 回撤创新低
+    if (self.M.value - newV) / self.M.value > self.R.current.value:
+      self.R.current.value = (self.M.value - newV) / self.M.value
+      if self.R.maxRetracementDaysLastCheck is None:
+        self.R.maxRetracementDaysLastCheck = date
+        self.R.current.begin = date
+        # self.R.current.beginPrice = price
+      else:
+        diff = date - self.R.maxRetracementDaysLastCheck
+        self.R.maxRetracementDaysLastCheck = date
+        self.R.current.days += diff.days
+      print('最大回撤, 日期：{}, 回撤：{}, 持续：{}'.format(date, self.R.current.value, self.R.current.days))
+#########################################################
+# 代表一次交易
+class Move:
+  def __init__(self, code, name, date, days, change, old, winLoss):
+    self.code = code
+    self.name = name
+    self.date = date
+    self.old = old
+    self.change = change
+    self.winLoss = winLoss
+    self.days = int(days)
+  
+  def __str__(self):
+    info = '### FundManager:Move {} {}, {} {}天, {:.2f}, {:.2f}, {:.2f}'.format(self.code, self.name,
+                                                                               self.date, self.days, self.winLoss,
+                                                                               self.old,
+                                                                               self.change)
+    return info
+  
+  def __lt__(self, other):
+    return self.winLoss < other.winLoss

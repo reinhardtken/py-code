@@ -408,43 +408,57 @@ if __name__ == '__main__':
   #         #   {'_id': '600900', 'name': '长江电力', 'money': 63905},
   #         #  ],
   #   [
-  #     {'name': '东风股份', '_id': '601515', 'money': 133705},
+  #     # {'name': '东风股份', '_id': '601515', 'money': 133705},
   #     {'name': '皖通高速', '_id': '600012', 'money': 52105},
   #     {'name': '重庆水务', '_id': '601158', 'money': 58105},
-  #     {'name': '浦发银行', '_id': '600000', 'money': 74505},
-  #     {'name': '万科', '_id': '000002', 'money': 72705},
-  #     {'name': '宝钢股份', '_id': '600019', 'money': 70705},
-  #     {'name': '中国石化', '_id': '600028', 'money': 74405},
-  #     {'name': '双汇发展', '_id': '000895', 'money': 211205},
-  #      {'name': '伟星股份', '_id': '002003', 'money': 80805},
+  #     # {'name': '浦发银行', '_id': '600000', 'money': 74505},
+  #     # {'name': '万科', '_id': '000002', 'money': 72705},
+  #     # {'name': '宝钢股份', '_id': '600019', 'money': 70705},
+  #     # {'name': '中国石化', '_id': '600028', 'money': 74405},
+  #     # {'name': '双汇发展', '_id': '000895', 'money': 211205},
+  #     #  {'name': '伟星股份', '_id': '002003', 'money': 80805},
   #   ],
-  #   100000, {'save': False, 'check': True, 'backtest':True})
+  #   100000, {'save': False, 'check': False, 'backtest':True})
   
   # test
   # TestAll(CODE_AND_MONEY, True, False)
   #save
   # TestThree(VERIFY_CODES, 100000, {'check': True, 'backtest': True, 'save': False})
-  # TestThree(stockList.VERSION_DV2.TOP30_LIST, 100000, {'check': False, 'backtest': True, 'save': False})
+  # TestThree(stockList.VERSION_DV2.TOP30_LIST, 100000, {'check': True, 'backtest': True, 'save': False})
   # TestThree(stockList.VERSION_DV2.BOTTOM30_LIST, 100000, {'check': False, 'backtest': True, 'save': False})
   
-  tmp = stockList.VERSION_DV2.TOP30_LIST
-  tmp.extend(stockList.VERSION_DV2.BOTTOM30_LIST)
-  TestThree(tmp, 100000, {'check': False, 'backtest': True, 'save': False})
+  # tmp = stockList.VERSION_DV2.TOP30_LIST
+  # tmp.extend(stockList.VERSION_DV2.BOTTOM30_LIST)
+  # TestThree(tmp, 100000, {'check': False, 'backtest': True, 'save': False})
   
   
   
-  # out = []
-  # client = MongoClient()
-  # db = client["stock_backtest"]
-  # collection = db["all_dv2"]
+  out = []
+  client = MongoClient()
+  db = client["stock_backtest"]
+  collection = db["all_dv3"]
   # cursor = collection.find({'tradeCounter': {'$gte': 1}})
-  # # cursor = collection.find()
-  # for one in cursor:
+  cursor = collection.find()
+  # cursor = collection.find()
+  for one in cursor:
+    # print(one)
+    out.append({'_id': one['_id'], 'name': one['name'], 'percent': one['percent'], 'holdStockNatureDate': one['holdStockNatureDate'],
+                'tradeCounter': one['tradeCounter']})
+
+  hs300 = util.QueryHS300All()
+  out2 = []
+  print('### all size {}'.format(len(out)))
+  for one in out:
+    if one['_id']  in hs300.index:
+      # print(one)
+      out2.append(one)
+      
+  
+  # out3 = sorted(out2, key= lambda x : x['percent'], reverse=True)
+  # print('### not in size {}'.format(len(out3)))
+  # for one in out3:
   #   print(one)
-  #   out.append({'_id': one['_id'], 'name': one['name']})
-  #
-  #
-  # TestThree(out, 100000, {'check': False, 'backtest': True, 'save': False})
+  TestThree(out2, 100000, {'check': False, 'backtest': True, 'save': False})
   
   # TestTwo(stockList.VERSION_DV1.BAD_LIST, 100000, {'check': False, 'backtest': True, 'save': True})
   # TestAll(VERIFY_CODES, True, False)

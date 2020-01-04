@@ -22,32 +22,12 @@ from comm import Retracement
 from comm import MaxRecord
 from comm import Priority
 from comm import Task
+from comm import Move
+from comm import MaxAndRetracement
 
 Message = const.Message
 
-#代表一次交易
-class Move:
-  def __init__(self, code, name, date, days, change, old, winLoss):
-    self.code = code
-    self.name = name
-    self.date = date
-    self.old = old
-    self.change = change
-    self.winLoss = winLoss
-    self.days = int(days)
-    
-    
-  
-  def __str__(self):
-    info = '### FundManager:Move {} {}, {} {}天, {:.2f}, {:.2f}, {:.2f}'.format(self.code, self.name,
-                                                                          self.date, self.days, self.winLoss,
-                                                                           self.old,
-                                                                           self.change)
-    return info
 
-
-  def __lt__(self, other):
-    return self.winLoss < other.winLoss
 #########################################################
 # 每份5万元，不限制份数。如果单前份数用光，则申请新份数
 # 1 对于总计赚钱的股票，总是追加这个股曾经归还的最大额资金（马太效应）
@@ -57,30 +37,30 @@ class Move:
 #在对比了fm5和fm6的move数据后，fm6显然收益的合理性比fm5高很多
 #fm5：
 ### win movelist ###
-### FundManager:Move 000651 2016-05-03 00:00:00, 2275470.00, 1512185.86, 3787655.86
-### FundManager:Move 600741 2013-05-02 00:00:00, 404451.60, 491102.82, 895554.42
-### FundManager:Move 601009 2018-05-02 00:00:00, 400100.01, 3559283.58, 3959383.59
-### FundManager:Move 600900 2017-05-02 00:00:00, 298241.10, 685342.82, 983583.92
-### FundManager:Move 000333 2014-04-30 00:00:00, 238112.00, 388435.57, 626547.57
+### FundManager:Move 000651 格力电器, 2016-05-03 00:00:00 729天, 2275470.00, 1512185.86, 3787655.86
+### FundManager:Move 600741 华域汽车, 2013-05-02 00:00:00 580天, 404451.60, 491102.82, 895554.42
+### FundManager:Move 601009 南京银行, 2018-05-02 00:00:00 597天, 400100.01, 3559283.58, 3959383.59
+### FundManager:Move 600900 长江电力, 2017-05-02 00:00:00 962天, 298241.10, 685342.82, 983583.92
+### FundManager:Move 000333 美的集团, 2014-04-30 00:00:00 232天, 238112.00, 388435.57, 626547.57
 ### loss movelist ###
-### FundManager:Move 000651 2015-05-04 00:00:00, -600576.00, 2209783.82, 1609207.82
-### FundManager:Move 600660 2011-03-21 00:00:00, -121869.60, 500000.00, 378130.40
-### FundManager:Move 601818 2015-07-30 00:00:00, -79489.80, 651397.86, 571908.06
-### FundManager:Move 601515 2019-04-23 00:00:00, -61852.00, 192003.70, 130151.70
-### FundManager:Move 600809 2013-09-18 00:00:00, -45066.00, 174282.57, 129216.57
+### FundManager:Move 000651 格力电器, 2015-05-04 00:00:00 361天, -600576.00, 2209783.82, 1609207.82
+### FundManager:Move 600660 福耀玻璃, 2011-03-21 00:00:00 224天, -121869.60, 500000.00, 378130.40
+### FundManager:Move 601818 光大银行, 2015-07-30 00:00:00 642天, -79489.80, 651397.86, 571908.06
+### FundManager:Move 601515 东风股份, 2019-04-23 00:00:00 241天, -61852.00, 192003.70, 130151.70
+### FundManager:Move 600809 山西汾酒, 2013-09-18 00:00:00 223天, -45066.00, 174282.57, 129216.57
 #fm6：
 ### win movelist ###
-### FundManager:Move 000651 2016-05-03 00:00:00, 133170.00, 89169.00, 222339.00
-### FundManager:Move 600741 2016-05-03 00:00:00, 97275.20, 132766.00, 230041.20
-### FundManager:Move 600660 2013-05-02 00:00:00, 94829.00, 38052.00, 132881.00
-### FundManager:Move 601818 2014-05-05 00:00:00, 90570.64, 51615.14, 142185.78
-### FundManager:Move 600036 2013-05-02 00:00:00, 90145.50, 69747.00, 159892.50
+### FundManager:Move 000651 格力电器, 2016-05-03 00:00:00 729天, 133170.00, 89169.00, 222339.00
+### FundManager:Move 600741 华域汽车, 2016-05-03 00:00:00 1092天, 97275.20, 132766.00, 230041.20
+### FundManager:Move 600660 福耀玻璃, 2013-05-02 00:00:00 1498天, 94829.00, 38052.00, 132881.00
+### FundManager:Move 601818 光大银行, 2014-05-05 00:00:00 399天, 90570.64, 51615.14, 142185.78
+### FundManager:Move 600036 招商银行, 2013-05-02 00:00:00 1533天, 90145.50, 69747.00, 159892.50
 ### loss movelist ###
-### FundManager:Move 000651 2015-05-04 00:00:00, -32256.00, 121425.00, 89169.00
-### FundManager:Move 600027 2015-08-25 00:00:00, -29200.00, 185818.75, 156618.75
-### FundManager:Move 000981 2018-06-19 00:00:00, -29043.00, 50000.00, 20957.00
-### FundManager:Move 002269 2012-07-09 00:00:00, -24564.00, 50000.00, 25436.00
-### FundManager:Move 300134 2011-09-05 00:00:00, -21060.00, 50000.00, 28940.00
+### FundManager:Move 000651 格力电器, 2015-05-04 00:00:00 361天, -32256.00, 121425.00, 89169.00
+### FundManager:Move 600027 华电国际, 2015-08-25 00:00:00 252天, -29200.00, 185818.75, 156618.75
+### FundManager:Move 000981 ST银亿, 2018-06-19 00:00:00 314天, -29043.00, 50000.00, 20957.00
+### FundManager:Move 002269 美邦服饰, 2012-07-09 00:00:00 297天, -24564.00, 50000.00, 25436.00
+### FundManager:Move 300134 大富科技, 2011-09-05 00:00:00 121天, -21060.00, 50000.00, 28940.00
 class FundManager:
   def __init__(self, stocks, tm, startDate, endDate):
     self.TOTALMONEY = 500000
@@ -109,13 +89,16 @@ class FundManager:
     self.moveList = []
     self.lastPayback = {}  # 个股计算盈亏的时候，需要最后一次归还的资金
     self.lastDate = None
+    #最大值与回撤
+    self.maxAndRetracement = MaxAndRetracement(self.TOTALMONEY, self.startDate)
     
     dfIndex = pd.date_range(start=startDate, end=endDate, freq='M')
     self.df = pd.DataFrame(np.random.randn(len(dfIndex)), index=dfIndex, columns=['willDrop'])
     self.df = pd.concat([self.df, pd.DataFrame(columns=[
       'total', 'capital', 'profit', 'percent',
-      # 'utilization',
-      'cash', 'marketValue', 'stockNumber'
+      'utilization',
+      'cash', 'marketValue', 'stockNumber',
+      'maxValue', 'retracementP', 'retracementD'
     ])], sort=False)
     self.df.drop(['willDrop', ], axis=1, inplace=True)
     
@@ -144,7 +127,13 @@ class FundManager:
         self.df.loc[context.date, 'total'] = self.totalMoney + digest['marketValue']
         self.df.loc[context.date, 'profit'] = self.df.loc[context.date, 'total'] - self.TOTALMONEY
         self.df.loc[context.date, 'percent'] = self.df.loc[context.date, 'profit'] / self.TOTALMONEY
-        # self.df.loc[context.date, 'utilization'] = len(self.stockNowSet) / self.nowMax
+        self.df.loc[context.date, 'utilization'] = digest['marketValue'] / self.df.loc[context.date, 'total']
+        #新高与回撤
+        self.maxAndRetracement.Calc(self.df.loc[context.date, 'total'], context.date)
+        self.df.loc[context.date, 'maxValue'] = self.maxAndRetracement.M.value
+        self.df.loc[context.date, 'retracementP'] = self.maxAndRetracement.R.history.value
+        self.df.loc[context.date, 'retracementD'] = self.maxAndRetracement.R.history.days
+        
         self.quarterDetail[context.date] = detail
         pass
     elif task.key == Message.NEW_DAY:

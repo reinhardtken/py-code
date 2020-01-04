@@ -24,6 +24,7 @@ from comm import Retracement
 from comm import MaxRecord
 from comm import Priority
 from comm import Task
+from comm import MaxAndRetracement
 
 from fund_manage import fm
 from fund_manage import fm2
@@ -31,6 +32,7 @@ from fund_manage import fm3
 from fund_manage import fm4
 from fund_manage import fm5
 from fund_manage import fm6
+from fund_manage import fm7
 
 Message = const.Message
 
@@ -156,11 +158,12 @@ class Account:
     self.indexBuyPoint = None  # 股票开仓时候沪深300指数点位
     
     # 最大账户净值
-    self.maxValue = MaxRecord()
-    self.maxValue.value = self.BEGIN_MONEY
-    self.maxValue.date = self.startDate
-    # 回撤相关
-    self.Retracement = Retracement()
+    # self.maxValue = MaxRecord()
+    # self.maxValue.value = self.BEGIN_MONEY
+    # self.maxValue.date = self.startDate
+    # # 回撤相关
+    # self.Retracement = Retracement()
+    self.maxAndRetracement = MaxAndRetracement(self.BEGIN_MONEY, self.startDate)
     # 事件处理
     self.profit = None
     self.percent = None
@@ -289,34 +292,38 @@ class Account:
 
   
   def processOther(self, date, price):
-    # 最大净值
-    if self.isHoldMoney():
+    if self.isHoldStock():
+      newV = self.number * 100 * price + self.money
+      self.maxAndRetracement.Calc(newV, date)
       pass
-    elif self.isHoldStock():
-      # 新高
-      if self.number * 100 * price + self.money > self.maxValue.value:
-        self.maxValue.value = self.number * 100 * price + self.money
-        self.maxValue.date = date
-        old = self.Retracement.Record(date)
-        print('新高, 日期：{}, 净值：{}, 最近最大不创新高天数：{}'.format(date, self.maxValue.value, old))
-    
-    # 最大回撤
-    if self.isHoldMoney():
-      pass
-    elif self.isHoldStock():
-      nowValue = self.number * 100 * price + self.money
-      # 回撤创新低
-      if (self.maxValue.value - nowValue) / self.maxValue.value > self.Retracement.current.value:
-        self.Retracement.current.value = (self.maxValue.value - nowValue) / self.maxValue.value
-        if self.Retracement.maxRetracementDaysLastCheck is None:
-          self.Retracement.maxRetracementDaysLastCheck = date
-          self.Retracement.current.begin = date
-          self.Retracement.current.beginPrice = price
-        else:
-          diff = date - self.Retracement.maxRetracementDaysLastCheck
-          self.Retracement.maxRetracementDaysLastCheck = date
-          self.Retracement.current.days += diff.days
-        print('最大回撤, 日期：{}, 回撤：{}, 持续：{}'.format(date, self.Retracement.current.value, self.Retracement.current.days))
+    # # 最大净值
+    # if self.isHoldMoney():
+    #   pass
+    # elif self.isHoldStock():
+    #   # 新高
+    #   if self.number * 100 * price + self.money > self.maxValue.value:
+    #     self.maxValue.value = self.number * 100 * price + self.money
+    #     self.maxValue.date = date
+    #     old = self.Retracement.Record(date)
+    #     print('新高, 日期：{}, 净值：{}, 最近最大不创新高天数：{}'.format(date, self.maxValue.value, old))
+    #
+    # # 最大回撤
+    # if self.isHoldMoney():
+    #   pass
+    # elif self.isHoldStock():
+    #   nowValue = self.number * 100 * price + self.money
+    #   # 回撤创新低
+    #   if (self.maxValue.value - nowValue) / self.maxValue.value > self.Retracement.current.value:
+    #     self.Retracement.current.value = (self.maxValue.value - nowValue) / self.maxValue.value
+    #     if self.Retracement.maxRetracementDaysLastCheck is None:
+    #       self.Retracement.maxRetracementDaysLastCheck = date
+    #       self.Retracement.current.begin = date
+    #       self.Retracement.current.beginPrice = price
+    #     else:
+    #       diff = date - self.Retracement.maxRetracementDaysLastCheck
+    #       self.Retracement.maxRetracementDaysLastCheck = date
+    #       self.Retracement.current.days += diff.days
+    #     print('最大回撤, 日期：{}, 回撤：{}, 持续：{}'.format(date, self.Retracement.current.value, self.Retracement.current.days))
     
     # 持股交易日
     if self.isHoldStock():
@@ -352,7 +359,7 @@ class Account:
       # 计算指数收益
       self.indexProfit *= current.index / self.indexBuyPoint
       # 可能结束回测的时候，都没有创新高，导致最大回撤记录没有刷新，在这里刷新下
-      self.Retracement.Record(current.date)
+      self.maxAndRetracement.R.Record(current.date)
       # 刷新最后持股日期
       self.holdStockDateVec[-1] = (self.holdStockDateVec[-1], current.date)
     else:
@@ -917,7 +924,7 @@ class TradeManager:
     self.data = []  # 行情
     self.index = None  # 沪深300指数
     
-    self.collectionName = 'dv3'  # 存盘表名
+    self.collectionName = 'all_dv3'  # 存盘表名
 
     # 支持多个品种测试，每个品种一个dv和一个account
     self.dvMap = {}
@@ -965,6 +972,7 @@ class TradeManager:
         Message.TARGET_SELL_PRICE_EVENT,
         Message.TARGET_SELL_PRICE_EVENT,
         Message.SELL_ALWAYS_EVENT,
+        Message.OTHER_WORK,
       ], A.Process)
       context.pump.AddHandler([
         Message.DIVIDEND_ADJUST,
@@ -1150,6 +1158,9 @@ class TradeManager:
   #     return df
   #
   #   return None
+
+  
+
   
   def LoadQuotations(self):
     for one in self.codes:
@@ -1282,7 +1293,7 @@ class TradeManager:
     print('### loss movelist ###')
     for one in loss:
       print(one)
-      
+
     print('### all movelist ###')
     for one in self.fm.moveList:
       print(one)
@@ -1290,8 +1301,8 @@ class TradeManager:
     print('### FundManager  stockMap {}'.format(len(self.fm.stockMap)))
     for k, v in self.fm.stockMap.items():
       print('### {}, {}'.format(k, v))
-      
-    self.fm.df.to_excel("c:/workspace/tmp/20200102_all60.xlsx")
+
+    self.fm.df.to_excel("c:/workspace/tmp/20200103_onlyhs300.xlsx")
   
   
   def StorePrepare2DB(self):
@@ -1315,8 +1326,8 @@ class TradeManager:
       out.update(A.result.ToDB())
       out['beforeProfit'] = A.beforeProfit
       out['tradeCounter'] = A.tradeCounter
-      out.update(A.maxValue.ToDict('maxValue'))
-      out.update(A.Retracement.ToDict('Retracement'))
+      out.update(A.maxAndRetracement.M.ToDict('maxValue'))
+      out.update(A.maxAndRetracement.R.ToDict('Retracement'))
       
       out['holdStockNatureDate'] = A.holdStockNatureDate
       out['holdStockDateVec'] = A.holdStockDateVec

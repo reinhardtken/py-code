@@ -22,28 +22,12 @@ from comm import Retracement
 from comm import MaxRecord
 from comm import Priority
 from comm import Task
-
+from comm import Move
 
 Message = const.Message
 
 
-# 代表一次交易
-class Move:
-  def __init__(self, code, date, change, old, winLoss):
-    self.code = code
-    self.date = date
-    self.old = old
-    self.change = change
-    self.winLoss = winLoss
-  
-  def __str__(self):
-    info = '### FundManager:Move {} {}, {:.2f}, {:.2f}, {:.2f}'.format(self.code, self.date, self.winLoss,
-                                                                       self.change,
-                                                                       self.old)
-    return info
-  
-  def __lt__(self, other):
-    return self.winLoss < other.winLoss
+
 #########################################################
 #每份5万元，不限制份数。如果单前份数用光，则申请新份数
 class FundManager:
@@ -52,6 +36,9 @@ class FundManager:
     self.perShare = 50000
     self.nowMax = self.TOTALMONEY / self.perShare
     self.stocks = stocks
+    self.code2Name = {}
+    for one in stocks:
+      self.code2Name[one['_id']] = one['name']
     self.stockSize = len(stocks)
     self.startDate = startDate
     self.endDate = endDate
@@ -68,6 +55,7 @@ class FundManager:
     self.eventCache = {}
     self.moveList = []
     self.lastPayback = {}  # 个股计算盈亏的时候，需要最后一次归还的资金
+    self.lastDate = None
     
     dfIndex = pd.date_range(start=startDate, end=endDate, freq='M')
     self.df = pd.DataFrame(np.random.randn(len(dfIndex)), index=dfIndex, columns=['willDrop'])
@@ -106,6 +94,8 @@ class FundManager:
         # self.df.loc[context.date, 'utilization'] = len(self.stockNowSet) / self.nowMax
         self.quarterDetail[context.date] = detail
         pass
+    elif task.key == Message.NEW_DAY:
+      self.lastDate = context.date
   
   def Alloc(self, code, first):
     # first 表示是否是建仓，建仓考虑大宗资金分配，否则只考虑动用分红资金
@@ -138,8 +128,10 @@ class FundManager:
     if paybackAll:
       self.lastPayback[code] = self.stockNowMap[code]['change']
       winLoss = self.stockNowMap[code]['change'] - self.stockNowMap[code]['old']
-      move = Move(code, self.stockNowMap[code]['date'], self.stockNowMap[code]['change'],
-                  self.stockNowMap[code]['old'], winLoss)
+      diff = self.lastDate - self.stockNowMap[code]['date']
+      move = Move(code, self.code2Name[code], self.stockNowMap[code]['date'], diff.days,
+                  self.stockNowMap[code]['change'],
+           self.stockNowMap[code]['old'], winLoss)
       print(move)
       self.moveList.append(move)
 
