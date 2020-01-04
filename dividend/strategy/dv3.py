@@ -1302,7 +1302,8 @@ class TradeManager:
     for k, v in self.fm.stockMap.items():
       print('### {}, {}'.format(k, v))
 
-    self.fm.df.to_excel("c:/workspace/tmp/20200103_onlyhs300.xlsx")
+    self.fm.dfM.to_excel("c:/workspace/tmp/20200103_onlyhs300_M.xlsx")
+    self.fm.dfW.to_excel("c:/workspace/tmp/20200103_onlyhs300_W.xlsx")
   
   
   def StorePrepare2DB(self):

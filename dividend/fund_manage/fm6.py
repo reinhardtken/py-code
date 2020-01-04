@@ -90,19 +90,52 @@ class FundManager:
     self.lastPayback = {}  # 个股计算盈亏的时候，需要最后一次归还的资金
     self.lastDate = None
     #最大值与回撤
-    self.maxAndRetracement = MaxAndRetracement(self.TOTALMONEY, self.startDate)
-    
-    dfIndex = pd.date_range(start=startDate, end=endDate, freq='M')
-    self.df = pd.DataFrame(np.random.randn(len(dfIndex)), index=dfIndex, columns=['willDrop'])
-    self.df = pd.concat([self.df, pd.DataFrame(columns=[
+    self.maxAndRetracementM = MaxAndRetracement(self.TOTALMONEY, self.startDate)
+    self.maxAndRetracementW = MaxAndRetracement(self.TOTALMONEY, self.startDate)
+
+    dfIndex = pd.date_range(start=startDate, end=endDate, freq='W-FRI')
+    self.dfW = pd.DataFrame(np.random.randn(len(dfIndex)), index=dfIndex, columns=['willDrop'])
+    self.dfW = pd.concat([self.dfW, pd.DataFrame(columns=[
       'total', 'capital', 'profit', 'percent',
       'utilization',
       'cash', 'marketValue', 'stockNumber',
       'maxValue', 'retracementP', 'retracementD'
     ])], sort=False)
-    self.df.drop(['willDrop', ], axis=1, inplace=True)
+    self.dfW.drop(['willDrop', ], axis=1, inplace=True)
+    
+    
+    dfIndex = pd.date_range(start=startDate, end=endDate, freq='BM')
+    self.dfM = pd.DataFrame(np.random.randn(len(dfIndex)), index=dfIndex, columns=['willDrop'])
+    self.dfM = pd.concat([self.dfM, pd.DataFrame(columns=[
+      'total', 'capital', 'profit', 'percent',
+      'utilization',
+      'cash', 'marketValue', 'stockNumber',
+      'maxValue', 'retracementP', 'retracementD'
+    ])], sort=False)
+    self.dfM.drop(['willDrop', ], axis=1, inplace=True)
     
     self.quarterDetail = {}
+  
+  
+  
+  def gather(self, date, df, maxAndRetracement, month):
+    digest, detail = self.TM.CalcNowValue()
+    df.loc[date, 'cash'] = self.totalMoney
+    df.loc[date, 'capital'] = self.TOTALMONEY
+    df.loc[date, 'marketValue'] = digest['marketValue']
+    df.loc[date, 'stockNumber'] = digest['stockNumber']
+    df.loc[date, 'total'] = self.totalMoney + digest['marketValue']
+    df.loc[date, 'profit'] = df.loc[date, 'total'] - self.TOTALMONEY
+    df.loc[date, 'percent'] = df.loc[date, 'profit'] / self.TOTALMONEY
+    df.loc[date, 'utilization'] = digest['marketValue'] / df.loc[date, 'total']
+    # 新高与回撤
+    maxAndRetracement.Calc(df.loc[date, 'total'], date)
+    df.loc[date, 'maxValue'] = maxAndRetracement.M.value
+    df.loc[date, 'retracementP'] = maxAndRetracement.R.history.value
+    df.loc[date, 'retracementD'] = maxAndRetracement.R.history.days
+    if month:
+      self.quarterDetail[date] = detail
+  
   
   def Process(self, context, task):
     if task.key == Message.SUGGEST_BUY_EVENT:
@@ -117,24 +150,28 @@ class FundManager:
       #       Message.STAGE_BUY_TRADE, Message.PRIORITY_BUY),
       #     Message.BUY_EVENT, None, *task.args))
     elif task.key == Message.OTHER_WORK:
-      if context.date in self.df.index:
+      if context.date in self.dfW.index:
+        # 计算每周终值
+        self.gather(context.date, self.dfW, self.maxAndRetracementW, False)
+      if context.date in self.dfM.index:
         # 计算月度终值
-        digest, detail = self.TM.CalcNowValue()
-        self.df.loc[context.date, 'cash'] = self.totalMoney
-        self.df.loc[context.date, 'capital'] = self.TOTALMONEY
-        self.df.loc[context.date, 'marketValue'] = digest['marketValue']
-        self.df.loc[context.date, 'stockNumber'] = digest['stockNumber']
-        self.df.loc[context.date, 'total'] = self.totalMoney + digest['marketValue']
-        self.df.loc[context.date, 'profit'] = self.df.loc[context.date, 'total'] - self.TOTALMONEY
-        self.df.loc[context.date, 'percent'] = self.df.loc[context.date, 'profit'] / self.TOTALMONEY
-        self.df.loc[context.date, 'utilization'] = digest['marketValue'] / self.df.loc[context.date, 'total']
-        #新高与回撤
-        self.maxAndRetracement.Calc(self.df.loc[context.date, 'total'], context.date)
-        self.df.loc[context.date, 'maxValue'] = self.maxAndRetracement.M.value
-        self.df.loc[context.date, 'retracementP'] = self.maxAndRetracement.R.history.value
-        self.df.loc[context.date, 'retracementD'] = self.maxAndRetracement.R.history.days
+        self.gather(context.date, self.dfM, self.maxAndRetracementM, True)
+        # digest, detail = self.TM.CalcNowValue()
+        # self.df.loc[context.date, 'cash'] = self.totalMoney
+        # self.df.loc[context.date, 'capital'] = self.TOTALMONEY
+        # self.df.loc[context.date, 'marketValue'] = digest['marketValue']
+        # self.df.loc[context.date, 'stockNumber'] = digest['stockNumber']
+        # self.df.loc[context.date, 'total'] = self.totalMoney + digest['marketValue']
+        # self.df.loc[context.date, 'profit'] = self.df.loc[context.date, 'total'] - self.TOTALMONEY
+        # self.df.loc[context.date, 'percent'] = self.df.loc[context.date, 'profit'] / self.TOTALMONEY
+        # self.df.loc[context.date, 'utilization'] = digest['marketValue'] / self.df.loc[context.date, 'total']
+        # #新高与回撤
+        # self.maxAndRetracement.Calc(self.df.loc[context.date, 'total'], context.date)
+        # self.df.loc[context.date, 'maxValue'] = self.maxAndRetracement.M.value
+        # self.df.loc[context.date, 'retracementP'] = self.maxAndRetracement.R.history.value
+        # self.df.loc[context.date, 'retracementD'] = self.maxAndRetracement.R.history.days
         
-        self.quarterDetail[context.date] = detail
+        # self.quarterDetail[context.date] = detail
         pass
     elif task.key == Message.NEW_DAY:
       self.lastDate = context.date
