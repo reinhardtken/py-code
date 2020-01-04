@@ -167,6 +167,8 @@ class Account:
     # 事件处理
     self.profit = None
     self.percent = None
+    self.priceDiff = None
+  
   
   def isHoldStock(self):
     return self.status == HOLD_STOCK
@@ -402,7 +404,7 @@ class Account:
         if task.args[0] == self.sellPrice:
           pass
         else:
-          print("wrong")
+          print("wrong {} {}".format(task.args[0], self.sellPrice))
       self.Sell(context.date, task.args[0], context.price, context.index, reason)
     elif task.key == Message.TARGET_SELL_PRICE_EVENT:
       # if self.isHoldStock():
@@ -413,6 +415,8 @@ class Account:
         self.SellNoCodition(context.date, context.price, context.index, reason='高于卖点')
     elif task.key == Message.OTHER_WORK:
       self.processOther(context.date, context.price)
+    elif task.key == Message.PRICE_DIFF:
+      self.priceDiff = task.args[0]
 
 
 #########################################################
@@ -840,7 +844,13 @@ class StrategyDV:
           self.eventDF.loc[tmp['date']:anchor3, 'sellPrice'] = tmp['sellPriceX']
   
   def MakeDecision(self, context: DayContext):
-    buySignal, sellSignal = self.BuySellSignal(context.date, context.price)
+    buySignal, sellSignal, priceDiff = self.BuySellSignal(context.date, context.price)
+    context.AddTask(
+      Task(
+        Priority(
+          Message.STAGE_AFTER_TRADE, Message.PRIORITY_AFTER_TRADE),
+        Message.PRICE_DIFF, None, priceDiff))
+    
     context.dvInfo = (None, buySignal[1], sellSignal[1], None)
     if buySignal[0]:
       #建议开仓
@@ -876,8 +886,11 @@ class StrategyDV:
     buyPrice, sellPrice, where = self.MakeDecisionPrice2(date)
     buySignal = (False, buyPrice, where)
     sellSignal = (False, sellPrice, where)
+    priceDiff = [None, None, where]
     # 买卖价格有效则都有效，无效则都无效
     if buyPrice != INVALID_BUY_PRICE:
+      priceDiff[0] = (price - buyPrice) / buyPrice
+      priceDiff[1] = (price - sellPrice) / sellPrice
       if buyPrice >= price:
         buySignal = (True, buyPrice, where)
       elif sellPrice <= price:
@@ -885,7 +898,7 @@ class StrategyDV:
     elif sellPrice == INVALID_SELL_PRICE and isinstance(where, str) and where.find('-year') != -1:
       sellSignal = (True, sellPrice, where)
     
-    return buySignal, sellSignal
+    return buySignal, sellSignal, priceDiff
   
   # def ProcessDividendAdjust(self, data):
   #   # checkPoint发生调整，缓存清掉
@@ -923,8 +936,6 @@ class TradeManager:
     self.stocks = stocks
     self.data = []  # 行情
     self.index = None  # 沪深300指数
-    
-    self.collectionName = 'all_dv3'  # 存盘表名
 
     # 支持多个品种测试，每个品种一个dv和一个account
     self.dvMap = {}
@@ -936,7 +947,8 @@ class TradeManager:
     self.listen = {}  # ListenOne
     self.fm = fm6.FundManager(stocks, self, self.startDate, self.endDate) #资金管理
     self.contextManager.AddStageCallback(Message.STAGE_FUND_MANAGE, self.fm.StageChange)
-    
+
+    self.collectionName = 'all_dv3_'+self.fm.NAME  # 存盘表名
     
     for one in stocks:
       tmpBeginMoney = beginMoney
@@ -973,6 +985,7 @@ class TradeManager:
         Message.TARGET_SELL_PRICE_EVENT,
         Message.SELL_ALWAYS_EVENT,
         Message.OTHER_WORK,
+        Message.PRICE_DIFF,
       ], A.Process)
       context.pump.AddHandler([
         Message.DIVIDEND_ADJUST,
@@ -1302,8 +1315,8 @@ class TradeManager:
     for k, v in self.fm.stockMap.items():
       print('### {}, {}'.format(k, v))
 
-    self.fm.dfM.to_excel("c:/workspace/tmp/20200103_onlyhs300_M.xlsx")
-    self.fm.dfW.to_excel("c:/workspace/tmp/20200103_onlyhs300_W.xlsx")
+    # self.fm.dfM.to_excel("c:/workspace/tmp/20200103_onlyhs300_M.xlsx")
+    # self.fm.dfW.to_excel("c:/workspace/tmp/20200103_onlyhs300_W.xlsx")
   
   
   def StorePrepare2DB(self):
@@ -1333,6 +1346,15 @@ class TradeManager:
       out['holdStockNatureDate'] = A.holdStockNatureDate
       out['holdStockDateVec'] = A.holdStockDateVec
       out['moneyMoveVec'] = A.money.moveList
+      
+      if A.priceDiff is not None:
+        out['priceBuy'] = A.priceDiff[0]
+        out['priceSell'] = A.priceDiff[1]
+        out['priceWhere'] = A.priceDiff[2]
+      else:
+        out['priceBuy'] = np.nan
+        out['priceSell'] = np.nan
+        out['priceWhere'] = np.nan
       util.SaveMongoDB(out, 'stock_backtest', self.collectionName)
   
   # def ExistCheckResult(self):

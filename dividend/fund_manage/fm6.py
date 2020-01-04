@@ -64,6 +64,7 @@ Message = const.Message
 class FundManager:
   def __init__(self, stocks, tm, startDate, endDate):
     self.TOTALMONEY = 500000
+    self.NAME = 'fm6'
     self.perShare = 50000
     # self.nowMax = self.TOTALMONEY / self.perShare
     self.stocks = stocks

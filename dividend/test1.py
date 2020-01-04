@@ -458,7 +458,7 @@ if __name__ == '__main__':
   # print('### not in size {}'.format(len(out3)))
   # for one in out3:
   #   print(one)
-  TestThree(out2, 100000, {'check': False, 'backtest': True, 'save': False})
+  TestThree(out2, 100000, {'check': False, 'backtest': True, 'save': True})
   
   # TestTwo(stockList.VERSION_DV1.BAD_LIST, 100000, {'check': False, 'backtest': True, 'save': True})
   # TestAll(VERIFY_CODES, True, False)
