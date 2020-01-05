@@ -886,7 +886,7 @@ class StrategyDV:
     buyPrice, sellPrice, where = self.MakeDecisionPrice2(date)
     buySignal = (False, buyPrice, where)
     sellSignal = (False, sellPrice, where)
-    priceDiff = [None, None, where]
+    priceDiff = [None, None, where, price]
     # 买卖价格有效则都有效，无效则都无效
     if buyPrice != INVALID_BUY_PRICE:
       priceDiff[0] = (price - buyPrice) / buyPrice
@@ -926,7 +926,7 @@ class TradeManager:
     self.startDate = parser.parse(start, ignoretz=True)
     self.endYear = 2019  # 结束年份
     # end = str(self.endYear) + '-12-13T00:00:00Z'
-    end = str(self.endYear) + '-12-20T00:00:00Z'
+    end = str(self.endYear) + '-12-31T00:00:00Z'
     self.endDate = parser.parse(end, ignoretz=True)
     
     # self.MAXEND = Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
@@ -1315,8 +1315,8 @@ class TradeManager:
     for k, v in self.fm.stockMap.items():
       print('### {}, {}'.format(k, v))
 
-    # self.fm.dfM.to_excel("c:/workspace/tmp/20200103_onlyhs300_M.xlsx")
-    # self.fm.dfW.to_excel("c:/workspace/tmp/20200103_onlyhs300_W.xlsx")
+    self.fm.dfM.to_excel("c:/workspace/tmp/20200103_onlyhs300_M.xlsx")
+    self.fm.dfW.to_excel("c:/workspace/tmp/20200103_onlyhs300_W.xlsx")
   
   
   def StorePrepare2DB(self):
@@ -1351,10 +1351,12 @@ class TradeManager:
         out['priceBuy'] = A.priceDiff[0]
         out['priceSell'] = A.priceDiff[1]
         out['priceWhere'] = A.priceDiff[2]
+        out['priceFrom'] = A.priceDiff[3]
       else:
         out['priceBuy'] = np.nan
         out['priceSell'] = np.nan
         out['priceWhere'] = np.nan
+        out['priceFrom'] = np.nan
       util.SaveMongoDB(out, 'stock_backtest', self.collectionName)
   
   # def ExistCheckResult(self):
