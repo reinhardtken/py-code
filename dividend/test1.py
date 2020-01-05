@@ -12,6 +12,8 @@ import tushare as ts
 
 import const
 import util
+from filter import dvYear
+from filter import hs300
 
 # this project
 if __name__ == '__main__':
@@ -94,10 +96,10 @@ def TestThree(codes, beginMoney, args):
   if 'check' in args and args['check']:
     assert stock.CheckResult()
     
-  if 'draw'  in args and args['draw']:
+  if 'draw' in args:
     stock.Draw()
   
-  if 'saveFile'  in args:
+  if 'saveFile' in args:
     stock.Store2File(args['saveFile'])
     
   return stock
@@ -425,7 +427,7 @@ if __name__ == '__main__':
   #     # {'name': '双汇发展', '_id': '000895', 'money': 211205},
   #     #  {'name': '伟星股份', '_id': '002003', 'money': 80805},
   #   ],
-  #   100000, {'save': False, 'check': False, 'backtest':True})
+  #   100000, {'check': False, 'backtest': True, 'saveDB': 'all_dv3', 'draw': None, 'saveFile': 'C:/workspace/tmp/dv3'})
   
   # test
   # TestAll(CODE_AND_MONEY, True, False)
@@ -452,39 +454,37 @@ if __name__ == '__main__':
     out.append({'_id': one['_id'], 'name': one['name'], 'percent': one['percent'], 'holdStockNatureDate': one['holdStockNatureDate'],
                 'tradeCounter': one['tradeCounter']})
 
-  hs300 = util.QueryHS300All()
-  out2 = []
-  print('### all size {}'.format(len(out)))
+
+  inList, outList = dvYear.Filter(out)
+  in2, out2 = hs300.Filter(inList)
+  in3, out3 = hs300.Filter(outList)
+
+
+  
   for one in out:
-    if one['_id']  in hs300.index:
-      # print(one)
-      out2.append(one)
+    if one['_id'] in out2:
+      print('not hs300 {} {}'.format(one['_id'], one['name']))
+    
+  
+  for one in out:
+    if one['_id'] in in3:
+      print('not dvYear {} {}'.format(one['_id'], one['name']))
 
 
   codes = []
-  for one in out2:
-    codes.append(one['_id'])
-    
-  db = client["stock_statistcs"]
-  collection = db["dvYears"]
-  cursor = collection.find({'_id': {'$in': codes}})
-  inSet = set()
-  outSet = set()
-  out3 = []
-  for one in cursor:
-    if one['统计年数'] >= 5 and one['百分比'] >= 0.75:
-      inSet.add(one['_id'])
-      out3.append({'_id': one['_id'], 'name': one['name']})
-    else:
-      outSet.add(one['_id'])
-      print('not enough goold {} {}'.format(one['_id'], one['name']))
-  
-  
-  # out3 = sorted(out2, key= lambda x : x['percent'], reverse=True)
-  # print('### not in size {}'.format(len(out3)))
-  # for one in out3:
-  #   print(one)
-  TestThree(out3, 100000, {'check': False, 'backtest': True, 'save': True})
+  for one in out:
+    if one['_id'] in in2:
+      codes.append(one)
+
+  for one in stockList.VERSION_DV2.DVOK_NOT_HS300:
+    if one['_id'] not in in2:
+      codes.append(one)
+      
+  for one in stockList.VERSION_DV2.HS300_NOT_DVOK:
+    if one['_id'] not in in2:
+      codes.append(one)
+
+  TestThree(codes, 100000, {'check': False, 'backtest': True, 'saveDB': 'all_dv3', 'draw': None, 'saveFile': 'C:/workspace/tmp/dv3'})
   
   # TestTwo(stockList.VERSION_DV1.BAD_LIST, 100000, {'check': False, 'backtest': True, 'save': True})
   # TestAll(VERIFY_CODES, True, False)

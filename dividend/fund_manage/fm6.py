@@ -109,7 +109,7 @@ class FundManager:
     self.dfM = pd.DataFrame(np.random.randn(len(dfIndex)), index=dfIndex, columns=['willDrop'])
     self.dfM = pd.concat([self.dfM, pd.DataFrame(columns=[
       'total', 'capital', 'profit', 'percent',
-      'utilization',
+      'utilization', 'utilizationP',
       'cash', 'marketValue', 'stockNumber',
       'maxValue', 'retracementP', 'retracementD'
     ])], sort=False)
@@ -128,7 +128,8 @@ class FundManager:
     df.loc[date, 'total'] = self.totalMoney + digest['marketValue']
     df.loc[date, 'profit'] = df.loc[date, 'total'] - self.TOTALMONEY
     df.loc[date, 'percent'] = df.loc[date, 'profit'] / self.TOTALMONEY
-    df.loc[date, 'utilization'] = digest['marketValue'] / df.loc[date, 'total']
+    df.loc[date, 'utilization'] = (df.loc[date, 'capital']-df.loc[date, 'cash'])
+    df.loc[date, 'utilizationP'] = df.loc[date, 'utilization'] / df.loc[date, 'capital']
     # 新高与回撤
     maxAndRetracement.Calc(df.loc[date, 'total'], date)
     df.loc[date, 'maxValue'] = maxAndRetracement.M.value

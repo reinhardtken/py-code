@@ -1324,7 +1324,7 @@ class TradeManager:
     util.SaveMongoDB_DF(self.fm.dfW, 'stock_result', 'dv_jusths300_w')
     self.fm.dfW['profit'].fillna(method='ffill', inplace=True)
     self.fm.dfW['total'].fillna(method='ffill', inplace=True)
-    self.fm.dfW[['total', 'capital']].plot()
+    self.fm.dfW[['total', 'capital', ]].plot()
     plt.show()
   
   
@@ -1375,7 +1375,7 @@ class TradeManager:
         out['priceFrom'] = np.nan
       
       if dbName is not None:
-        util.SaveMongoDB(out, 'stock_backtest', self.dbName)
+        util.SaveMongoDB(out, 'stock_backtest', dbName)
       else:
         util.SaveMongoDB(out, 'stock_backtest', self.collectionName)
   
