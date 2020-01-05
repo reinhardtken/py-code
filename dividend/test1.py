@@ -88,11 +88,18 @@ def TestThree(codes, beginMoney, args):
     stock.BackTest()
     stock.CloseAccount()
   
-  if 'save' in args and args['save']:
-    stock.StoreResult2DB()
+  if 'saveDB' in args:
+    stock.StoreResult2DB( args['saveDB'])
   
   if 'check' in args and args['check']:
     assert stock.CheckResult()
+    
+  if 'draw'  in args and args['draw']:
+    stock.Draw()
+  
+  if 'saveFile'  in args:
+    stock.Store2File(args['saveFile'])
+    
   return stock
 
 
@@ -452,13 +459,32 @@ if __name__ == '__main__':
     if one['_id']  in hs300.index:
       # print(one)
       out2.append(one)
-      
+
+
+  codes = []
+  for one in out2:
+    codes.append(one['_id'])
+    
+  db = client["stock_statistcs"]
+  collection = db["dvYears"]
+  cursor = collection.find({'_id': {'$in': codes}})
+  inSet = set()
+  outSet = set()
+  out3 = []
+  for one in cursor:
+    if one['统计年数'] >= 5 and one['百分比'] >= 0.75:
+      inSet.add(one['_id'])
+      out3.append({'_id': one['_id'], 'name': one['name']})
+    else:
+      outSet.add(one['_id'])
+      print('not enough goold {} {}'.format(one['_id'], one['name']))
+  
   
   # out3 = sorted(out2, key= lambda x : x['percent'], reverse=True)
   # print('### not in size {}'.format(len(out3)))
   # for one in out3:
   #   print(one)
-  TestThree(out2, 100000, {'check': False, 'backtest': True, 'save': True})
+  TestThree(out3, 100000, {'check': False, 'backtest': True, 'save': True})
   
   # TestTwo(stockList.VERSION_DV1.BAD_LIST, 100000, {'check': False, 'backtest': True, 'save': True})
   # TestAll(VERIFY_CODES, True, False)

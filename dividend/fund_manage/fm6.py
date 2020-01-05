@@ -157,23 +157,6 @@ class FundManager:
       if context.date in self.dfM.index:
         # 计算月度终值
         self.gather(context.date, self.dfM, self.maxAndRetracementM, True)
-        # digest, detail = self.TM.CalcNowValue()
-        # self.df.loc[context.date, 'cash'] = self.totalMoney
-        # self.df.loc[context.date, 'capital'] = self.TOTALMONEY
-        # self.df.loc[context.date, 'marketValue'] = digest['marketValue']
-        # self.df.loc[context.date, 'stockNumber'] = digest['stockNumber']
-        # self.df.loc[context.date, 'total'] = self.totalMoney + digest['marketValue']
-        # self.df.loc[context.date, 'profit'] = self.df.loc[context.date, 'total'] - self.TOTALMONEY
-        # self.df.loc[context.date, 'percent'] = self.df.loc[context.date, 'profit'] / self.TOTALMONEY
-        # self.df.loc[context.date, 'utilization'] = digest['marketValue'] / self.df.loc[context.date, 'total']
-        # #新高与回撤
-        # self.maxAndRetracement.Calc(self.df.loc[context.date, 'total'], context.date)
-        # self.df.loc[context.date, 'maxValue'] = self.maxAndRetracement.M.value
-        # self.df.loc[context.date, 'retracementP'] = self.maxAndRetracement.R.history.value
-        # self.df.loc[context.date, 'retracementD'] = self.maxAndRetracement.R.history.days
-        
-        # self.quarterDetail[context.date] = detail
-        pass
     elif task.key == Message.NEW_DAY:
       self.lastDate = context.date
   

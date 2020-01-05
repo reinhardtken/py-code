@@ -1315,16 +1315,24 @@ class TradeManager:
     print('### FundManager  stockMap {}'.format(len(self.fm.stockMap)))
     for k, v in self.fm.stockMap.items():
       print('### {}, {}'.format(k, v))
-
-
-    #作图
-    self.fm.dfW['profit'].fillna(method='ffill', inplace=True)
+    
+    
+  
+  
+  def Draw(self):
     self.fm.dfW['_id'] = self.fm.dfW.index
-    self.fm.dfW['profit'].plot()
-    plt.show()
     util.SaveMongoDB_DF(self.fm.dfW, 'stock_result', 'dv_jusths300_w')
-    self.fm.dfM.to_excel("/home/ken/temp/20200103_onlyhs300_M.xlsx")
-    self.fm.dfW.to_excel("/home/ken/temp/20200103_onlyhs300_W.xlsx")
+    self.fm.dfW['profit'].fillna(method='ffill', inplace=True)
+    self.fm.dfW['total'].fillna(method='ffill', inplace=True)
+    self.fm.dfW[['total', 'capital']].plot()
+    plt.show()
+  
+  
+  
+  def Store2File(self, fileName):
+    self.fm.dfM.to_excel(fileName+"_M.xlsx")
+    self.fm.dfW.to_excel(fileName+"_W.xlsx")
+  
   
   
   def StorePrepare2DB(self):
@@ -1334,7 +1342,7 @@ class TradeManager:
     
     pass
   
-  def StoreResult2DB(self):
+  def StoreResult2DB(self, dbName):
     # 保存交易记录到db，用于回测验证
     for one in self.stocks:
       code = one['_id']
@@ -1365,21 +1373,13 @@ class TradeManager:
         out['priceSell'] = np.nan
         out['priceWhere'] = np.nan
         out['priceFrom'] = np.nan
-      util.SaveMongoDB(out, 'stock_backtest', self.collectionName)
+      
+      if dbName is not None:
+        util.SaveMongoDB(out, 'stock_backtest', self.dbName)
+      else:
+        util.SaveMongoDB(out, 'stock_backtest', self.collectionName)
   
-  # def ExistCheckResult(self):
-  #   db = self.mongoClient["stock_backtest"]
-  #   collection = db[self.collectionName]
-  #   cursor = collection.find({"_id": self.code})
-  #   out = None
-  #   for c in cursor:
-  #     out = c
-  #     break
-  #
-  #   if out is not None:
-  #     return True
-  #   else:
-  #     return False
+
   
   def CheckResult(self):
     for one in self.stocks:
@@ -1429,41 +1429,6 @@ class TradeManager:
         # return False
     
     return True
-
-  # def CheckResult(self):
-  #   for one in self.stocks:
-  #     code = one['_id']
-  #     A = self.accountMap[code]
-  #     db = self.mongoClient["stock_backtest"]
-  #     collection = db['dv3']
-  #     # collection = db[self.collectionName]
-  #     cursor = collection.find({"_id": code})
-  #     out = None
-  #     for c in cursor:
-  #       out = c
-  #       break
-  #     else:
-  #       collection = db['all_dv2']
-  #       cursor = collection.find({"_id": code})
-  #       out = None
-  #       for c in cursor:
-  #         out = c
-  #         break
-  #
-  #     flag = False
-  #     where = 0
-  #     tmp = TradeResult.FromDB(out)
-  #     marks = []
-  #     for index in range(len(out['tradeMarks'])):
-  #       marks.append(TradeMark.FromDB(out['tradeMarks'][index]))
-  #
-  #     if A.BEGIN_MONEY == out['beginMoney']:
-  #       if abs(A.profit - out['profit']) < 100 and abs(A.percent - out['percent']) < 0.02:
-  #         print('### CheckResult success {} {} {}'.format(code, one['name'], abs(A.profit - out['profit'])))
-  #       else:
-  #         print('### CheckResult failed {} {} {}'.format(code, one['name'], where))
-  #
-  #   return True
 
 
 
@@ -1521,29 +1486,6 @@ class ListenOne:
 
 
 #########################################################
-
-
-
-
-
-
-def TestAll(codes, save, check):
-  # # 皖通高速
-  # Test2('600012', 52105, save, check)
-  # # 万华化学
-  # Test2('600309', 146005, save, check)
-  # # 北京银行
-  # Test2('601169', 88305, save, check)
-  # # 大秦铁路
-  # # 2015年4月27日那天，预警价为14.33元，但收盘价只有14.32元，我们按照收盘价计算，
-  # # 差一分钱才触发卖出规则。如果当时卖出，可收回现金14.32*12500+330=179330元。
-  # # 错过这次卖出机会后不久，牛市见顶，股价狂泻，从14元多一直跌到5.98元。
-  # # TODO 需要牛市清盘卖出策略辅助
-  # Test2('601006', 84305, save, check)
-  # # 南京银行
-  # Test2('601009', 75005, save, check)
-  for one in codes:
-    RunOne(one['code'], one['money'], one['name'], save, check)
 
 
 def Digest(collectionName, condition={}):

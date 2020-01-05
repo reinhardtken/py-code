@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
 
   df = util.LoadData('stock_result', 'dv_jusths300_w')
-  df[['profit', 'capital']].plot()
+  df[['total', 'capital']].plot()
   plt.show()
   #全部股票################################################
   # df = util.QueryAll()
