@@ -8,6 +8,7 @@ from dateutil import parser
 import pandas as pd
 from pymongo import MongoClient
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 import const
@@ -49,10 +50,10 @@ def TestAll(codes, save, check):
 
 if __name__ == '__main__':
   # {'name': '东风股份', '_id': '601515', 'money': 133705},
-  Test2('600971', 100000, '浙江永强', False, True)
+  # Test2('600971', 100000, '浙江永强', False, True)
   ##上证红利50
-  BONUS_CODES = const.stockList.BONUS_CODES
-  VERIFY_CODES = const.stockList.VERIFY_CODES
+  # BONUS_CODES = const.stockList.BONUS_CODES
+  # VERIFY_CODES = const.stockList.VERIFY_CODES
   # check
   # TestAll(VERIFY_CODES, True, False)
   # for row in BONUS_CODES:
@@ -99,6 +100,13 @@ if __name__ == '__main__':
   #
   # strategy.dv1.CompareAll('hs300_dv1', out)
 
+  # 作图
+
+
+
+  df = util.LoadData('stock_result', 'dv_jusths300_w')
+  df[['profit', 'capital']].plot()
+  plt.show()
   #全部股票################################################
   # df = util.QueryAll()
   # out = []

@@ -12,6 +12,7 @@ from queue import PriorityQueue
 import pandas as pd
 from pymongo import MongoClient
 import numpy as np
+import matplotlib.pyplot as plt
 
 import const
 import util
@@ -1315,8 +1316,15 @@ class TradeManager:
     for k, v in self.fm.stockMap.items():
       print('### {}, {}'.format(k, v))
 
-    self.fm.dfM.to_excel("c:/workspace/tmp/20200103_onlyhs300_M.xlsx")
-    self.fm.dfW.to_excel("c:/workspace/tmp/20200103_onlyhs300_W.xlsx")
+
+    #作图
+    self.fm.dfW['profit'].fillna(method='ffill', inplace=True)
+    self.fm.dfW['_id'] = self.fm.dfW.index
+    self.fm.dfW['profit'].plot()
+    plt.show()
+    util.SaveMongoDB_DF(self.fm.dfW, 'stock_result', 'dv_jusths300_w')
+    self.fm.dfM.to_excel("/home/ken/temp/20200103_onlyhs300_M.xlsx")
+    self.fm.dfW.to_excel("/home/ken/temp/20200103_onlyhs300_W.xlsx")
   
   
   def StorePrepare2DB(self):
