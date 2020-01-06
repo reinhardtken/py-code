@@ -17,7 +17,6 @@ from pymongo import MongoClient
 from pymongo import errors
 
 #this project
-import query
 import util
 import const
 

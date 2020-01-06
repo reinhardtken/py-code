@@ -18,7 +18,7 @@ import util
 import util.utils
 import const
 import const.TS as TS
-import setting
+# import setting
 
 #http://tushare.org/classifying.html#id8
 # code :股票代码
@@ -107,8 +107,8 @@ def saveDB2(data: pd.DataFrame, code, handler=None):
 def RunOneNone(code):
   client = MongoClient()
   db = client['stock_all_kdata_none']
-  collectionLIst = db.list_collection_names()
-  if code in collectionLIst:
+  collectionList = db.list_collection_names()
+  if code in collectionList:
     print("exist {}".format(code))
   else:
     re = getKDataNone(code)

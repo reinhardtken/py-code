@@ -44,6 +44,7 @@ headers = {
 
 
 class Handler(spider.FakeSpider):
+  ALL = False
   crawl_config = {
   }
 
@@ -110,10 +111,15 @@ class Handler(spider.FakeSpider):
     for one in out:
       print(one.text)
       year = float(one.text[:4])
-      if year > 2017:
+      if not Handler.ALL and year > 2018:
         innerTask = Handler.InnerTask(one.text)
         save = innerTask.dump()
         self.crawl(innerTask.genUrl(1), headers=self.header(), callback=self.processSecondPage, save=save)
+      else:
+        innerTask = Handler.InnerTask(one.text)
+        save = innerTask.dump()
+        self.crawl(innerTask.genUrl(1), headers=self.header(), callback=self.processSecondPage, save=save)
+
 
   def processThirdPage(self, response):
     return self.processSecondPage(response)

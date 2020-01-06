@@ -481,14 +481,15 @@ class DangerousGenerator:
 
 #########################################################
 class StrategyDV:
-  def __init__(self, code, tu, startYear, startDate, endDate):
+  def __init__(self, code, name, tu, startYear, startDate, endDate):
     self.strategyName = 'dv2'
     self.code = code
+    self.name = name
     self.startYear = startYear
     self.startDate = startDate
     self.endDate = endDate
     self.TU = tu
-    self.dv2Index = dv2.DV2Index(code, startYear, startDate, endDate)
+    self.dv2Index = dv2.DV2Index(code, name, startYear, startDate, endDate)
     # self.dv2Index.checkPoint = {}  # 所有的年报季报除权等影响买卖点的特殊时点
     # self.dangerousPoint = []  # 利润同比下滑超过10%的位置
     # self.dv2Index.dividendPoint = []  # 除权的日期
@@ -957,7 +958,7 @@ class TradeManager:
       if 'money' in one:
         tmpBeginMoney = one['money']
       A = Account(one['_id'], tmpBeginMoney, self.startDate, self.endDate, self.fm)
-      DV = StrategyDV(one['_id'], self, self.startYear, self.startDate, self.endDate)
+      DV = StrategyDV(one['_id'], one['name'], self, self.startYear, self.startDate, self.endDate)
       self.dvMap[one['_id']] = DV
       self.accountMap[one['_id']] = A
       context = DayContext(one['_id'])
@@ -1201,8 +1202,9 @@ class TradeManager:
   
   def Merge(self):
     if self.index is not None:
-      self.mergeData = self.index.join(self.data, how='left', lsuffix='_index')
       try:
+        self.mergeData = self.index.join(self.data, how='left', lsuffix='_index')
+
         # pb = self.loadPB()
         # if pb is not None:
         #   self.mergeData = self.mergeData.join(pb, how='left')
@@ -1663,14 +1665,30 @@ def SignalDV(codes):
 
 
 def CalcDV(codes):
-  for one in codes:
-    stock = RunOne2(one['_id'], 100000, one['name'], {})
+  # #每次100个
+  for index in range(0, len(codes), 100):
+    tmp = codes[index:index + 100]
+    print('now index  {}  #################'.format(index))
+    calcInner(tmp)
+  if index < len(codes):
+    tmp = codes[index:]
+    calcInner(tmp)
+
+def calcInner(codes):
+  stock = TradeManager(codes, 100000)
+  stock.LoadQuotations()
+  stock.LoadIndexs()
+  stock.Merge()
+  stock.CheckPrepare()
+  for k, v in stock.dvMap.items():
     percent = np.nan
-    if stock.DV.statisticsYears is not None and stock.DV.statisticsYears > 0:
-      percent = stock.DV.dividendYears / stock.DV.statisticsYears
-    util.SaveMongoDB({'_id': one['_id'], 'name': one['name'], '统计年数': stock.DV.statisticsYears,
-                      '分红年数': stock.DV.dividendYears, '百分比': percent},
+    if v.dv2Index.statisticsYears is not None and v.dv2Index.statisticsYears > 0:
+      percent = v.dv2Index.dividendYears / v.dv2Index.statisticsYears
+    util.SaveMongoDB({'_id': v.dv2Index.code, 'name': v.dv2Index.name,
+                      '统计年数': v.dv2Index.statisticsYears,
+                      '分红年数': v.dv2Index.dividendYears, '百分比': percent},
                      'stock_statistcs', 'dvYears')
+
 
 
 def CalcQuarterSpeed(codes, year):

@@ -232,6 +232,50 @@ def HoldAll():
   
 
 
+def RunHS300AndDVYears():
+  out = []
+  client = MongoClient()
+  db = client["stock_backtest"]
+  # collection = db["all_dv3"]
+  collection = db["dv2"]
+  cursor = collection.find({'tradeCounter': {'$gte': 1}})
+  # cursor = collection.find()
+  for one in cursor:
+    # print(one)
+    out.append({'_id': one['_id'], 'name': one['name'], 'percent': one['percent'],
+                'holdStockNatureDate': one['holdStockNatureDate'],
+                'tradeCounter': one['tradeCounter']})
+
+  inList, outList = dvYear.Filter(out)
+  in2, out2 = hs300.Filter(inList)
+  in3, out3 = hs300.Filter(outList)
+
+  for one in out:
+    if one['_id'] in out2:
+      print('not hs300 {} {}'.format(one['_id'], one['name']))
+
+  for one in out:
+    if one['_id'] in in3:
+      print('not dvYear {} {}'.format(one['_id'], one['name']))
+
+  codes = []
+  for one in out:
+    if one['_id'] in in2:
+      codes.append(one)
+
+  for one in stockList.VERSION_DV2.DVOK_NOT_HS300:
+    if one['_id'] not in in2:
+      codes.append(one)
+
+  for one in stockList.VERSION_DV2.HS300_NOT_DVOK:
+    if one['_id'] not in in2:
+      codes.append(one)
+
+  # TestThree(codes, 100000,
+  #           {'check': False, 'backtest': True, 'saveDB': 'all_dv3', 'draw': None, 'saveFile': 'C:/workspace/tmp/dv3'})
+  TestThree(codes, 100000,
+            {'check': False, 'backtest': True, 'saveDB': 'all_dv3', 'draw': None, 'saveFile': '/home/ken/temp/dv3'})
+
 
 def TestA():
   df1 = util.LoadData('stock_signal', '2019-12-21', condition={'操作': 1}, sort=[('百分比', -1)])
@@ -285,6 +329,7 @@ def TestB():
 if __name__ == '__main__':
   import strategy.dv1
   import strategy.dv2
+  import strategy.dv3
   from const import stockList
   from fund_manage import hold
   VERIFY_CODES = stockList.VERIFY_CODES
@@ -323,6 +368,9 @@ if __name__ == '__main__':
   # df = util.QueryAll()
   # for code, row in df.iterrows():
   #   codes.append({'_id': code, 'name': row['名称']})
+  #
+  # strategy.dv3.CalcDV(codes)
+  RunHS300AndDVYears()
   # #
   # # #每次100个
   # for index in range(180, len(codes), 100):
@@ -442,50 +490,7 @@ if __name__ == '__main__':
   
   
   
-  out = []
-  client = MongoClient()
-  db = client["stock_backtest"]
-  collection = db["all_dv3"]
-  # cursor = collection.find({'tradeCounter': {'$gte': 1}})
-  cursor = collection.find()
-  # cursor = collection.find()
-  for one in cursor:
-    # print(one)
-    out.append({'_id': one['_id'], 'name': one['name'], 'percent': one['percent'], 'holdStockNatureDate': one['holdStockNatureDate'],
-                'tradeCounter': one['tradeCounter']})
 
-
-  inList, outList = dvYear.Filter(out)
-  in2, out2 = hs300.Filter(inList)
-  in3, out3 = hs300.Filter(outList)
-
-
-  
-  for one in out:
-    if one['_id'] in out2:
-      print('not hs300 {} {}'.format(one['_id'], one['name']))
-    
-  
-  for one in out:
-    if one['_id'] in in3:
-      print('not dvYear {} {}'.format(one['_id'], one['name']))
-
-
-  codes = []
-  for one in out:
-    if one['_id'] in in2:
-      codes.append(one)
-
-  for one in stockList.VERSION_DV2.DVOK_NOT_HS300:
-    if one['_id'] not in in2:
-      codes.append(one)
-      
-  for one in stockList.VERSION_DV2.HS300_NOT_DVOK:
-    if one['_id'] not in in2:
-      codes.append(one)
-
-  TestThree(codes, 100000, {'check': False, 'backtest': True, 'saveDB': 'all_dv3', 'draw': None, 'saveFile': 'C:/workspace/tmp/dv3'})
-  
   # TestTwo(stockList.VERSION_DV1.BAD_LIST, 100000, {'check': False, 'backtest': True, 'save': True})
   # TestAll(VERIFY_CODES, True, False)
   #check

@@ -77,8 +77,9 @@ class DividendPoint:
 #########################################################
 # 统计整个财务数据中，-10%的出现次数，出现越多，说明卖点越多
 class DV2Index:
-  def __init__(self, code, startYear, startDate, endDate):
+  def __init__(self, code, name, startYear, startDate, endDate):
     self.code = code
+    self.name = name
     self.startYear = startYear
     self.startDate = startDate
     self.endDate = endDate

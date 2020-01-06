@@ -24,8 +24,10 @@ import util
 import util.utils
 import const
 from fake_spider import spider
-import setting
-
+try:
+  import setting
+except Exception as e:
+  print(e)
 
 MONGODB_ID = const.MONGODB_ID
 ID_NAME = const.YJBG_KEYWORD.ID_NAME
@@ -34,7 +36,7 @@ COLLECTION_HEAD = const.YJBG_KEYWORD.COLLECTION_HEAD
 KEY_NAME = const.YJBG_KEYWORD.KEY_NAME
 NEED_TO_NUMBER = const.YJBG_KEYWORD.NEED_TO_NUMBER
 DATA_SUB = const.YJBG_KEYWORD.DATA_SUB
-STOCK_LIST = setting.f_data_stocklist()
+# STOCK_LIST = setting.f_data_stocklist()
 # STOCK_LIST = ['000636']
 
 KEY = 'var XbnsgnRv'
@@ -64,7 +66,7 @@ headers = {
 class Handler(spider.FakeSpider):
   crawl_config = {
   }
-
+  STOCK_LIST = None
   def on_start(self):
     out = self.url()
     for one in out:
@@ -136,6 +138,11 @@ class Handler(spider.FakeSpider):
 
   def url(self):
     out = []
+    STOCK_LIST = None
+    if Handler.STOCK_LIST is not None:
+      STOCK_LIST = Handler.STOCK_LIST
+    else:
+      STOCK_LIST = setting.f_data_stocklist()
     for code in STOCK_LIST:
       url = encode_params(self.genParams(code))
       url = base_url + url
