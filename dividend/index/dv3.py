@@ -14,9 +14,7 @@ import numpy as np
 import const
 import util
 
-
 GPFH_KEY = const.GPFH_KEYWORD.KEY_NAME
-
 
 DIR_BUY = const.DV2.DIR_BUY
 DIR_NONE = const.DV2.DIR_NONE
@@ -29,6 +27,7 @@ INVALID_SELL_PRICE = const.DV2.INVALID_SELL_PRICE
 INVALID_BUY_PRICE = const.DV2.INVALID_BUY_PRICE
 YEAR_POSITION = const.DV2.YEAR_POSITION
 MIDYEAR_POSITION = const.DV2.MIDYEAR_POSITION
+
 
 #########################################################
 class DividendPoint:
@@ -84,17 +83,16 @@ class DVIndex:
     self.startDate = startDate
     self.endDate = endDate
     self.checkPoint = {}  # 所有的年报季报除权等影响买卖点的特殊时点
+    self.forecast = {} #业绩预告
     self.dangerousPoint = []  # 利润同比下滑超过10%的位置
     self.dividendPoint = []  # 除权的日期
-
+    
     self.MAXEND = util.Quater2Date(2099, 'first')  # 默认的冻结开仓截止日期
-  
+    
     self.dividendAdjust = {}  # 除权日，调整买入卖出价格
-
+    
     self.statisticsYears = None  # 参与统计的总年数
     self.dividendYears = 0  # 有过分红的年数
-
-  
   
   def Run(self):
     
@@ -102,6 +100,7 @@ class DVIndex:
     now = datetime.now()
     stopYear = now.year
     for year in range(self.startYear - 1, stopYear + 1):
+      self.forecast[year] = {}
       if year not in self.checkPoint:
         self.checkPoint[year] = {}
       if year + 1 not in self.checkPoint:
@@ -117,6 +116,15 @@ class DVIndex:
       self.checkPoint[year]['second'] = quarterPaper[1]
       self.checkPoint[year]['third'] = quarterPaper[2]
       self.checkPoint[year]['forth'] = quarterPaper[3]
+      
+      #加载业绩预告
+      forecast = util.LoadForecast(year, self.code)
+      self.forecast[year]['first'] = forecast[0]
+      self.forecast[year]['second'] = forecast[1]
+      self.forecast[year]['third'] = forecast[2]
+      self.forecast[year]['forth'] = forecast[3]
+      
+      
     
     self.statisticsYears = len(self.checkPoint)
     # 对加载出来的数据做初步处理
@@ -135,11 +143,11 @@ class DVIndex:
         try:
           if GPFH_KEY['EarningsPerShare'] in v['year']:
             v['year']['dividendRatio'] = v['year']['allDividend'] / v['year'][GPFH_KEY['EarningsPerShare']]
-            
+          
           # 计算分红是不是大于每股收益，如果大于每股收益，显然不可持续
           # 002351 漫步者 买入："date" : ISODate("2011-06-17T00:00:00.000Z"),
           # 不可持续的分红，需要调整为实际每股收益的80%来测算
-          #2019/12/26此段逻辑很好的改善了回测中差标的集合的表现
+          # 2019/12/26此段逻辑很好的改善了回测中差标的集合的表现
           if GPFH_KEY['EarningsPerShare'] in v['midYear']:
             if 0.8 * v['midYear'][GPFH_KEY['EarningsPerShare']] < v['midYear']['dividend']:
               v['unsustainable'] = True
@@ -151,7 +159,7 @@ class DVIndex:
               v['year']['dividend'] = 0.8 * v['year'][GPFH_KEY['EarningsPerShare']]
               v['year']['allDividend'] = v['midYear']['dividend'] + v['year']['dividend']
         except Exception as e:
-          if v['year'][GPFH_KEY['EarningsPerShare']]  == '-':
+          if v['year'][GPFH_KEY['EarningsPerShare']] == '-':
             v['year'][GPFH_KEY['EarningsPerShare']] = 0
           util.PrintException(e)
         # 根据分红计算全年和半年的买入卖出价格
@@ -239,8 +247,6 @@ class DVIndex:
       else:
         tmp.append(one)
     self.dangerousPoint = tmp
-
-
   
   def processSong(self, value):
     # 处理送股

@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 import const
 import util
 from index import dv2
+from index import dv3
+
 from comm import TradeResult
 from comm import TradeMark
 from comm import PumpManager
@@ -363,6 +365,15 @@ class Account:
     
     elif task.key == Message.BUY_EVENT:
       self.Buy(context.date, task.args[0], task.args[1], context.price, context.index, task.args[2], reason='低于买点')
+      arg = task.args[3]
+      if arg[3] < 0:
+        #感觉这个特性意义不大，最差30个标的一共36次买入，也就避开了3次
+        ### dangerous buy 002366 2012-05-02 00:00:00 -1
+        ### dangerous buy 002335 2018-05-02 00:00:00 -1
+        ### dangerous buy 002016 2018-05-02 00:00:00 -10
+        #交易标的沪深300过滤，也就避开了1次
+        #### dangerous buy 600548 深高速2015-05-04 00:00:00 -1
+        print('### dangerous buy {} {} {} '.format(self.code, context.date, arg[3]))
     elif task.key == Message.SELL_EVENT:
       # 监控到价格变化的时候，必然符合当前价格高于建仓时候的卖出价格，建仓不应该再需要记录卖出价格
       # 除非策略变化，卖出价格和建仓有关，而非和年报有关
@@ -486,7 +497,7 @@ class StrategyDV:
     self.startDate = startDate
     self.endDate = endDate
     self.TU = tu
-    self.dv2Index = dv2.DV2Index(code, name, startYear, startDate, endDate)
+    self.dv2Index = dv3.DVIndex(code, name, startYear, startDate, endDate)
     # self.dv2Index.checkPoint = {}  # 所有的年报季报除权等影响买卖点的特殊时点
     # self.dangerousPoint = []  # 利润同比下滑超过10%的位置
     # self.dv2Index.dividendPoint = []  # 除权的日期
@@ -539,6 +550,7 @@ class StrategyDV:
     self.eventDF = pd.concat([self.TU.baseIndex2, pd.DataFrame(columns=[
       'buyPrice', 'sellPrice', 'where',
       'dividend', 'dangerousPoint',
+      'forecast',
       # 'yearGift', 'yearDividend', 'midYearGift', 'midYearDividend', 'allDividend', 'yearDividendDate',
       # 'midYearDividendDate', 'earningsPerShare',
     ])], sort=False)
@@ -568,6 +580,7 @@ class StrategyDV:
         self.dangerousQuarterMap[index] = one
     
     self.checkPoint2DF()
+    self.forecast2DF()
   
   def CheckPrepare(self):
     print('### {} CheckPrepare########'.format(self.code))
@@ -725,56 +738,9 @@ class StrategyDV:
   #   return False, INVALID_BUY_PRICE, INVALID_SELL_PRICE, where
   
   def MakeDecisionPrice2(self, date):
-    return self.eventDF.loc[date, 'buyPrice'], self.eventDF.loc[date, 'sellPrice'], self.eventDF.loc[date, 'where']
-    # 决定使用哪个年的checkpoit，返回对应的buy和sell
-    # if self.decisionCache is not None:
-    #   if date <= self.decisionCache[0]:
-    #     return self.decisionCache[1]
-    #   else:
-    #     self.decisionCache = None
-    #
-    # anchor0 = pd.Timestamp(datetime(date.year, 4, 30))
-    # anchor1 = pd.Timestamp(datetime(date.year, 8, 31))
-    # anchor2 = pd.Timestamp(datetime(date.year, 12, 31))
-    # # 特殊年报调整
-    # if date.year in self.specialPaper:
-    #   if 0 in self.specialPaper[date.year]:
-    #     anchor0 = self.specialPaper[date.year][0]
-    #   if 1 in self.specialPaper[date.year]:
-    #     anchor1 = self.specialPaper[date.year][1]
-    #
-    # where = None
-    # try:
-    #   if date <= anchor0:
-    #     # 在4月30日之前，只能使用去年的半年报，如果半年报没有，则无法交易
-    #     where = str(date.year) + '-midYear'
-    #     tmp = self.dv2Index.checkPoint[date.year - 1]['buyPrice2'], self.dv2Index.checkPoint[date.year - 1]['sellPrice2'], where
-    #     self.decisionCache = (anchor0, tmp)
-    #     return tmp
-    #   elif date <= anchor1:
-    #     # 在8月31日之前，需要使用去年的年报
-    #     where = str(date.year - 1) + '-year'
-    #     tmp = self.dv2Index.checkPoint[date.year]['buyPrice'], self.dv2Index.checkPoint[date.year]['sellPrice'], where
-    #     self.decisionCache = (anchor1, tmp)
-    #     return tmp
-    #   else:
-    #     # 在8月31日之后，使用去年的allDividend和今年半年报中dividend中大的那个决定
-    #     buy = self.dv2Index.checkPoint[date.year]['buyPrice']
-    #     midBuy = self.dv2Index.checkPoint[date.year]['buyPrice2']
-    #     tmp = None
-    #     if buy > midBuy and buy > 0:
-    #       tmp = buy, self.dv2Index.checkPoint[date.year]['sellPrice'], str(date.year - 1) + '-year2'
-    #     else:
-    #       if midBuy > 0:
-    #         tmp = midBuy, self.dv2Index.checkPoint[date.year]['sellPrice2'], str(date.year) + '-midYear2'
-    #       else:
-    #         tmp = INVALID_BUY_PRICE, INVALID_SELL_PRICE, str(date.year - 1) + '-year3'
-    #     self.decisionCache = (anchor2, tmp)
-    #     return tmp
-    # except Exception as e:
-    #   pass
-    # # should not run here
-    # return INVALID_BUY_PRICE, INVALID_SELL_PRICE, where
+    return self.eventDF.loc[date, 'buyPrice'], self.eventDF.loc[date, 'sellPrice'], \
+           self.eventDF.loc[date, 'where'], self.eventDF.loc[date, 'forecast']
+
   
   def checkPoint2DF(self):
     
@@ -841,6 +807,37 @@ class StrategyDV:
         if flag == 1:
           self.eventDF.loc[tmp['date']:anchor3, 'buyPrice'] = tmp['buyPriceX']
           self.eventDF.loc[tmp['date']:anchor3, 'sellPrice'] = tmp['sellPriceX']
+
+  def forecast2DF(self):
+  
+    for year in range(self.startDate.year, self.endDate.year + 1):
+
+      anchor0 = pd.Timestamp(datetime(year+1, 3, 31))
+      anchor1 = pd.Timestamp(datetime(year, 6, 30))
+      anchor2 = pd.Timestamp(datetime(year, 9, 30))
+      anchor3 = pd.Timestamp(datetime(year, 12, 31))
+      if 'date' in self.dv2Index.forecast[year]['first']:
+        date = pd.Timestamp(datetime.strptime(self.dv2Index.forecast[year]['first']['date'], '%Y-%m-%d'))
+        value = util.ForecastString2Int(self.dv2Index.forecast[year]['first']['forecast'])
+        self.eventDF.loc[date:anchor1, 'forecast'] = value
+        
+      if 'date' in self.dv2Index.forecast[year]['second']:
+        date = pd.Timestamp(datetime.strptime(self.dv2Index.forecast[year]['second']['date'], '%Y-%m-%d'))
+        value = util.ForecastString2Int(self.dv2Index.forecast[year]['second']['forecast'])
+        self.eventDF.loc[date:anchor2, 'forecast'] = value
+        
+      if 'date' in self.dv2Index.forecast[year]['third']:
+        date = pd.Timestamp(datetime.strptime(self.dv2Index.forecast[year]['third']['date'], '%Y-%m-%d'))
+        value = util.ForecastString2Int(self.dv2Index.forecast[year]['third']['forecast'])
+        self.eventDF.loc[date:anchor3, 'forecast'] = value
+        
+      if 'date' in self.dv2Index.forecast[year]['forth']:
+        date = pd.Timestamp(datetime.strptime(self.dv2Index.forecast[year]['forth']['date'], '%Y-%m-%d'))
+        value = util.ForecastString2Int(self.dv2Index.forecast[year]['forth']['forecast'])
+        self.eventDF.loc[date:anchor0, 'forecast'] = value
+        
+        
+  
   
   def MakeDecision(self, context: DayContext):
     buySignal, sellSignal, priceDiff = self.BuySellSignal(context.date, context.price)
@@ -857,7 +854,7 @@ class StrategyDV:
         Task(
           Priority(
             Message.STAGE_FUND_MANAGE, Message.PRIORITY_SUGGEST_BUY),
-          Message.SUGGEST_BUY_EVENT, None, buySignal[1], sellSignal[1], buySignal[2]))
+          Message.SUGGEST_BUY_EVENT, None, buySignal[1], sellSignal[1], buySignal[2], buySignal))
         
     
     if sellSignal[0]:
@@ -882,32 +879,22 @@ class StrategyDV:
             Message.TARGET_SELL_PRICE_EVENT, None, sellSignal[1]))
   
   def BuySellSignal(self, date, price):
-    buyPrice, sellPrice, where = self.MakeDecisionPrice2(date)
-    buySignal = (False, buyPrice, where)
-    sellSignal = (False, sellPrice, where)
+    buyPrice, sellPrice, where, forecast = self.MakeDecisionPrice2(date)
+    buySignal = [False, buyPrice, where, forecast]
+    sellSignal = [False, sellPrice, where, forecast]
     priceDiff = [None, None, where, price]
     # 买卖价格有效则都有效，无效则都无效
     if buyPrice != INVALID_BUY_PRICE:
       priceDiff[0] = (price - buyPrice) / buyPrice
       priceDiff[1] = (price - sellPrice) / sellPrice
       if buyPrice >= price:
-        buySignal = (True, buyPrice, where)
+        buySignal[0] = True
       elif sellPrice <= price:
-        sellSignal = (True, sellPrice, where)
+        sellSignal[0] = True
     elif sellPrice == INVALID_SELL_PRICE and isinstance(where, str) and where.find('-year') != -1:
-      sellSignal = (True, sellPrice, where)
+      sellSignal[0] = True
     
     return buySignal, sellSignal, priceDiff
-  
-  # def ProcessDividendAdjust(self, data):
-  #   # checkPoint发生调整，缓存清掉
-  #   self.decisionCache = None
-  #   if data['p'] == 'midYear':
-  #     self.dv2Index.checkPoint[data['y']]['buyPrice2'] = data['buyPriceX']
-  #     self.dv2Index.checkPoint[data['y']]['sellPrice2'] = data['sellPriceX']
-  #   elif data['p'] == 'year':
-  #     self.dv2Index.checkPoint[data['y']]['buyPrice'] = data['buyPriceX']
-  #     self.dv2Index.checkPoint[data['y']]['sellPrice'] = data['sellPriceX']
 
 
 #########################################################

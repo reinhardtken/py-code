@@ -282,6 +282,51 @@ def LoadQuaterPaper(year, code):
 
 
 
+def LoadForecast(year, code):
+  # 加载季报
+  first = {}
+  second = {}
+  third = {}
+  forth = {}
+  client = MongoClient()
+  db = client["stock"]
+  strYear = str(year)
+  
+  # 一季度
+  collection = db["yjyg-" + str(strYear) + "-03-31"]
+  cursor = collection.find({"_id": code})
+  for c in cursor:
+    first['date'] = c['公告日期']
+    first['forecast'] = c['预告类型']
+    break
+
+  # 二季度
+  collection = db["yjyg-" + str(strYear) + "-06-30"]
+  cursor = collection.find({"_id": code})
+  for c in cursor:
+    second['date'] = c['公告日期']
+    second['forecast'] = c['预告类型']
+    break
+
+  # 三季度
+  collection = db["yjyg-" + str(strYear) + "-09-30"]
+  cursor = collection.find({"_id": code})
+  for c in cursor:
+    third['date'] = c['公告日期']
+    third['forecast'] = c['预告类型']
+    break
+
+  # 四季度
+  collection = db["yjyg-" + str(strYear) + "-12-31"]
+  cursor = collection.find({"_id": code})
+  for c in cursor:
+    forth['date'] = c['公告日期']
+    forth['forecast'] = c['预告类型']
+    break
+
+  return (first, second, third, forth)
+
+
 
 def LoadYearPaper(y, code):
   # 加载年报，中报
@@ -324,3 +369,22 @@ def Quater2Date(year, quarter):
   elif quarter == 'forth':
     # 来年一季度,这里反正有问题，用29号变通下
     return pd.to_datetime(np.datetime64(str(year + 1) + '-04-29T00:00:00Z'))
+  
+  
+def ForecastString2Int(info):
+  infos = {
+    "首亏": -100,
+    "略增": 1,
+    "略减": -1,
+    "扭亏": -10,
+    "增亏": -50,
+    "减亏": -20,
+    "续亏": -30,
+    "续盈": 1,
+    "预增": 1,
+    "预减": -1,
+  }
+  if info in infos:
+    return infos[info]
+  else:
+    return -5
