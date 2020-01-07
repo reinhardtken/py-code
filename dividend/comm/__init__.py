@@ -519,5 +519,11 @@ class Move:
                                                                                self.change)
     return info
   
+  
+  def ToDict(self):
+    return {'_id': self.code, 'name': self.name, 'date':self.date, 'days': self.days, 'winLoss':self.winLoss,
+            'old': self.old, 'change': self.change}
+  
+  
   def __lt__(self, other):
     return self.winLoss < other.winLoss

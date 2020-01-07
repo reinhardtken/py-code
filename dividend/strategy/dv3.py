@@ -1319,7 +1319,7 @@ class TradeManager:
       print('### {}, {}'.format(k, v))
     
     
-  
+      
   
   def Draw(self):
     self.fm.dfW['_id'] = self.fm.dfW.index
@@ -1334,6 +1334,11 @@ class TradeManager:
   def Store2File(self, fileName):
     self.fm.dfM.to_excel(fileName+"_M.xlsx")
     self.fm.dfW.to_excel(fileName+"_W.xlsx")
+    out = []
+    for one in self.fm.moveList:
+      out.append(one.ToDict())
+    df = pd.DataFrame(out)
+    df.to_excel(fileName+"_move.xlsx")
   
   
   
