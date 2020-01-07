@@ -126,8 +126,9 @@ class DayContext:
 #########################################################
 # 代表账号信息
 class Account:
-  def __init__(self, code, beginMoney, startDate, endDate, FM):
+  def __init__(self, code, name, beginMoney, startDate, endDate, FM):
     self.code = code
+    self.name = name
     self.status = HOLD_MONEY  # 持仓还是持币
     # self.money = 100000 #持币的时候，这个表示金额，持仓的的时候表示不够建仓的资金
     self.startDate = startDate
@@ -158,12 +159,7 @@ class Account:
     self.indexProfit = 1  # 沪深300指数收益
     self.indexBuyPoint = None  # 股票开仓时候沪深300指数点位
     
-    # 最大账户净值
-    # self.maxValue = MaxRecord()
-    # self.maxValue.value = self.BEGIN_MONEY
-    # self.maxValue.date = self.startDate
-    # # 回撤相关
-    # self.Retracement = Retracement()
+
     self.maxAndRetracement = MaxAndRetracement(self.BEGIN_MONEY, self.startDate)
     # 事件处理
     self.profit = None
@@ -298,36 +294,7 @@ class Account:
     if self.isHoldStock():
       newV = self.number * 100 * price + self.money
       self.maxAndRetracement.Calc(newV, date)
-      pass
-    # # 最大净值
-    # if self.isHoldMoney():
-    #   pass
-    # elif self.isHoldStock():
-    #   # 新高
-    #   if self.number * 100 * price + self.money > self.maxValue.value:
-    #     self.maxValue.value = self.number * 100 * price + self.money
-    #     self.maxValue.date = date
-    #     old = self.Retracement.Record(date)
-    #     print('新高, 日期：{}, 净值：{}, 最近最大不创新高天数：{}'.format(date, self.maxValue.value, old))
-    #
-    # # 最大回撤
-    # if self.isHoldMoney():
-    #   pass
-    # elif self.isHoldStock():
-    #   nowValue = self.number * 100 * price + self.money
-    #   # 回撤创新低
-    #   if (self.maxValue.value - nowValue) / self.maxValue.value > self.Retracement.current.value:
-    #     self.Retracement.current.value = (self.maxValue.value - nowValue) / self.maxValue.value
-    #     if self.Retracement.maxRetracementDaysLastCheck is None:
-    #       self.Retracement.maxRetracementDaysLastCheck = date
-    #       self.Retracement.current.begin = date
-    #       self.Retracement.current.beginPrice = price
-    #     else:
-    #       diff = date - self.Retracement.maxRetracementDaysLastCheck
-    #       self.Retracement.maxRetracementDaysLastCheck = date
-    #       self.Retracement.current.days += diff.days
-    #     print('最大回撤, 日期：{}, 回撤：{}, 持续：{}'.format(date, self.Retracement.current.value, self.Retracement.current.days))
-    
+
     # 持股交易日
     if self.isHoldStock():
       self.holdStockDate += 1
@@ -419,6 +386,36 @@ class Account:
     elif task.key == Message.PRICE_DIFF:
       self.priceDiff = task.args[0]
 
+
+  def Store2DB(self, dbName):
+    out = {"_id": self.code, 'ver': VERSION, 'name': self.name}
+    out["beginMoney"] = self.BEGIN_MONEY
+    tl = []
+    for one in self.tradeList:
+      tl.append(one.ToDB())
+    out['tradeMarks'] = tl
+    out.update(self.result.ToDB())
+    out['beforeProfit'] = self.beforeProfit
+    out['tradeCounter'] = self.tradeCounter
+    out.update(self.maxAndRetracement.M.ToDict('maxValue'))
+    out.update(self.maxAndRetracement.R.ToDict('Retracement'))
+  
+    out['holdStockNatureDate'] = self.holdStockNatureDate
+    out['holdStockDateVec'] = self.holdStockDateVec
+    out['moneyMoveVec'] = self.money.moveList
+  
+    if self.priceDiff is not None:
+      out['priceBuy'] = self.priceDiff[0]
+      out['priceSell'] = self.priceDiff[1]
+      out['priceWhere'] = self.priceDiff[2]
+      out['priceFrom'] = self.priceDiff[3]
+    else:
+      out['priceBuy'] = np.nan
+      out['priceSell'] = np.nan
+      out['priceWhere'] = np.nan
+      out['priceFrom'] = np.nan
+
+    util.SaveMongoDB(out, 'stock_backtest', dbName)
 
 #########################################################
 class DividendGenerator:
@@ -957,26 +954,12 @@ class TradeManager:
       self.codes.append(one['_id'])
       if 'money' in one:
         tmpBeginMoney = one['money']
-      A = Account(one['_id'], tmpBeginMoney, self.startDate, self.endDate, self.fm)
+      A = Account(one['_id'], one['name'], tmpBeginMoney, self.startDate, self.endDate, self.fm)
       DV = StrategyDV(one['_id'], one['name'], self, self.startYear, self.startDate, self.endDate)
       self.dvMap[one['_id']] = DV
       self.accountMap[one['_id']] = A
       context = DayContext(one['_id'])
 
-      # context.pump.AddHandler([
-      #   Message.STAGE_STRATEGY_BEGIN,
-      #   Message.STAGE_STRATEGY_END,
-      #   Message.STAGE_BEFORE_TRADE_BEGIN,
-      #   Message.STAGE_BEFORE_TRADE_END,
-      #   Message.STAGE_SELL_TRADE_BEGIN,
-      #   Message.STAGE_SELL_TRADE_END,
-      #   Message.STAGE_FUND_MANAGE_BEGIN,
-      #   Message.STAGE_FUND_MANAGE_END,
-      #   Message.STAGE_BUY_TRADE_BEGIN,
-      #   Message.STAGE_BUY_TRADE_END,
-      #   Message.STAGE_AFTER_TRADE_BEGIN,
-      #   Message.STAGE_AFTER_TRADE_END,
-      # ], self.contextManager.Process)
 
       context.pump.AddHandler([
         Message.DIVIDEND_POINT,
@@ -1054,67 +1037,6 @@ class TradeManager:
       self.dvMap[one].CheckPrepare()
       self.dvMap[one].BuildGenerator()
   
-  # def LoadYearPaper(self, y, code):
-  #   # 加载年报，中报
-  #   midYear = {}
-  #   year = {}
-  #   db = self.mongoClient["stock"]
-  #   collection = db["gpfh-" + str(y) + "-06-30"]
-  #   cursor = collection.find({"_id": code})
-  #   for c in cursor:
-  #     midYear[const.GPFH_KEYWORD.KEY_NAME['CQCXR']] = c[const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
-  #     midYear[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']] = c[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
-  #     midYear[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']] = c[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']]
-  #     break
-  #   else:
-  #     midYear.update({'notExist': 1})
-  #
-  #   collection = db["gpfh-" + str(y) + "-12-31"]
-  #   cursor = collection.find({"_id": code})
-  #   for c in cursor:
-  #     year[const.GPFH_KEYWORD.KEY_NAME['CQCXR']] = c[const.GPFH_KEYWORD.KEY_NAME['CQCXR']]
-  #     year[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']] = c[const.GPFH_KEYWORD.KEY_NAME['AllocationPlan']]
-  #     year[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']] = c[const.GPFH_KEYWORD.KEY_NAME['EarningsPerShare']]
-  #     break
-  #   else:
-  #     year.update({'notExist': 1})
-  #
-  #   return (midYear, year)
-  
-  # def LoadQuaterPaper(self, year, code):
-  #   # 加载季报
-  #   first = {}
-  #   second = {}
-  #   third = {}
-  #   forth = {}
-  #   db = self.mongoClient["stock"]
-  #   collection = db["yjbg-" + code]
-  #   strYear = str(year)
-  #   # 一季度
-  #   cursor = collection.find({"_id": strYear + "-03-31"})
-  #   for c in cursor:
-  #     first['sjltz'] = c['sjltz']
-  #     break
-  #
-  #   # 二季度
-  #   cursor = collection.find({"_id": strYear + "-06-30"})
-  #   for c in cursor:
-  #     second['sjltz'] = c['sjltz']
-  #     break
-  #
-  #   # 三季度
-  #   cursor = collection.find({"_id": strYear + "-09-30"})
-  #   for c in cursor:
-  #     third['sjltz'] = c['sjltz']
-  #     break
-  #
-  #   # 四季度
-  #   cursor = collection.find({"_id": strYear + "-12-31"})
-  #   for c in cursor:
-  #     forth['sjltz'] = c['sjltz']
-  #     break
-  #
-  #   return (first, second, third, forth)
   
   def loadData(self, dbName, collectionName, condition):
     db = self.mongoClient[dbName]
@@ -1322,72 +1244,28 @@ class TradeManager:
       
   
   def Draw(self):
-    self.fm.dfW['_id'] = self.fm.dfW.index
-    util.SaveMongoDB_DF(self.fm.dfW, 'stock_result', 'dv_jusths300_w')
-    self.fm.dfW['profit'].fillna(method='ffill', inplace=True)
-    self.fm.dfW['total'].fillna(method='ffill', inplace=True)
-    self.fm.dfW[['total', 'capital', ]].plot()
-    plt.show()
+    self.fm.Draw('dv3')
+    
   
   
   
   def Store2File(self, fileName):
-    self.fm.dfM.to_excel(fileName+"_M.xlsx")
-    self.fm.dfW.to_excel(fileName+"_W.xlsx")
-    out = []
-    for one in self.fm.moveList:
-      out.append(one.ToDict())
-    df = pd.DataFrame(out)
-    df.to_excel(fileName+"_move.xlsx")
+    self.fm.Store2File(fileName)
   
   
-  
-  def StorePrepare2DB(self):
-    for one in self.stocks:
-      code = one['_id']
-      name = one['name']
-    
-    pass
   
   def StoreResult2DB(self, dbName):
     # 保存交易记录到db，用于回测验证
     for one in self.stocks:
       code = one['_id']
       A = self.accountMap[code]
-      out = {"_id": code, 'ver': VERSION, 'name': one['name']}
-      out["beginMoney"] = A.BEGIN_MONEY
-      tl = []
-      for one in A.tradeList:
-        tl.append(one.ToDB())
-      out['tradeMarks'] = tl
-      out.update(A.result.ToDB())
-      out['beforeProfit'] = A.beforeProfit
-      out['tradeCounter'] = A.tradeCounter
-      out.update(A.maxAndRetracement.M.ToDict('maxValue'))
-      out.update(A.maxAndRetracement.R.ToDict('Retracement'))
-      
-      out['holdStockNatureDate'] = A.holdStockNatureDate
-      out['holdStockDateVec'] = A.holdStockDateVec
-      out['moneyMoveVec'] = A.money.moveList
-      
-      if A.priceDiff is not None:
-        out['priceBuy'] = A.priceDiff[0]
-        out['priceSell'] = A.priceDiff[1]
-        out['priceWhere'] = A.priceDiff[2]
-        out['priceFrom'] = A.priceDiff[3]
-      else:
-        out['priceBuy'] = np.nan
-        out['priceSell'] = np.nan
-        out['priceWhere'] = np.nan
-        out['priceFrom'] = np.nan
       
       if dbName is not None:
-        util.SaveMongoDB(out, 'stock_backtest', dbName)
+        A.Store2DB(dbName)
       else:
-        util.SaveMongoDB(out, 'stock_backtest', self.collectionName)
+        A.Store2DB(self.collectionName)
   
 
-  
   def CheckResult(self):
     for one in self.stocks:
       code = one['_id']

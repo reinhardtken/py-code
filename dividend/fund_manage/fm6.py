@@ -11,6 +11,7 @@ from queue import PriorityQueue
 import pandas as pd
 from pymongo import MongoClient
 import numpy as np
+import matplotlib.pyplot as plt
 
 import const
 import util
@@ -266,3 +267,21 @@ class FundManager:
             if counter == len(diff):
               break
       self.eventCache = {}
+  
+  
+  def Draw(self, collectionName):
+    self.dfW['_id'] = self.dfW.index
+    util.SaveMongoDB_DF(self.dfW, 'stock_result', collectionName)
+    self.dfW['profit'].fillna(method='ffill', inplace=True)
+    self.dfW['total'].fillna(method='ffill', inplace=True)
+    self.dfW[['total', 'capital', ]].plot()
+    plt.show()
+    
+  def Store2File(self, fileName):
+    self.dfM.to_excel(fileName+"_M.xlsx")
+    self.dfW.to_excel(fileName+"_W.xlsx")
+    out = []
+    for one in self.moveList:
+      out.append(one.ToDict())
+    df = pd.DataFrame(out)
+    df.to_excel(fileName+"_move.xlsx")
