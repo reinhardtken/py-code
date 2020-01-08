@@ -115,7 +115,7 @@ class Handler(spider.FakeSpider):
         innerTask = Handler.InnerTask(one.text)
         save = innerTask.dump()
         self.crawl(innerTask.genUrl(1), headers=self.header(), callback=self.processSecondPage, save=save)
-      else:
+      elif Handler.ALL:
         innerTask = Handler.InnerTask(one.text)
         save = innerTask.dump()
         self.crawl(innerTask.genUrl(1), headers=self.header(), callback=self.processSecondPage, save=save)
