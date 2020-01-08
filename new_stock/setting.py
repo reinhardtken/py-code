@@ -7,9 +7,10 @@ import get_list
 #out pathh and list path
 PATH = r'd:/stock_python/out/'
 list_path = r'd:/stock_python/list/'
-yjyg_list = ['2019-09-30',
-             '2019-06-30',
-             '2019-03-31']
+yjyg_list = ['2020-01-31',
+             '2019-12-31',
+             '2020-09-30',
+             '2020-06-30']
 
 
 def currentStockList():

@@ -7,6 +7,7 @@ import datetime
 import pandas as pd
 import tushare as ts
 from pymongo import MongoClient
+import setting
 
 # this project
 if __name__ == '__main__':

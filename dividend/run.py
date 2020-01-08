@@ -95,7 +95,7 @@ def RunHS300AndDVYears():
   # TestThree(codes, 100000,
   #           {'check': False, 'backtest': True, 'saveDB': 'all_dv3', 'draw': None, 'saveFile': 'C:/workspace/tmp/dv3'})
   TestThree(codes, 100000,
-            {'check': False, 'backtest': True, 'saveDB': 'all_dv3', 'draw': None, 'saveFile': '/home/ken/temp/dv3'})
+            {'check': False, 'backtest': True, 'saveDB': 'all_dv3', 'draw': None, 'saveFile': r'd:/stock_python/out/dv3'})
 
 
 
