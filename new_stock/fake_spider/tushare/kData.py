@@ -2,12 +2,9 @@
 
 # sys
 import json
-import datetime
 # thirdpart
 import pandas as pd
 import tushare as ts
-from pymongo import MongoClient
-import setting
 
 # this project
 if __name__ == '__main__':
@@ -19,7 +16,7 @@ import util
 import util.utils
 import const
 import const.TS as TS
-# import setting
+import setting
 
 #http://tushare.org/classifying.html#id8
 # code :股票代码
@@ -43,9 +40,9 @@ def getLastK(code):
 
 
 
-def getKData(code, starts='2001-01-01'):
+def getKData(code):
   try:
-    df = ts.get_k_data(code, start=starts,  index=False)
+    df = ts.get_k_data(code)
     df.loc[:, 'date'] = pd.to_datetime(df.loc[:, 'date'])
     df.set_index('date', inplace=True)
     df.drop('code', axis=1, inplace=True)
@@ -54,32 +51,6 @@ def getKData(code, starts='2001-01-01'):
     print(e)
 
 
-
-def getKDataRecent(code):
-  try:
-    now = datetime.datetime.now()
-    starts = now - datetime.timedelta(days=15)
-    starts = starts.strftime('%Y-%m-%d')
-    df = ts.get_k_data(code, start=starts,  index=False)
-    df.loc[:, 'date'] = pd.to_datetime(df.loc[:, 'date'])
-    df.set_index('date', inplace=True)
-    df.drop('code', axis=1, inplace=True)
-    return df
-  except Exception as e:
-    print(e)
-
-
-
-
-def getKDataNone(code, starts='2001-01-01', index=False):
-  try:
-    df = ts.get_k_data(code, start=starts, autype=None,  index=index)
-    df.loc[:, 'date'] = pd.to_datetime(df.loc[:, 'date'])
-    df.set_index('date', inplace=True)
-    df.drop('code', axis=1, inplace=True)
-    return df
-  except Exception as e:
-    print(e)
 
 
 def saveDB(data: pd.DataFrame, code, handler=None):
@@ -94,84 +65,8 @@ def saveDB(data: pd.DataFrame, code, handler=None):
 def run():
   STOCK_LIST = setting.currentStockList()
   for one in STOCK_LIST:
-    re = getKDataRecent(one)
-    saveDB(re, one)
-    
-
-def runAll():
-  STOCK_LIST = setting.currentStockList()
-  for one in STOCK_LIST:
     re = getKData(one)
     saveDB(re, one)
-    
-
-#这个是前复权
-def RunOne(code, force=False):
-  #dblist = MongoClient.list_database_names()
-  client = MongoClient()
-  db = client['stock_all_kdata']
-  collectionLIst = db.list_collection_names()
-  if not force and code in collectionLIst:
-    print("exist {}".format(code))
-  else:
-    #如果强制更新，删除已有数据
-    if force and code in collectionLIst:
-      db.drop_collection(code)
-    re = getKData(code)
-    saveDB2(re, code)
-   
-   
-def saveDB2(data: pd.DataFrame, code, handler=None):
-  def callback(result):
-    pass
-
-  util.updateMongoDB(data, util.genKeyCodeFunc('date'), "stock_all_kdata", TS.KData.COLLECTION_D_HEAD + code, True, callback)
-
-#这个是不复权
-def RunOneNone(code):
-  client = MongoClient()
-  db = client['stock_all_kdata_none']
-  collectionList = db.list_collection_names()
-  if code in collectionList:
-    print("exist {}".format(code))
-  else:
-    re = getKDataNone(code)
-    saveDB3(re, code)
-    
-  
-#最近一个月的数据
-def RunOneNoneRecent(code):
-  now = datetime.datetime.now()
-  starts = now - datetime.timedelta(days=31)
-  #starts = datetime.datetime(now.year, now.month, 1)
-  starts = starts.strftime('%Y-%m-%d')
-  re = getKDataNone(code, starts)
-  saveDB3(re, code)
-
-
-def RunHS300IndexRecent():
-  now = datetime.datetime.now()
-  starts = now - datetime.timedelta(days=31)
-  # starts = datetime.datetime(now.year, now.month, 1)
-  starts = starts.strftime('%Y-%m-%d')
-  re = getKDataNone('000300', starts, index=True)
-  saveDB3(re, '000300')
-
-
-
-def RunHS300Index():
-  re = getKDataNone('000300', starts='2001-01-01', index=True)
-  saveDB3(re, '000300')
-
-
-
-def saveDB3(data: pd.DataFrame, code, handler=None):
-  def callback(result):
-    pass
-  
-  util.updateMongoDB(data, util.genKeyCodeFunc('date'), "stock_all_kdata_none", TS.KData.COLLECTION_D_HEAD + code, True,
-                     callback)
-
 
 if __name__ == '__main__':
   STOCK_LIST = setting.currentStockList()
