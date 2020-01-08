@@ -54,6 +54,22 @@ def getKData(code, starts='2001-01-01'):
 
 
 
+def getKDataRecent(code):
+  try:
+    now = datetime.datetime.now()
+    starts = now - datetime.timedelta(days=15)
+    starts = starts.strftime('%Y-%m-%d')
+    df = ts.get_k_data(code, start=starts,  index=False)
+    df.loc[:, 'date'] = pd.to_datetime(df.loc[:, 'date'])
+    df.set_index('date', inplace=True)
+    df.drop('code', axis=1, inplace=True)
+    return df
+  except Exception as e:
+    print(e)
+
+
+
+
 def getKDataNone(code, starts='2001-01-01', index=False):
   try:
     df = ts.get_k_data(code, start=starts, autype=None,  index=index)
@@ -75,6 +91,13 @@ def saveDB(data: pd.DataFrame, code, handler=None):
 
 
 def run():
+  STOCK_LIST = setting.currentStockList()
+  for one in STOCK_LIST:
+    re = getKDataRecent(one)
+    saveDB(re, one)
+    
+
+def runAll():
   STOCK_LIST = setting.currentStockList()
   for one in STOCK_LIST:
     re = getKData(one)
