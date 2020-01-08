@@ -92,6 +92,9 @@ def RunHS300AndDVYears():
     if one['_id'] not in in2:
       codes.append(one)
   
+  print('### final backtest stock list size {}'.format(len(codes)))
+  for one in codes:
+    print(one)
   # TestThree(codes, 100000,
   #           {'check': False, 'backtest': True, 'saveDB': 'all_dv3', 'draw': None, 'saveFile': 'C:/workspace/tmp/dv3'})
   TestThree(codes, 100000,
