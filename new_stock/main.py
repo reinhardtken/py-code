@@ -41,8 +41,8 @@ if __name__ == '__main__':
 
 
   #use it to create stockList and hs300 when the first time and mongodb is empty
-  fake_spider.tushare.stockList.saveDB(fake_spider.tushare.stockList.getBasics())
-  fake_spider.tushare.hs300.saveDB(fake_spider.tushare.hs300.getHS300())
+  #fake_spider.tushare.stockList.saveDB(fake_spider.tushare.stockList.getBasics())
+  #fake_spider.tushare.hs300.saveDB(fake_spider.tushare.hs300.getHS300())
 
   #run main program
   fake_spider.tushare.kData.run()

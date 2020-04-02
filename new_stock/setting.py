@@ -22,7 +22,7 @@ def currentStockList():
   AI = get_list.get_AI()
   guangdong = get_list.get_guangdong()
   medicine = get_list.get_medicine()
-  all = get_list.get_all()
+  #all = get_list.get_all()
   one = set(chose)
   two = set(hs300)
   three = set(zz500)
@@ -31,7 +31,7 @@ def currentStockList():
   six = set(AI)
   seven = set(guangdong)
   eight = set(medicine)
-  nine = set(all)
+  #nine = set(all)
   one.update(two)
   one.update(three)
   one.update(four)
@@ -39,16 +39,25 @@ def currentStockList():
   one.update(six)
   one.update(seven)
   one.update(eight)
-  one.update(nine)
+  #one.update(nine)
   out = list(one)
   return out
 
 #fanancial report data stock list
-F_data_stock_list_name = 'portfolio'
+F_data_stock_list_name = 'all'
 def f_data_stocklist():
-    #return ['600571']
+    hs300 = query.query_hs300.queryCodeList()
+    chose = get_list.get_portfolio()
+    zz500 = get_list.get_zz500()
+    one = set(chose)
+    two = set(hs300)
+    three = set(zz500)
+    one.update(two)
+    one.update(three)
+    out = list(one)
+    #out = ['000681']
     #out = query.query_hs300.queryCodeList()
-    out = get_list.get_portfolio()
+    #out = get_list.get_portfolio()
     #out = get_list.get_all()
     #out = currentStockList()
     return out
