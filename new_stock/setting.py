@@ -7,10 +7,9 @@ import get_list
 #out pathh and list path
 PATH = r'd:/stock_python/out/'
 list_path = r'd:/stock_python/list/'
-yjyg_list = ['2020-01-31',
-             '2019-12-31',
-             '2020-09-30',
-             '2020-06-30']
+yjyg_list = ['2020-12-31',
+             '2021-03-31',
+             '2021-06-30']
 
 
 def currentStockList():
@@ -41,37 +40,29 @@ def currentStockList():
   one.update(eight)
   #one.update(nine)
   out = list(one)
+  #out = get_list.get_portfolio()
+  out = list(get_list.get_all())
+  out.remove('002417')
+  out.remove('600423')
   return out
 
 #fanancial report data stock list
 F_data_stock_list_name = 'all'
 def f_data_stocklist():
-    hs300 = query.query_hs300.queryCodeList()
-    chose = get_list.get_portfolio()
-    zz500 = get_list.get_zz500()
-    one = set(chose)
-    two = set(hs300)
-    three = set(zz500)
-    one.update(two)
-    one.update(three)
-    out = list(one)
-    #out = ['000681']
+    #out = ['300694']
     #out = query.query_hs300.queryCodeList()
     #out = get_list.get_portfolio()
-    #out = get_list.get_all()
+    out = get_list.get_all()
     #out = currentStockList()
+    #out.remove('000552')
+    #out.remove('000738')
+    #out.remove('002101')
     return out
 
 #stock_list for cwsj_manager
 stock_list = [(currentStockList(), PATH + '/out-all.xlsx'),
               (query.query_hs300.queryCodeList(), PATH + '/out-hs300.xlsx'),
-              (get_list.get_portfolio(), PATH + '/out-portfolio.xlsx'),
-              (get_list.get_zz500(), PATH + '/out-zz500.xlsx'),
-              (get_list.get_zxbz(), PATH + '/out-zxbz.xlsx'),
-              (get_list.get_cybz(), PATH + '/out-cybz.xlsx'),
-              (get_list.get_AI(), PATH + '/out-AI.xlsx'),
-              (get_list.get_guangdong(), PATH + '/out-guangdong.xlsx'),
-              (get_list.get_medicine(), PATH + '/out-medicine.xlsx')]
+              (get_list.get_portfolio(), PATH + '/out-portfolio.xlsx'),]
 
 def currentOS():
   if sys.platform == 'linux':
