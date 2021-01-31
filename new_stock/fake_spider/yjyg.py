@@ -148,7 +148,7 @@ class Handler(spider.FakeSpider):
     if response.ok == False:
       return
 
-    data_list = response.doc('#date_type')
+    data_list = response.doc('#filter_date')
     # doc = pyquery.PyQuery(response)
     # data_list = doc('#sel_bgq')
     out = data_list.find('option')

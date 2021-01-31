@@ -42,6 +42,7 @@ def currentStockList():
   out = list(one)
   #out = get_list.get_portfolio()
   out = list(get_list.get_all())
+  #out = hs300
   out.remove('002417')
   out.remove('600423')
   return out
