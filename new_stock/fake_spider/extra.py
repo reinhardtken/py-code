@@ -73,7 +73,11 @@ class Handler:
 
       df = query.query_lrb.QueryTop(-1, code)
       df2 = query.query_zcfz.QueryTop(-1, code)
-      df = df.loc[:, [const.LRB_KEYWORD.KEY_NAME['tystz'], ] ]
+      try:
+        df = df.loc[:, [const.LRB_KEYWORD.KEY_NAME['tystz'], ]]
+      except Exception as e:
+        print(e)
+        
       if const.ZCFZ_KEYWORD.KEY_NAME['accountrec_tb'] in df2 and const.ZCFZ_KEYWORD.KEY_NAME['inventory_tb'] in df2:
         df2 = df2.loc[:, [const.ZCFZ_KEYWORD.KEY_NAME['accountrec_tb'], const.ZCFZ_KEYWORD.KEY_NAME['inventory_tb']] ]
 
