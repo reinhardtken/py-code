@@ -51,6 +51,6 @@ if __name__ == '__main__':
   fake_spider.cwsj.run()
   fake_spider.gpfh.run()
   fake_spider.m012.run()
-  fake_spider.zgb3.run()
+  #fake_spider.zgb3.run()
   adjust.cwsj_manager.runAll()
 

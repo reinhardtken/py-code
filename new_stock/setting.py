@@ -53,11 +53,15 @@ def f_data_stocklist():
     #out = ['300694']
     #out = query.query_hs300.queryCodeList()
     #out = get_list.get_portfolio()
-    out = get_list.get_all()
+    out = list(get_list.get_all())
     #out = currentStockList()
-    #out.remove('000552')
-    #out.remove('000738')
-    #out.remove('002101')
+    out.remove('000552')
+    out.remove('000738')
+    out.remove('002101')
+    out.remove('600687')
+    out.remove('600247')
+    out.remove('603917')
+    out.remove('600634')
     return out
 
 #stock_list for cwsj_manager

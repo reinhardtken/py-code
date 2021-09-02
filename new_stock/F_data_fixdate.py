@@ -9,7 +9,7 @@ import query.query_extra
 import query.query_yysj
 import query.query_stock_list
 
-date_input = '2020-03-31'
+date_input = '2020-12-31'
 stock_list_name = setting.F_data_stock_list_name
 stock_list_input = setting.f_data_stocklist()
 
