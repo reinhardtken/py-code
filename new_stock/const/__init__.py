@@ -198,6 +198,42 @@ class YJBG_KEYWORD:
     "reportdate": "季度",
   }
 
+
+class YJBG2_KEYWORD:
+  ID_NAME = '季度'
+  DB_NAME = 'stock'
+  COLLECTION_HEAD = 'yjbg2-'
+  KEY_NAME = {
+    "reportdate": "季度",
+    'scode': '代码',
+    'sname': '名称',
+    'roeweighted': '净资产收益率',
+    'totaloperatereve': '营业收入(元)',
+    'xsmll': '销售毛利率',
+    'parentnetprofit': '净利润(元)',
+    'xsjll': '销售净利率',
+  }
+
+  # NEED_TO_NUMBER = {
+  #   'roeweighted': '净资产收益率',
+  #   'totaloperatereve': '营业收入(元)',
+  #   'xsmll': '销售毛利率',
+  #   'parentnetprofit': '净利润(元)',
+  # }
+
+  NONE_TO_NUMBER = {
+    'roeweighted': '净资产收益率',
+    'totaloperatereve': '营业收入(元)',
+    'xsmll': '销售毛利率',
+    'parentnetprofit': '净利润(元)',
+    'cutbasiceps': '每股收益扣除(元)',
+    'gxl': '股息率',
+    'assigndscrpt': '利润分配',
+  }
+
+  DATA_SUB = {
+    "reportdate": "季度",
+  }
 #########################################################
 class ZCFZ_KEYWORD:
   ID_NAME = '季度'
