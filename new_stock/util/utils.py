@@ -3,6 +3,7 @@
 
 
 import re
+import numpy as np
 
 def genchangeKeyFunc(newKey):
   def changeKey(k, v):
@@ -25,6 +26,8 @@ def genCutDateFunc(key):
 def genString2NumberFunc(key):
   def tryFloat(v):
     try:
+      if v is None:
+        return True, np.nan
       return True, float(v)
     except ValueError as e:
       return False, v
