@@ -88,12 +88,12 @@ class Handler:
       #丢弃空行
       df3.dropna()
 
-      # xjll.经营活动产生的现金流量净额/yjbg.营业收入
+      # xjll.经营活动产生的现金流量净额/yjbg2.营业收入
       # xjll.每股经营现金流量/stock_list.总股本
       df = query.query_xjll.QueryTop(-1, code)
       df2 = query.query_yjbg.QueryTop(-1, code)
       df = df.loc[:, [const.XJLL_KEYWORD.KEY_NAME['netoperatecashflow'], ]]
-      df2 = df2.loc[:, [const.YJBG_KEYWORD.KEY_NAME['totaloperatereve'], ]]
+      df2 = df2.loc[:, [const.YJBG_KEYWORD2.KEY_NAME['totaloperatereve'], ]]
       # basicInfo = query.query_stock_list.queryOne(code)
       zgb = query.query_stock_list.queryZgb(code)#basicInfo[const.TS.BASICS.KEY_NAME['zgb']]
       df4 = df2.join(df, how='outer')
@@ -120,12 +120,12 @@ class Handler:
               isinstance(row[const.LRB_KEYWORD.KEY_NAME['tystz']], float) and row[const.LRB_KEYWORD.KEY_NAME['tystz']] != 0:
             df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['chzzl_srzzl']] = row[const.ZCFZ_KEYWORD.KEY_NAME['inventory_tb']] / \
                                                                row[const.LRB_KEYWORD.KEY_NAME['tystz']]
-          # xjll.经营活动产生的现金流量净额/yjbg.营业收入
+          # xjll.经营活动产生的现金流量净额/yjbg2.营业收入
           if isinstance(row[const.XJLL_KEYWORD.KEY_NAME['netoperatecashflow']], float) and \
-              isinstance(row[const.YJBG_KEYWORD.KEY_NAME['totaloperatereve']], float):
+              isinstance(row[const.YJBG_KEYWORD2.KEY_NAME['totaloperatereve']], float):
             try:
               df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr']] = row[const.XJLL_KEYWORD.KEY_NAME[
-              'netoperatecashflow']] / row[const.YJBG_KEYWORD.KEY_NAME['totaloperatereve']]
+              'netoperatecashflow']] / row[const.YJBG_KEYWORD2.KEY_NAME['totaloperatereve']]
             except:
               df5.loc[date, const.EXTRA_KEYWORD.KEY_NAME['jyhdcsdxjllje_yysr']] = np.nan
           # xjll.每股经营现金流量/stock_list.总股本

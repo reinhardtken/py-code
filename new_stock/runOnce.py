@@ -21,7 +21,7 @@ def queryAllCode():
 
 
 if __name__ == '__main__':
-  import fake_spider.yjbg
+  import fake_spider.yjbg2
   import fake_spider.gpfh
   import fake_spider.tushare.kData
   import fake_spider.tushare.hs300
@@ -45,8 +45,8 @@ if __name__ == '__main__':
 
   #获取全部股票的季报增速
   try:
-    fake_spider.yjbg.Handler.STOCK_LIST = codes
-    fake_spider.yjbg.run()
+    fake_spider.yjbg2.Handler.STOCK_LIST = codes
+    fake_spider.yjbg2.run()
   except Exception as e:
     print(e)
   

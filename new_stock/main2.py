@@ -4,7 +4,6 @@
 
 if __name__ == '__main__':
   import fake_spider.yjyg
-  import fake_spider.yjbg
   import fake_spider.yjbg2
   import fake_spider.tushare.kData
   import fake_spider.tushare.hs300

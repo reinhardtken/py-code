@@ -1132,7 +1132,7 @@ class TradeManager:
     third = {}
     forth = {}
     db = self.mongoClient["stock"]
-    collection = db["yjbg-" + code]
+    collection = db["yjbg2-" + code]
     strYear = str(year)
     # 一季度
     cursor = collection.find({"_id": strYear + "-03-31"})

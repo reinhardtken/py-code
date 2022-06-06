@@ -171,32 +171,32 @@ class YJYG_KEYWORD:
     'ndate': '公告日期',
   }
 #########################################################
-class YJBG_KEYWORD:
-  ID_NAME = '季度'
-  DB_NAME = 'stock'
-  COLLECTION_HEAD = 'yjbg-'
-  KEY_NAME = {
-    "reportdate": "季度",
-    'scode': '代码',
-    'sname': '名称',
-    'roeweighted': '净资产收益率',
-    'totaloperatereve': '营业收入(元)',
-    'xsmll': '销售毛利率',
-    'parentnetprofit': '净利润(元)',
-    'xsjll': '销售净利率',
-
-  }
-
-  NEED_TO_NUMBER = {
-    'roeweighted': '净资产收益率',
-    'totaloperatereve': '营业收入(元)',
-    'xsmll': '销售毛利率',
-    'parentnetprofit': '净利润(元)',
-  }
-
-  DATA_SUB = {
-    "reportdate": "季度",
-  }
+# class YJBG_KEYWORD:
+#   ID_NAME = '季度'
+#   DB_NAME = 'stock'
+#   COLLECTION_HEAD = 'yjbg-'
+#   KEY_NAME = {
+#     "reportdate": "季度",
+#     'scode': '代码',
+#     'sname': '名称',
+#     'roeweighted': '净资产收益率',
+#     'totaloperatereve': '营业收入(元)',
+#     'xsmll': '销售毛利率',
+#     'parentnetprofit': '净利润(元)',
+#     'xsjll': '销售净利率',
+#
+#   }
+#
+#   NEED_TO_NUMBER = {
+#     'roeweighted': '净资产收益率',
+#     'totaloperatereve': '营业收入(元)',
+#     'xsmll': '销售毛利率',
+#     'parentnetprofit': '净利润(元)',
+#   }
+#
+#   DATA_SUB = {
+#     "reportdate": "季度",
+#   }
 
 
 class YJBG2_KEYWORD:

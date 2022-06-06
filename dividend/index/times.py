@@ -28,7 +28,7 @@ class DangerousQuarterRatio:
         hitCounter2010 = 0
         firstQuarter2010 = None
         lastQuarter2010 = None
-        df = util.LoadData('stock', 'yjbg-' + one['_id'], condition={}, sort=[('_id', 1)])
+        df = util.LoadData('stock', 'yjbg2-' + one['_id'], condition={}, sort=[('_id', 1)])
         for quarter, row in df.iterrows():
           id = datetime.strptime(quarter, '%Y-%m-%d')
           value = util.String2Number(row['sjltz'])
