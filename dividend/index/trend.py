@@ -17,7 +17,7 @@ import util
 
 
 class ProfitMarginTrend:
-  # db.getCollection('yjbg-002269').find({})
+  # db.getCollection('yjbg2-002269').find({})
   # 中的sjltz，为负或减前值为负，则单趋势为 - 1，否则为 + 1
   # 前单趋势为 - 1，本单趋势为 - 1，则本连续趋势为 - 2
   # 计算单趋势和连续趋势
@@ -32,7 +32,7 @@ class ProfitMarginTrend:
         beforeContinuityTrend = 0
         # beforeSJLTZ2010 = 0
         beforeContinuityTrend2010 = 0
-        df = util.LoadData('stock', 'yjbg-'+one, condition={}, sort=[('_id', 1)])
+        df = util.LoadData('stock', 'yjbg2-'+one, condition={}, sort=[('_id', 1)])
         for quarter, row in df.iterrows():
           id = datetime.strptime(quarter, '%Y-%m-%d')
           value = util.String2Number(row['sjltz'])

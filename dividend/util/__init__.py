@@ -252,7 +252,7 @@ def LoadQuaterPaper(year, code):
   forth = {}
   client = MongoClient()
   db = client["stock"]
-  collection = db["yjbg-" + code]
+  collection = db["yjbg2-" + code]
   strYear = str(year)
   # 一季度
   cursor = collection.find({"_id": strYear + "-03-31"})
