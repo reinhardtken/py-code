@@ -48,11 +48,18 @@ class FakeSpider():
     self.on_message(project, msg)
 
   def run(self):
+    print(f'start task total: {len(self.__task_list)}')
+    total = len(self.__task_list)
+    counter = 0
     while (True):
       notEmpty = False
       tempTaskList = self.__task_list.copy()
       self.__task_list.clear()
       for task in tempTaskList:
+        if counter % 10 == 0:
+          print(f'start task progress: {counter}/{total}  ####################################')
+        counter += 1
+
         notEmpty = True
         s = requests.Session()
         s.mount('http://', requests.adapters.HTTPAdapter(max_retries=5))
