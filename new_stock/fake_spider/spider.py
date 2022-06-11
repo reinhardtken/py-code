@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 
+import time
 import requests
 import pyquery
+
 
 from selenium import webdriver
 import setting
@@ -48,6 +50,11 @@ class FakeSpider():
     self.on_message(project, msg)
 
   def run(self):
+    #如果出现了网络错误，比如404，总的重试次数
+    MAX_RETRY_TIMES = 5
+    retryCounter = 0
+    #每次sleep的时间间隔
+    SLEEP_MS = 60*5
     print(f'start task total: {len(self.__task_list)}')
     total = len(self.__task_list)
     counter = 0
@@ -87,20 +94,32 @@ class FakeSpider():
 
         r = None
         if fetch_js == False:
-          try:
-            r = s.get(url, headers=header, timeout=10, params=param)
-            if r.status_code == 200:
-              try:
-                response.ok = True
-                response.content = r.content
-                response.save = save
-                callback(response)
-              except Exception as e:
-                print(e)
-            else:
-              print('net Error', r.status_code)
-          except requests.ConnectionError as e:
-            print('Error', e.args)
+          #加入出错后，sleep重试的逻辑
+          while (True):
+            try:
+              r = s.get(url, headers=header, timeout=10, params=param)
+              if r.status_code == 200:
+                try:
+                  response.ok = True
+                  response.content = r.content
+                  response.save = save
+                  callback(response)
+                  break
+                except Exception as e:
+                  print(e)
+                  break
+              else:
+                print('net Error', r.status_code)
+                if retryCounter < MAX_RETRY_TIMES:
+                  retryCounter +=1
+                  print(f'will sleep {SLEEP_MS}s, and try again')
+                  time.sleep(SLEEP_MS)
+                else:
+                  print(f'exceed max try again Times {MAX_RETRY_TIMES} ')
+                  break
+            except requests.ConnectionError as e:
+              print('Error', e.args)
+              break
 
         else:
           client = None
