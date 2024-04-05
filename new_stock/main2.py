@@ -4,7 +4,7 @@
 
 if __name__ == '__main__':
   import fake_spider.yjbg2
-  import adjust.cwsj_manager
+  import fake_spider.yjyg
 
 
-  fake_spider.yjbg2.TestRun()
+  fake_spider.yjyg.TestRun()

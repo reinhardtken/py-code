@@ -112,7 +112,7 @@ class Handler(spider.FakeSpider):
     def callback(result):
       self.send_message(self.project_name, result, key + '_' + result[MONGODB_ID])
 
-    util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, tableName, callback)
+    # util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, tableName, callback)
 
 
   def processFirstPage(self, response):

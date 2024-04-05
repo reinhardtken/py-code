@@ -65,9 +65,11 @@ def f_data_stocklist():
     return out
 
 #stock_list for cwsj_manager
-stock_list = [(currentStockList(), PATH + '/out-all.xlsx'),
-              (query.query_hs300.queryCodeList(), PATH + '/out-hs300.xlsx'),
-              (get_list.get_portfolio(), PATH + '/out-portfolio.xlsx'),]
+# stock_list = [(currentStockList(), PATH + '/out-all.xlsx'),
+#               (query.query_hs300.queryCodeList(), PATH + '/out-hs300.xlsx'),
+#               (get_list.get_portfolio(), PATH + '/out-portfolio.xlsx'),]
+
+stock_list = []
 
 def currentOS():
   if sys.platform == 'linux':

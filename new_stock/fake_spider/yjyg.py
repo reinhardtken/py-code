@@ -33,14 +33,7 @@ NEED_TO_NUMBER = const.YJYG_KEYWORD.NEED_TO_NUMBER
 DATA_SUB = const.YJYG_KEYWORD.DATA_SUB
 
 
-KEY = 'var XbnsgnRv'
-'http://dcfm.eastmoney.com//em_mutisvcexpandinterface/api/js/get?' \
-'type=YJBB20_YJYG' \
-'&token=70f12f2f4f091e459a279469fe49eca5' \
-'&st=ndate&sr=-1&p=1&ps=30' \
-'&js=var%20aUDOBatW={pages:(tp),data:%20(x)}' \
-'&filter=(IsLatest=%27T%27)(enddate=^2018-09-30^)' \
-'&rt=51098106'
+
 #20190119
 #http://dcfm.eastmoney.com//em_mutisvcexpandinterface/api/js/get?
 base_url = 'http://dcfm.eastmoney.com//em_mutisvcexpandinterface/api/js/get'
@@ -126,6 +119,59 @@ class Handler(spider.FakeSpider):
       util.everydayChange(re, 'yjyg')
 
 
+  #####################################################################
+
+  class InnerTask2():
+    URL = 'https://datacenter-web.eastmoney.com/api/data/v1/get'
+
+    def __init__(self, date, getTotalNumber=False):
+      self._date = date
+      self.getTotalNumber = getTotalNumber
+
+    def dump(self):
+      return {'data': self._date, 'getTotalNumber': self.getTotalNumber}
+
+    def load(dict):
+      return Handler.InnerTask2(dict['data'], dict['getTotalNumber'])
+
+    def genParams(self, page, date):
+      '''
+      https://datacenter-web.eastmoney.com/api/data/v1/get?
+      callback=jQuery112308802533908778118_1655548007513
+      &sortColumns=NOTICE_DATE,SECURITY_CODE
+      &sortTypes=-1,-1
+      &pageSize=50
+      &pageNumber=1
+      &reportName=RPT_PUBLIC_OP_NEWPREDICT
+      &columns=ALL
+      &filter=(REPORT_DATE='2022-03-31')
+      '''
+      params = {
+        'callback': 'jQuery112308802533908778118_1655548007513',
+        'sortColumns': 'NOTICE_DATE,SECURITY_CODE',
+        'sortTypes': '-1,-1',
+        'pageSize': '50',
+        'pageNumber': page,
+        'reportName': 'RPT_PUBLIC_OP_NEWPREDICT',
+        'columns': 'ALL',
+        'filter': f"(REPORT_DATE='{date}')",
+        # 'filter': f"(REPORT_DATE='2022-03-31')",
+      }
+      return params
+
+    def genUrl(self, page):
+      return Handler.InnerTask2.URL
+
+
+    def saveDB(self, data: pd.DataFrame, handler):
+      def callback(result):
+        handler.send_message(handler.project_name, result, self._date + '_' + result[KEY_NAME[ID_NAME]])
+
+      re = util.saveMongoDB(data, util.genEmptyFunc(), DB_NAME, COLLECTION_HEAD + self._date, callback)
+      util.everydayChange(re, 'yjyg')
+  #####################################################################
+
+
   def url(self):
     return 'http://data.eastmoney.com/bbsj/201806/yjyg.html'
 
@@ -138,9 +184,9 @@ class Handler(spider.FakeSpider):
 
   def header2(self):
     headers = {
-      'Host': 'dcfm.eastmoney.com',
-      'Referer': 'http://data.eastmoney.com/bbsj/201806/yjyg.html',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+      'Host': 'datacenter-web.eastmoney.com',
+      'Referer': 'https://data.eastmoney.com/',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36',
     }
     return headers
 
@@ -158,11 +204,11 @@ class Handler(spider.FakeSpider):
       year = float(one.text[:4])
       if not Handler.ALL and year > 2018:
       # if one.text.startswith('2018'):
-        innerTask = Handler.InnerTask(one.text)
+        innerTask = Handler.InnerTask2(one.text)
         save = innerTask.dump()
         self.crawl(innerTask.genUrl(1), headers=self.header2(), param=innerTask.genParams(1, innerTask._date), callback=self.processSecondPage, save=save)
       elif Handler.ALL:
-        innerTask = Handler.InnerTask(one.text)
+        innerTask = Handler.InnerTask2(one.text)
         save = innerTask.dump()
         self.crawl(innerTask.genUrl(1), headers=self.header2(), param=innerTask.genParams(1, innerTask._date),
                    callback=self.processSecondPage, save=save)
@@ -173,11 +219,14 @@ class Handler(spider.FakeSpider):
 
     content = response.content[13:]
     print(response.url)
-    innerTask = Handler.InnerTask.load(response.save)
+    innerTask = Handler.InnerTask2.load(response.save)
     try:
       data = content.decode('utf-8')
       print(data)
-      #data2 = HTMLParser().unescape(data)
+      #错误返回，比如要求2023年的数据
+      #02533908778118_1655548007513(
+      # {"version":null,"result":null,"success":false,"message":"返回数据为空","code":9201}
+      # );
       data = data.replace('pages:', '"pages":', 1)
       data = data.replace('data:', '"data":', 1)
       data = data.replace('font:', '"font":', 1)
@@ -241,6 +290,12 @@ class Handler(spider.FakeSpider):
 
 
 def run():
+  gpfh = Handler()
+  gpfh.on_start()
+  gpfh.run()
+
+def TestRun():
+  Handler.STOCK_LIST = ['601398', '000002']
   gpfh = Handler()
   gpfh.on_start()
   gpfh.run()
